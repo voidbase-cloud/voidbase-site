@@ -22,28 +22,27 @@
 <li><span class="target">rel</span></li></ul></section>
 <section class="tsd-panel">
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="rel"><span class="tsd-kind-call-signature">rel</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">basepath</span>, <span class="tsd-kind-parameter">targpath</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><a href="#rel" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><g stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" id="icon-anchor"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M10 14a3.5 3.5 0 0 0 5 0l4 -4a3.5 3.5 0 0 0 -5 -5l-.5 .5"></path><path d="M14 10a3.5 3.5 0 0 0 -5 0l-4 4a3.5 3.5 0 0 0 5 5l.5 -.5"></path></g></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="rel"><span class="tsd-kind-call-signature">rel</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">basePath</span>, <span class="tsd-kind-parameter">targPath</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><a href="#rel" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><g stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" id="icon-anchor"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M10 14a3.5 3.5 0 0 0 5 0l4 -4a3.5 3.5 0 0 0 -5 -5l-.5 .5"></path><path d="M14 10a3.5 3.5 0 0 0 -5 0l-4 4a3.5 3.5 0 0 0 5 5l.5 -.5"></path></g></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Rel returns a relative path that is lexically equivalent to targpath when
-joined to basepath with an intervening separator. That is,
-[Join](basepath, Rel(basepath, targpath)) is equivalent to targpath itself.
-On success, the returned path will always be relative to basepath,
-even if basepath and targpath share no elements.
-An error is returned if targpath can&#39;t be made relative to basepath or if
-knowing the current working directory would be necessary to compute it.
-Rel calls [Clean] on the result.</p>
+<div class="tsd-comment tsd-typography"><p>Rel returns a relative path that is lexically equivalent to targPath when
+joined to basePath with an intervening separator. That is,
+[Join](basePath, Rel(basePath, targPath)) is equivalent to targPath itself.</p>
+<p>The returned path will always be relative to basePath, even if basePath and
+targPath share no elements. Rel calls [Clean] on the result.</p>
+<p>An error is returned if targPath can&#39;t be made relative to basePath
+or if knowing the current working directory would be necessary to compute it.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><span class="tsd-kind-parameter">basepath</span>: <span class="tsd-signature-type">string</span></h5></li>
+<h5><span class="tsd-kind-parameter">basePath</span>: <span class="tsd-signature-type">string</span></h5></li>
 <li>
-<h5><span class="tsd-kind-parameter">targpath</span>: <span class="tsd-signature-type">string</span></h5></li></ul></div>
+<h5><span class="tsd-kind-parameter">targPath</span>: <span class="tsd-signature-type">string</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L3214">types.d.ts:3214</a></li></ul></aside></li></ul></section></div>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L3234">types.d.ts:3234</a></li></ul></aside></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

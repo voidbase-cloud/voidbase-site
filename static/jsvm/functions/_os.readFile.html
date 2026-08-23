@@ -23,7 +23,8 @@
 <div class="tsd-comment tsd-typography"><p>ReadFile reads the named file and returns the contents.
 A successful call returns err == nil, not err == EOF.
 Because ReadFile reads the whole file, it does not treat an EOF from Read
-as an error to be reported.</p>
+as an error to be reported.
+If there is an error, it will be of type [*PathError].</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -33,7 +34,7 @@ as an error to be reported.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L2315">types.d.ts:2315</a></li></ul></aside></li></ul></section></div>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L2332">types.d.ts:2332</a></li></ul></aside></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

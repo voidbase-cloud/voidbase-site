@@ -26,7 +26,7 @@ both [Transport] and [Server].</p>
 <ul class="tsd-hierarchy">
 <li><span class="target">HTTP2Config</span></li></ul></section><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23253">types.d.ts:23253</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23401">types.d.ts:23401</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-index-accordion" open><summary class="tsd-accordion-summary tsd-index-summary">
@@ -44,6 +44,7 @@ both [Transport] and [Server].</p>
 <a href="http.HTTP2Config.html#permitProhibitedCipherSuites" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>permit<wbr/>Prohibited<wbr/>Cipher<wbr/>Suites</span></a>
 <a href="http.HTTP2Config.html#pingTimeout" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>ping<wbr/>Timeout</span></a>
 <a href="http.HTTP2Config.html#sendPingTimeout" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>send<wbr/>Ping<wbr/>Timeout</span></a>
+<a href="http.HTTP2Config.html#strictMaxConcurrentRequests" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>strict<wbr/>Max<wbr/>Concurrent<wbr/>Requests</span></a>
 <a href="http.HTTP2Config.html#writeByteTimeout" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>write<wbr/>Byte<wbr/>Timeout</span></a>
 </div></section></div></details></section></section>
 <section class="tsd-panel-group tsd-member-group">
@@ -71,17 +72,18 @@ The errType contains only lowercase letters, digits, and underscores
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
 <div class="tsd-comment tsd-typography"></div></li></ul></li></ul></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23325">types.d.ts:23325</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23487">types.d.ts:23487</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="maxConcurrentStreams" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>max<wbr/>Concurrent<wbr/>Streams</span><a href="#maxConcurrentStreams" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">max<wbr/>Concurrent<wbr/>Streams</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
 <div class="tsd-comment tsd-typography"><p>MaxConcurrentStreams optionally specifies the number of
-concurrent streams that a peer may have open at a time.
+concurrent streams that a client may have open at a time.
 If zero, MaxConcurrentStreams defaults to at least 100.</p>
+<p>This parameter only applies to Servers.</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23259">types.d.ts:23259</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23409">types.d.ts:23409</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="maxDecoderHeaderTableSize" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>max<wbr/>Decoder<wbr/>Header<wbr/>Table<wbr/>Size</span><a href="#maxDecoderHeaderTableSize" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">max<wbr/>Decoder<wbr/>Header<wbr/>Table<wbr/>Size</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
@@ -93,7 +95,7 @@ If zero or invalid, a default value is used.</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23267">types.d.ts:23267</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23429">types.d.ts:23429</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="maxEncoderHeaderTableSize" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>max<wbr/>Encoder<wbr/>Header<wbr/>Table<wbr/>Size</span><a href="#maxEncoderHeaderTableSize" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">max<wbr/>Encoder<wbr/>Header<wbr/>Table<wbr/>Size</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
@@ -104,7 +106,7 @@ If zero or invalid, a default value is used.</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23274">types.d.ts:23274</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23436">types.d.ts:23436</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="maxReadFrameSize" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>max<wbr/>Read<wbr/>Frame<wbr/>Size</span><a href="#maxReadFrameSize" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">max<wbr/>Read<wbr/>Frame<wbr/>Size</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
@@ -115,7 +117,7 @@ If zero or invalid, a default value is used.</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23281">types.d.ts:23281</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23443">types.d.ts:23443</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="maxReceiveBufferPerConnection" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>max<wbr/>Receive<wbr/>Buffer<wbr/>Per<wbr/>Connection</span><a href="#maxReceiveBufferPerConnection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">max<wbr/>Receive<wbr/>Buffer<wbr/>Per<wbr/>Connection</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
@@ -126,7 +128,7 @@ If invalid, a default value is used.</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23288">types.d.ts:23288</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23450">types.d.ts:23450</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="maxReceiveBufferPerStream" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>max<wbr/>Receive<wbr/>Buffer<wbr/>Per<wbr/>Stream</span><a href="#maxReceiveBufferPerStream" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">max<wbr/>Receive<wbr/>Buffer<wbr/>Per<wbr/>Stream</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
@@ -137,7 +139,7 @@ If zero or invalid, a default value is used.</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23295">types.d.ts:23295</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23457">types.d.ts:23457</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="permitProhibitedCipherSuites" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>permit<wbr/>Prohibited<wbr/>Cipher<wbr/>Suites</span><a href="#permitProhibitedCipherSuites" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">permit<wbr/>Prohibited<wbr/>Cipher<wbr/>Suites</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span></div>
@@ -146,7 +148,7 @@ cipher suites prohibited by the HTTP/2 spec.</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23318">types.d.ts:23318</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23480">types.d.ts:23480</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="pingTimeout" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>ping<wbr/>Timeout</span><a href="#pingTimeout" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">ping<wbr/>Timeout</span><span class="tsd-signature-symbol">:</span> <a href="time.Duration.html" class="tsd-signature-type tsd-kind-interface">Duration</a></div>
@@ -156,7 +158,7 @@ If zero, a default of 15 seconds is used.</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23307">types.d.ts:23307</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23469">types.d.ts:23469</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="sendPingTimeout" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>send<wbr/>Ping<wbr/>Timeout</span><a href="#sendPingTimeout" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">send<wbr/>Ping<wbr/>Timeout</span><span class="tsd-signature-symbol">:</span> <a href="time.Duration.html" class="tsd-signature-type tsd-kind-interface">Duration</a></div>
@@ -166,7 +168,22 @@ If zero, no health check is performed.</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23301">types.d.ts:23301</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23463">types.d.ts:23463</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="strictMaxConcurrentRequests" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>strict<wbr/>Max<wbr/>Concurrent<wbr/>Requests</span><a href="#strictMaxConcurrentRequests" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">strict<wbr/>Max<wbr/>Concurrent<wbr/>Requests</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span></div>
+<div class="tsd-comment tsd-typography"><p>StrictMaxConcurrentRequests controls whether an HTTP/2 server&#39;s
+concurrency limit should be respected across all connections
+to that server.
+If true, new requests sent when a connection&#39;s concurrency limit
+has been exceeded will block until an existing request completes.
+If false, an additional connection will be opened if all
+existing connections are at their limit.</p>
+<p>This parameter only applies to Transports.</p>
+</div>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23421">types.d.ts:23421</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="writeByteTimeout" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>write<wbr/>Byte<wbr/>Timeout</span><a href="#writeByteTimeout" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">write<wbr/>Byte<wbr/>Timeout</span><span class="tsd-signature-symbol">:</span> <a href="time.Duration.html" class="tsd-signature-type tsd-kind-interface">Duration</a></div>
@@ -176,7 +193,7 @@ available to write, and is extended whenever any bytes are written.</p>
 </div>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23313">types.d.ts:23313</a></li></ul></aside></section></section></div>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23475">types.d.ts:23475</a></li></ul></aside></section></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
@@ -203,6 +220,7 @@ available to write, and is extended whenever any bytes are written.</p>
 <li><a href="#permitProhibitedCipherSuites" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>permit<wbr/>Prohibited<wbr/>Cipher<wbr/>Suites</span></a></li>
 <li><a href="#pingTimeout" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>ping<wbr/>Timeout</span></a></li>
 <li><a href="#sendPingTimeout" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>send<wbr/>Ping<wbr/>Timeout</span></a></li>
+<li><a href="#strictMaxConcurrentRequests" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>strict<wbr/>Max<wbr/>Concurrent<wbr/>Requests</span></a></li>
 <li><a href="#writeByteTimeout" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-1024"></use></svg><span>write<wbr/>Byte<wbr/>Timeout</span></a></li></ul></div></details></div>
 <div class="site-menu">
 <nav class="tsd-navigation"><a href="../index.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-4"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-namespace)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M9.33 16V7.24H10.77L13.446 14.74C13.43 14.54 13.41 14.296 13.386 14.008C13.37 13.712 13.354 13.404 13.338 13.084C13.33 12.756 13.326 12.448 13.326 12.16V7.24H14.37V16H12.93L10.266 8.5C10.282 8.692 10.298 8.936 10.314 9.232C10.33 9.52 10.342 9.828 10.35 10.156C10.366 10.476 10.374 10.784 10.374 11.08V16H9.33Z" fill="var(--color-text)"></path></g></svg><span>Pocket<wbr/>Base JSVM reference</span></a>

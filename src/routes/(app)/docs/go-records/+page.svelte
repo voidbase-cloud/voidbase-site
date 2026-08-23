@@ -44,6 +44,7 @@
         record.GetBool("someField")        // -> cast to bool
         record.GetString("someField")      // -> cast to string
         record.GetInt("someField")         // -> cast to int
+        record.GetInt64("someField")       // -> cast to int64
         record.GetFloat("someField")       // -> cast to float64
         record.GetDateTime("someField")    // -> cast to types.DateTime
         record.GetStringSlice("someField") // -> cast to []string

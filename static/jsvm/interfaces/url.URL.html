@@ -34,11 +34,9 @@ the host when necessary.</p>
 A consequence is that it is impossible to tell which slashes in the Path were
 slashes in the raw URL and which were %2f. This distinction is rarely important,
 but when it is, the code should use the [URL.EscapedPath] method, which preserves
-the original encoding of Path.</p>
-<p>The RawPath field is an optional field which is only set when the default
-encoding of Path is different from the escaped path. See the EscapedPath method
-for more details.</p>
-<p>URL&#39;s String method uses the EscapedPath method to obtain the path.</p>
+the original encoding of Path. The Fragment field is also stored in decoded form,
+use [URL.EscapedFragment] to retrieve the original encoding.</p>
+<p>The [URL.String] method uses the [URL.EscapedPath] method to obtain the path.</p>
 </div>
 <div class="tsd-comment tsd-typography"></div></section>
 <section class="tsd-panel tsd-hierarchy">
@@ -46,22 +44,23 @@ for more details.</p>
 <ul class="tsd-hierarchy">
 <li><span class="target">URL</span></li></ul></section><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22870">types.d.ts:22870</a></li>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22883">types.d.ts:22883</a></li>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22897">types.d.ts:22897</a></li>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22910">types.d.ts:22910</a></li>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22940">types.d.ts:22940</a></li>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22996">types.d.ts:22996</a></li>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23003">types.d.ts:23003</a></li>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23011">types.d.ts:23011</a></li>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23022">types.d.ts:23022</a></li>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23030">types.d.ts:23030</a></li>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23037">types.d.ts:23037</a></li>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23046">types.d.ts:23046</a></li>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23054">types.d.ts:23054</a></li>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23057">types.d.ts:23057</a></li>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23060">types.d.ts:23060</a></li>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23063">types.d.ts:23063</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L22983">types.d.ts:22983</a></li>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23020">types.d.ts:23020</a></li>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23034">types.d.ts:23034</a></li>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23047">types.d.ts:23047</a></li>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23077">types.d.ts:23077</a></li>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23139">types.d.ts:23139</a></li>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23146">types.d.ts:23146</a></li>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23154">types.d.ts:23154</a></li>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23165">types.d.ts:23165</a></li>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23173">types.d.ts:23173</a></li>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23180">types.d.ts:23180</a></li>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23189">types.d.ts:23189</a></li>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23197">types.d.ts:23197</a></li>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23200">types.d.ts:23200</a></li>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23203">types.d.ts:23203</a></li>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23206">types.d.ts:23206</a></li>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23215">types.d.ts:23215</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-index-accordion" open><summary class="tsd-accordion-summary tsd-index-summary">
@@ -70,6 +69,7 @@ for more details.</p>
 <section class="tsd-index-section">
 <h3 class="tsd-index-heading">Methods</h3>
 <div class="tsd-index-list"><a href="url.URL.html#appendBinary" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-2048"><rect fill="var(--color-icon-background)" stroke="#FF4DB8" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="12"></rect><path d="M9.162 16V7.24H10.578L11.514 10.072C11.602 10.328 11.674 10.584 11.73 10.84C11.794 11.088 11.842 11.28 11.874 11.416C11.906 11.28 11.954 11.088 12.018 10.84C12.082 10.584 12.154 10.324 12.234 10.06L13.122 7.24H14.538V16H13.482V12.82C13.482 12.468 13.49 12.068 13.506 11.62C13.53 11.172 13.558 10.716 13.59 10.252C13.622 9.78 13.654 9.332 13.686 8.908C13.726 8.476 13.762 8.1 13.794 7.78L12.366 12.16H11.334L9.894 7.78C9.934 8.092 9.97 8.456 10.002 8.872C10.042 9.28 10.078 9.716 10.11 10.18C10.142 10.636 10.166 11.092 10.182 11.548C10.206 12.004 10.218 12.428 10.218 12.82V16H9.162Z" fill="var(--color-text)"></path></g></svg><span>append<wbr/>Binary</span></a>
+<a href="url.URL.html#clone" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>clone</span></a>
 <a href="url.URL.html#escapedFragment" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>escaped<wbr/>Fragment</span></a>
 <a href="url.URL.html#escapedPath" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>escaped<wbr/>Path</span></a>
 <a href="url.URL.html#hostname" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>hostname</span></a>
@@ -113,7 +113,18 @@ for more details.</p>
 <h5><span class="tsd-kind-parameter">b</span>: <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23058">types.d.ts:23058</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23201">types.d.ts:23201</a></li></ul></aside></li></ul></section>
+<section class="tsd-panel tsd-member"><a id="clone" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>clone</span><a href="#clone" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="tsd-signature tsd-anchor-link" id="clone.clone-1"><span class="tsd-kind-call-signature">clone</span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="url.URL.html" class="tsd-signature-type tsd-kind-interface">URL</a><a href="#clone.clone-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></li>
+<li class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Clone creates a deep copy of the fields of the subject [URL].</p>
+</div>
+<h4 class="tsd-returns-title">Returns <a href="url.URL.html" class="tsd-signature-type tsd-kind-interface">URL</a></h4>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23219">types.d.ts:23219</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="escapedFragment" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>escaped<wbr/>Fragment</span><a href="#escapedFragment" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -131,7 +142,7 @@ reading u.RawFragment directly.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22908">types.d.ts:22908</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23045">types.d.ts:23045</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="escapedPath" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>escaped<wbr/>Path</span><a href="#escapedPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -150,7 +161,7 @@ reading u.RawPath directly.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22895">types.d.ts:22895</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23032">types.d.ts:23032</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="hostname" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>hostname</span><a href="#hostname" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -163,7 +174,7 @@ the square brackets are removed from the result.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23044">types.d.ts:23044</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23187">types.d.ts:23187</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="isAbs" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>is<wbr/>Abs</span><a href="#isAbs" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -175,7 +186,7 @@ Absolute means that it has a non-empty scheme.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23001">types.d.ts:23001</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23144">types.d.ts:23144</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="joinPath" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>join<wbr/>Path</span><a href="#joinPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -183,7 +194,8 @@ Absolute means that it has a non-empty scheme.</p>
 <li class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>JoinPath returns a new [URL] with the provided path elements joined to
 any existing path and the resulting path cleaned of any ./ or ../ elements.
-Any sequences of multiple / characters will be reduced to a single /.</p>
+Any sequences of multiple / characters will be reduced to a single /.
+Path elements must already be in escaped form, as produced by [PathEscape].</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -193,7 +205,7 @@ Any sequences of multiple / characters will be reduced to a single /.</p>
 <h4 class="tsd-returns-title">Returns <a href="url.URL.html" class="tsd-signature-type tsd-kind-interface">URL</a></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23069">types.d.ts:23069</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23213">types.d.ts:23213</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="marshalBinary" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>marshal<wbr/>Binary</span><a href="#marshalBinary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -201,7 +213,7 @@ Any sequences of multiple / characters will be reduced to a single /.</p>
 <li class="tsd-description">
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23055">types.d.ts:23055</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23198">types.d.ts:23198</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="parse" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>parse</span><a href="#parse" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -219,7 +231,7 @@ failure, otherwise its return value is the same as [URL.ResolveReference].</p>
 <h4 class="tsd-returns-title">Returns <a href="url.URL.html" class="tsd-signature-type tsd-kind-interface">URL</a></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23009">types.d.ts:23009</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23152">types.d.ts:23152</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="port" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>port</span><a href="#port" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -231,7 +243,7 @@ failure, otherwise its return value is the same as [URL.ResolveReference].</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23052">types.d.ts:23052</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23195">types.d.ts:23195</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="query" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>query</span><a href="#query" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -244,7 +256,7 @@ To check errors use [ParseQuery].</p>
 <h4 class="tsd-returns-title">Returns <a href="url.Values.html" class="tsd-signature-type tsd-kind-interface">Values</a></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23028">types.d.ts:23028</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23171">types.d.ts:23171</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="redacted" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>redacted</span><a href="#redacted" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -256,7 +268,7 @@ Only the password in u.User is redacted.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22945">types.d.ts:22945</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23082">types.d.ts:23082</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="requestURI" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>requestURI</span><a href="#requestURI" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -268,7 +280,7 @@ string that would be used in an HTTP request for u.</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23035">types.d.ts:23035</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23178">types.d.ts:23178</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="resolveReference" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>resolve<wbr/>Reference</span><a href="#resolveReference" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -289,7 +301,7 @@ ignores base and returns a copy of ref.</p>
 <h4 class="tsd-returns-title">Returns <a href="url.URL.html" class="tsd-signature-type tsd-kind-interface">URL</a></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23020">types.d.ts:23020</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23163">types.d.ts:23163</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="string" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>string</span><a href="#string" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -310,7 +322,7 @@ To obtain the path, String uses u.EscapedPath().</p>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22938">types.d.ts:22938</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23075">types.d.ts:23075</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="unmarshalBinary" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>unmarshal<wbr/>Binary</span><a href="#unmarshalBinary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <ul class="tsd-signatures">
@@ -323,64 +335,86 @@ To obtain the path, String uses u.EscapedPath().</p>
 <h5><span class="tsd-kind-parameter">text</span>: <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span></h5></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L23061">types.d.ts:23061</a></li></ul></aside></li></ul></section></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23204">types.d.ts:23204</a></li></ul></aside></li></ul></section></section>
 <section class="tsd-panel-group tsd-member-group">
 <h2>Properties</h2>
 <section class="tsd-panel tsd-member"><a id="forceQuery" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>force<wbr/>Query</span><a href="#forceQuery" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">force<wbr/>Query</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span></div><aside class="tsd-sources">
+<div class="tsd-signature"><span class="tsd-kind-property">force<wbr/>Query</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span></div>
+<div class="tsd-comment tsd-typography"><p>ForceQuery indicates whether the original URL contained a query (&#39;?&#39;) character.
+When set, the String method will include a trailing &#39;?&#39;, even when RawQuery is empty.</p>
+</div>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22878">types.d.ts:22878</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23013">types.d.ts:23013</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="fragment" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>fragment</span><a href="#fragment" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">fragment</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22880">types.d.ts:22880</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L22989">types.d.ts:22989</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="host" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>host</span><a href="#host" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">host</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22874">types.d.ts:22874</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L22987">types.d.ts:22987</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="omitHost" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>omit<wbr/>Host</span><a href="#omitHost" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">omit<wbr/>Host</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span></div><aside class="tsd-sources">
+<div class="tsd-signature"><span class="tsd-kind-property">omit<wbr/>Host</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span></div>
+<div class="tsd-comment tsd-typography"><p>OmitHost indicates the URL has an empty host (authority).
+When set, the String method will not include the host when it is empty.</p>
+</div>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22877">types.d.ts:22877</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23018">types.d.ts:23018</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="opaque" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>opaque</span><a href="#opaque" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">opaque</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22872">types.d.ts:22872</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L22985">types.d.ts:22985</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="path" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>path</span><a href="#path" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22875">types.d.ts:22875</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L22988">types.d.ts:22988</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="rawFragment" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>raw<wbr/>Fragment</span><a href="#rawFragment" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">raw<wbr/>Fragment</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div><aside class="tsd-sources">
+<div class="tsd-signature"><span class="tsd-kind-property">raw<wbr/>Fragment</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
+<div class="tsd-comment tsd-typography"><p>RawFragment is an optional field containing an encoded fragment hint.
+See the EscapedFragment method for more details.</p>
+<p>In general, code should call EscapedFragment instead of reading RawFragment.</p>
+</div>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22881">types.d.ts:22881</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23008">types.d.ts:23008</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="rawPath" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>raw<wbr/>Path</span><a href="#rawPath" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">raw<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div><aside class="tsd-sources">
+<div class="tsd-signature"><span class="tsd-kind-property">raw<wbr/>Path</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
+<div class="tsd-comment tsd-typography"><p>RawPath is an optional field containing an encoded path hint.
+See the EscapedPath method for more details.</p>
+<p>In general, code should call EscapedPath instead of reading RawPath.</p>
+</div>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22876">types.d.ts:22876</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L23001">types.d.ts:23001</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="rawQuery" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>raw<wbr/>Query</span><a href="#rawQuery" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">raw<wbr/>Query</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div><aside class="tsd-sources">
+<div class="tsd-signature"><span class="tsd-kind-property">raw<wbr/>Query</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
+<div class="tsd-comment tsd-typography"><p>RawQuery contains the encoded query values, without the initial &#39;?&#39;.
+Use URL.Query to decode the query.</p>
+</div>
+<div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22879">types.d.ts:22879</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L22994">types.d.ts:22994</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="scheme" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>scheme</span><a href="#scheme" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">scheme</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22871">types.d.ts:22871</a></li></ul></aside></section>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L22984">types.d.ts:22984</a></li></ul></aside></section>
 <section class="tsd-panel tsd-member"><a id="user" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagOptional">Optional</code> <span>user</span><a href="#user" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><use href="#icon-anchor"></use></svg></a></h3>
 <div class="tsd-signature"><span class="tsd-kind-property">user</span><span class="tsd-signature-symbol">?:</span> <a href="url.Userinfo.html" class="tsd-signature-type tsd-kind-interface">Userinfo</a></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L22873">types.d.ts:22873</a></li></ul></aside></section></section></div>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L22986">types.d.ts:22986</a></li></ul></aside></section></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
@@ -398,6 +432,7 @@ To obtain the path, String uses u.EscapedPath().</p>
 <div class="tsd-accordion-details">
 <ul>
 <li><a href="#appendBinary" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>append<wbr/>Binary</span></a></li>
+<li><a href="#clone" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>clone</span></a></li>
 <li><a href="#escapedFragment" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>escaped<wbr/>Fragment</span></a></li>
 <li><a href="#escapedPath" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>escaped<wbr/>Path</span></a></li>
 <li><a href="#hostname" class=""><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-2048"></use></svg><span>hostname</span></a></li>

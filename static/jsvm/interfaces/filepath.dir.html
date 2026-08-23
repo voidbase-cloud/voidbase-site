@@ -30,6 +30,9 @@ slashes are removed.
 If the path is empty, Dir returns &quot;.&quot;.
 If the path consists entirely of separators, Dir returns a single separator.
 The returned path does not end in a separator unless it is the root directory.</p>
+<p>On Windows, given a volume-only name such as &quot;C:&quot;, Dir returns &quot;C:.&quot;,
+the current directory on drive C. To obtain the drive&#39;s root &quot;C:&quot;,
+use [VolumeName] combined with a separator.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -39,7 +42,7 @@ The returned path does not end in a separator unless it is the root directory.</
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/pocketbase/site/blob/b5b9295b6/jsvm/types.d.ts#L3314">types.d.ts:3314</a></li></ul></aside></li></ul></section></div>
+<li>Defined in <a href="https://github.com/pocketbase/site/blob/b3af6c55f/jsvm/types.d.ts#L3338">types.d.ts:3338</a></li></ul></aside></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">

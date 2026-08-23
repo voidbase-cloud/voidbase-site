@@ -275,11 +275,11 @@
     </div>
     <div class="content">
         <p class="txt-bold">
-            During the backup's ZIP generation the application will be temporary set in read-only mode.
+            Please note that during the backup the performance could be slightly degraded and some queries may take longer to complete than usual.
         </p>
         <p>
             Depending on the size of your <code>pb_data</code> this could be a very slow operation and it is
-            advised in case of large <code>pb_data</code> (e.g. 2GB+) to consider a different backup strategy
+            advised in case of large <code>pb_data</code> (e.g. 5GB+) to consider a different backup strategy
             <em class="txt-sm">
                 (see an example
                 <a

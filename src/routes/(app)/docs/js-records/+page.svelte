@@ -44,6 +44,7 @@
         record.getBool("someField")        // -> cast to bool
         record.getString("someField")      // -> cast to string
         record.getInt("someField")         // -> cast to int
+        record.getInt64("someField")       // -> cast to int64
         record.getFloat("someField")       // -> cast to float64
         record.getDateTime("someField")    // -> cast to types.DateTime
         record.getStringSlice("someField") // -> cast to []string
