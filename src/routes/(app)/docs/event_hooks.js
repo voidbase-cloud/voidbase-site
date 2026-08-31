@@ -1386,6 +1386,11 @@ export default [
                 `,
                 js: `
                     onRecordEnrich((e) => {
+                        // skip for superuser requests to avoid conflicts with the dashboard UI
+                        if (e.requestInfo.hasSuperuserAuth()) {
+                            return e.next()
+                        }
+
                         // hide one or more fields
                         e.record.hide("role")
 
@@ -1412,6 +1417,11 @@ export default [
                         app := pocketbase.New()
 
                         app.OnRecordEnrich("posts").BindFunc(func(e *core.RecordEnrichEvent) error {
+                            // skip for superuser requests to avoid conflicts with the dashboard UI
+                            if e.RequestInfo.HasSuperuserAuth() {
+                                return e.Next()
+                            }
+
                             // hide one or more fields
                             e.Record.Hide("role")
 
