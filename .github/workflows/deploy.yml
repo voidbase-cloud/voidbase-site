@@ -4,7 +4,8 @@
 # Secrets (Settings > Secrets and variables > Actions): VOIDBASE_DEPLOY_CF_API_KEY (`bun run token` prints the
 # dashboard link that pre-selects its permissions), CF_OAUTH_CLIENT_ID, CF_OAUTH_CLIENT_SECRET, GH_OAUTH_CLIENT_ID,
 # GH_OAUTH_CLIENT_SECRET, VOIDBASE_ENCRYPTION_KEY, VOIDBASE_SUPERUSER_EMAIL, VOIDBASE_SUPERUSER_PASSWORD.
-# Variables: VOIDBASE_DEPLOY_DOMAIN (e.g. voidbase.cloud,www.voidbase.cloud,api.voidbase.cloud), VB_ADMIN_EMAILS.
+# Variables: VOIDBASE_DEPLOY_DOMAIN (e.g. voidbase.cloud,www.voidbase.cloud,api.voidbase.cloud), VB_ADMIN_EMAILS,
+# VOIDBASE_DEPLOY_NAME (the Worker's name; the checkout's directory name is not a safe default in CI).
 # Without the deploy token the workflow only builds the site (a fork or a repository made from this template
 # deploys from its owner's machine with `bun run deploy`, or adds the secrets).
 name: Build the site and deploy the Worker
@@ -56,6 +57,7 @@ jobs:
           VOIDBASE_ENCRYPTION_KEY: ${{ secrets.VOIDBASE_ENCRYPTION_KEY }}
           VOIDBASE_SUPERUSER_EMAIL: ${{ secrets.VOIDBASE_SUPERUSER_EMAIL }}
           VOIDBASE_SUPERUSER_PASSWORD: ${{ secrets.VOIDBASE_SUPERUSER_PASSWORD }}
+          VOIDBASE_DEPLOY_NAME: ${{ vars.VOIDBASE_DEPLOY_NAME || 'voidbase-site-backend' }}
           VOIDBASE_DEPLOY_DOMAIN: ${{ vars.VOIDBASE_DEPLOY_DOMAIN }}
           VB_ADMIN_EMAILS: ${{ vars.VB_ADMIN_EMAILS }}
           VOIDBASE_APP_DIR: pb_public
