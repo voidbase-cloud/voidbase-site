@@ -139,7 +139,31 @@ try {
   check("vb_repos through the API rules: only the owner's rows", viaSdkRepos.status === 200 && viaSdkRepos.json.totalItems === 1, JSON.stringify(viaSdkRepos.json).slice(0, 120));
   const unlink = await api("DELETE", `/api/vbcloud/repos/${r0.id}`, undefined, U);
   const ghs2 = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-  check("unlink removes the link and leaves the repository on GitHub", unlink.status === 200 && unlink.json.unlinked === true && "octo-tester/my-site" in ghs2.repos && (await api("GET", "/api/vbcloud/repos", undefined, U)).json.repos.length === 0, JSON.stringify(unlink.json));
+  check("unlink removes the link and leaves the repository on GitHub", unlink.status === 200 && unlink.json.unlinked === true && "octo-tester/my-site" in ghs2.repos && (await api("GET", "/api/vbcloud/repos", undefined, U)).json.repos.filter((r: Record<string, unknown>) => !r.system).length === 0, JSON.stringify(unlink.json));
+  // ---- dogfooding: the site's own repository is a system row wired to the site's own backend; admins may wire more
+  // repositories to that backend; existing repositories can be linked without a template
+  await fetch(`${GH}/__seed`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ full_name: "voidbase-cloud/voidbase-site", variables: { PB_VB_URL: VB } }) });
+  await fetch(`${GH}/__seed`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ full_name: "octo-tester/existing", private: true }) });
+  const allInst = await api("GET", "/api/vbcloud/instances", undefined, U);
+  const sysInst = (allInst.json.instances ?? []).find((i: Record<string, unknown>) => i.system);
+  check("the admin sees the system instance as linkable, others' instances are not offered", !!sysInst && sysInst.canLink === true && sysInst.self === true, JSON.stringify(allInst.json).slice(0, 200));
+  const dog = await api("GET", "/api/vbcloud/repos", undefined, U);
+  const site = (dog.json.repos ?? []).find((r: Record<string, unknown>) => r.fullName === "voidbase-cloud/voidbase-site");
+  check("the site's own repository is listed to the admin as a system row wired to this backend, live-checked connected", dog.status === 200 && !!site && site.system === true && site.canUnlink === false && site.instanceName === "voidbase-site-backend" && site.templateName === "voidbase-site" && site.live?.connected === true, JSON.stringify(dog.json).slice(0, 300));
+  const noUnlink = await api("DELETE", `/api/vbcloud/repos/${site?.id}`, undefined, U);
+  check("the site's own repository cannot be unlinked", noUnlink.status === 403, JSON.stringify(noUnlink.json));
+  const dogfood = await api("POST", "/api/vbcloud/repos", { template: "voidbase-site", name: "dogfood", instance: sysInst?.id }, U);
+  const ghsD = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  check("an admin creates a repository from the template wired to the site's own backend", dogfood.status === 200 && dogfood.json.repo?.instanceName === "voidbase-site-backend" && ghsD.variables["octo-tester/dogfood"]?.PB_VB_URL === VB, JSON.stringify(dogfood.json).slice(0, 200));
+  const linkMissing = await api("POST", "/api/vbcloud/repos/link", { fullName: "octo-tester/nope", instance: inst.id }, U);
+  check("linking a repository GitHub does not know is refused", linkMissing.status === 400 && /not found on GitHub/.test(linkMissing.json.message ?? ""), JSON.stringify(linkMissing.json));
+  const linked = await api("POST", "/api/vbcloud/repos/link", { fullName: "https://github.com/Octo-Tester/existing.git", instance: inst.id }, U);
+  const ghsL = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  check("an existing repository (given as a URL) is linked: PB_VB_URL written, private flag read from GitHub", linked.status === 200 && linked.json.repo?.fullName === "octo-tester/existing" && linked.json.repo.private === true && linked.json.repo.instanceName === "vb-my-shop" && ghsL.variables["octo-tester/existing"]?.PB_VB_URL === inst.url, JSON.stringify(linked.json).slice(0, 200));
+  const relink = await api("POST", "/api/vbcloud/repos/link", { fullName: "octo-tester/existing", instance: inst.id }, U);
+  check("a linked repository cannot be linked twice", relink.status === 400 && /already linked/.test(relink.json.message ?? ""), JSON.stringify(relink.json));
+  const after = await api("GET", "/api/vbcloud/repos", undefined, U);
+  check("repos: the user's rows first, then the system row; all live-checked", after.json.repos?.length === 3 && after.json.repos[0].system === false && after.json.repos[2].system === true && after.json.repos.every((r: Record<string, any>) => r.live?.checked === true), JSON.stringify(after.json.repos?.map((r: Record<string, unknown>) => [r.fullName, r.system])));
   const disc = await api("DELETE", "/api/vbcloud/github", undefined, U);
   const ghs3 = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   check("disconnect removes the connection and revokes the grant on GitHub", disc.json.disconnected === true && ghs3.grantRevoked === 1 && (await api("GET", "/api/vbcloud/github", undefined, U)).json.connected === false, JSON.stringify(disc.json));

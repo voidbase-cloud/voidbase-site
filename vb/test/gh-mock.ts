@@ -7,6 +7,7 @@ const repos = new Map<string, Record<string, unknown>>(); const variables = new 
 const authed = (req: Request) => req.headers.get("authorization") === `Bearer ${TOKEN}`;
 Bun.serve({ port, hostname: "127.0.0.1", async fetch(req) {
   const url = new URL(req.url); const p = url.pathname; calls.push(`${req.method} ${p}`);
+  if (p === "/__seed" && req.method === "POST") { const b = (await req.json()) as { full_name: string; private?: boolean; variables?: Record<string, string> }; repos.set(b.full_name, { full_name: b.full_name, html_url: `https://github.example/${b.full_name}`, default_branch: "master", private: !!b.private, permissions: { push: true } }); variables.set(b.full_name, { ...(b.variables ?? {}) }); return Response.json({ ok: true }); }
   if (p === "/__state") return Response.json({ repos: Object.fromEntries(repos), variables: Object.fromEntries(variables), calls, grantRevoked });
   if (p === "/login/oauth/authorize") { const to = new URL(url.searchParams.get("redirect_uri")!); to.searchParams.set("code", "ghcode-" + crypto.randomUUID()); to.searchParams.set("state", url.searchParams.get("state") ?? ""); return Response.redirect(to.toString(), 302); }
   if (p === "/login/oauth/access_token") { const b = (await req.json()) as Record<string, string>; if (b.client_id !== CLIENT_ID || b.client_secret !== CLIENT_SECRET || !String(b.code).startsWith("ghcode-")) return Response.json({ error: "bad_verification_code" }); return Response.json({ access_token: TOKEN, token_type: "bearer", scope: "repo,read:user,user:email" }); }

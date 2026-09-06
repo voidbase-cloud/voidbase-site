@@ -93,8 +93,13 @@ from it in their account wired to one of their instances: the instance URL is wr
 `PB_VB_URL` Actions variable, which is what "connected" means. `/api/vbcloud/repos` lists those repositories with a
 live check (repository still there, `PB_VB_URL` still the instance). Routes: `github` (GET status, DELETE
 disconnect + grant revoked), `github/connect` (the authorize URL with an HMAC-signed state), `github/callback`,
-`templates`, `repos` (GET, POST), `repos/{id}` (DELETE unlinks only). `test/gh-mock.ts` stands in for GitHub in
-`bun test/cloud.ts`.
+`templates`, `repos` (GET, POST), `repos/link` (POST: wire a repository that already exists, given as `owner/name` or
+its URL; only `PB_VB_URL` and the instance-derived variables of an optional template are written), `repos/{id}`
+(DELETE unlinks only). `test/gh-mock.ts` stands in for GitHub in `bun test/cloud.ts`.
+
+Dogfooding: this site's own repository (`VB_SITE_REPO`, default `voidbase-cloud/voidbase-site`) is registered once as a
+`system` row of `vb_repos` wired to the system instance (this backend), listed to admins with a "this site" badge and
+never unlinkable; admins may also wire further repositories (from a template or existing ones) to the site's own backend.
 
 ### Setup
 

@@ -2,7 +2,9 @@
 // list templates (vb_templates: GitHub template repositories, the first is voidbase-cloud/voidbase-site), create a
 // repository from a template in the visitor's GitHub account and wire it to one of their voidbase instances by
 // writing the instance URL as a repository Actions variable, and list the repositories linked that way (checked
-// live against GitHub). Tokens are sealed at rest like the Cloudflare ones. Everything is plain fetch (Bun and Workers).
+// live against GitHub). Existing repositories can be linked the same way (the instance URL variable is written), and the
+// site's own repository (VB_SITE_REPO) is listed to admins as a `system` row wired to the site's own backend: this site
+// dogfoods itself. Tokens are sealed at rest like the Cloudflare ones. Everything is plain fetch (Bun and Workers).
 import type { VoidbaseApp, RequestEvent, HookRecord } from "@voidbase-cloud/voidbase";
 
 type Hooks = VoidbaseApp["hooks"];
@@ -13,6 +15,7 @@ export interface GithubDeps {
   open: (stored: string) => Promise<string>;
   userId: (e: Ev) => string;
   readBody: (e: Ev) => Promise<Record<string, unknown>>;
+  isAdmin: (auth: HookRecord | null) => boolean;
 }
 export const DEFAULT_GH_SCOPES = ["repo", "read:user", "user:email"]; // repo: create from a template, set Actions variables, private repos
 
@@ -34,6 +37,7 @@ export function registerGithub(app: VoidbaseApp, d: GithubDeps) {
       oauth: d.env("GITHUB_OAUTH_BASE", "https://github.com").replace(/\/$/, ""),
       // where the callback sends the browser back to: the site (production) or the local site dev server
       site: d.env("VB_SITE_URL", worker ? "https://voidbase.cloud" : "http://127.0.0.1:5173").replace(/\/$/, ""),
+      worker, siteRepo: d.env("VB_SITE_REPO", "voidbase-cloud/voidbase-site").trim().toLowerCase(), // this site's own repository, listed as the system row
     };
   };
   const callbackUrl = (e: Ev) => new URL(e.request.url).origin + "/api/vbcloud/github/callback";
@@ -110,7 +114,18 @@ export function registerGithub(app: VoidbaseApp, d: GithubDeps) {
       t.set("variables", [{ name: "PB_VB_URL", source: "instance_url" }, { name: "PAGES_CNAME", source: "input:domain" }]);
       await H.$app.save(t); console.log("vbcloud: template voidbase-site registered");
     } catch (err) { console.warn("vbcloud: template seeding", err); }
+    try { await ensureSiteRepo(); } catch (err) { console.warn("vbcloud: site repository", err); }
   });
+  // the site's own repository as a system row of vb_repos, wired to the system instance (this backend); idempotent
+  async function ensureSiteRepo(): Promise<void> {
+    const c = cfg(); if (!c.siteRepo || !c.worker) return;
+    if ((await H.$app.findRecordsByFilter("vb_repos", "full_name = {:f}", "", 1, 0, { f: c.siteRepo }) as HookRecord[]).length) return;
+    let self: HookRecord; try { self = await H.$app.findFirstRecordByFilter("vb_instances", "system = true && name = {:n}", { n: c.worker }); } catch { return; }
+    let tpl: HookRecord | null = null; try { tpl = await H.$app.findFirstRecordByFilter("vb_templates", "repo = {:r}", { r: c.siteRepo }); } catch { tpl = null; }
+    const row = new H.Record(H.$app.findCollectionByNameOrId("vb_repos"));
+    row.set("system", true); row.set("instance", self.id); row.set("template", tpl?.id ?? ""); row.set("full_name", c.siteRepo); row.set("html_url", `https://github.com/${c.siteRepo}`); row.set("private", false); row.set("status", "ready");
+    await H.$app.save(row); console.log(`vbcloud: site repository ${c.siteRepo} registered against ${c.worker}`);
+  }
   const templateJSON = (t: HookRecord) => ({ id: t.id, name: t.getString("name"), repo: t.getString("repo"), title: t.getString("title"), description: t.getString("description"), url: t.getString("url"), kind: t.getString("kind"), variables: (() => { const v = t.get("variables"); return Array.isArray(v) ? v : typeof v === "string" ? JSON.parse(v || "[]") : []; })() as { name: string; source: string; value?: string }[] });
   H.routerAdd("GET", "/api/vbcloud/templates", async (e: Ev) => {
     const rows = (await H.$app.findRecordsByFilter("vb_templates", "", "name", 100, 0)) as HookRecord[];
@@ -118,7 +133,7 @@ export function registerGithub(app: VoidbaseApp, d: GithubDeps) {
   }, H.$apis.requireAuth());
 
   // ---- repositories created from a template and wired to an instance -------------------------------------------------
-  const repoJSON = (r: HookRecord, extra: Record<string, unknown> = {}) => ({ id: r.id, fullName: r.getString("full_name"), htmlUrl: r.getString("html_url"), defaultBranch: r.getString("default_branch"), private: r.getBool("private"), status: r.getString("status"), error: r.getString("error"), template: r.getString("template"), instance: r.getString("instance"), created: String(r.get("created") ?? ""), ...extra });
+  const repoJSON = (r: HookRecord, extra: Record<string, unknown> = {}) => ({ id: r.id, system: r.getBool("system"), canUnlink: !r.getBool("system"), fullName: r.getString("full_name"), htmlUrl: r.getString("html_url"), defaultBranch: r.getString("default_branch"), private: r.getBool("private"), status: r.getString("status"), error: r.getString("error"), template: r.getString("template"), instance: r.getString("instance"), created: String(r.get("created") ?? ""), ...extra });
   const varValue = (source: string, inst: HookRecord, input: Record<string, unknown>, literal?: string): string => {
     if (source === "instance_url") return inst.getString("url");
     if (source === "instance_panel") return inst.getString("url") ? `${inst.getString("url")}/_/` : "";
@@ -126,13 +141,25 @@ export function registerGithub(app: VoidbaseApp, d: GithubDeps) {
     if (source.startsWith("input:")) return String(input[source.slice(6)] ?? "").trim();
     return literal ?? "";
   };
+  // the instance a repository may be wired to: the visitor's own, or this site's backend for admins (dogfooding)
+  async function linkableInstance(e: Ev, uid: string, instId: string): Promise<HookRecord> {
+    if (!instId) throw new H.BadRequestError("Pick the voidbase instance the repository should use.");
+    let inst: HookRecord; try { inst = await H.$app.findRecordById("vb_instances", instId); } catch { throw new H.BadRequestError("Unknown instance."); }
+    if (!(inst.getString("owner") === uid || (inst.getBool("system") && d.isAdmin(e.auth)))) throw new H.ForbiddenError("That instance is not yours.");
+    if (inst.getString("status") !== "live" || !inst.getString("url")) throw new H.BadRequestError("The instance is not live yet.");
+    return inst;
+  }
+  const alreadyLinked = async (fullName: string) => (await H.$app.findRecordsByFilter("vb_repos", "full_name = {:f}", "", 1, 0, { f: fullName }) as HookRecord[]).length > 0;
   async function setVariable(token: string, fullName: string, name: string, value: string) {
     const r = await gh(token, "POST", `/repos/${fullName}/actions/variables`, { name, value }, [409]);
     if (r.status === 409) await gh(token, "PATCH", `/repos/${fullName}/actions/variables/${name}`, { name, value });
   }
   H.routerAdd("GET", "/api/vbcloud/repos", async (e: Ev) => {
     const uid = d.userId(e);
-    const rows = (await H.$app.findRecordsByFilter("vb_repos", "user = {:u}", "-created", 100, 0, { u: uid })) as HookRecord[];
+    const own = (await H.$app.findRecordsByFilter("vb_repos", "user = {:u}", "-created", 100, 0, { u: uid })) as HookRecord[];
+    let system: HookRecord[] = [];
+    if (d.isAdmin(e.auth)) { try { await ensureSiteRepo(); } catch (err) { console.warn("vbcloud: site repository", err); } system = (await H.$app.findRecordsByFilter("vb_repos", "system = true", "-created", 20, 0)) as HookRecord[]; }
+    const rows = [...own, ...system.filter((r) => !own.some((o) => o.id === r.id))];
     let token = ""; try { token = (await connectionFor(uid)).token; } catch { token = ""; }
     const out = [];
     for (const r of rows) {
@@ -147,7 +174,7 @@ export function registerGithub(app: VoidbaseApp, d: GithubDeps) {
           else {
             const v = await gh<{ value?: string }>(token, "GET", `/repos/${r.getString("full_name")}/actions/variables/PB_VB_URL`, undefined, [404]);
             const value = v.status === 404 ? "" : String(v.data?.value ?? "");
-            live = { checked: true, exists: true, connected: !!inst && !!value && value === inst.getString("url"), backendUrl: value };
+            live = { checked: true, exists: true, connected: !!inst && !!value && value === inst.getString("url"), backendUrl: value, htmlUrl: repo.data.html_url, defaultBranch: repo.data.default_branch, private: repo.data.private };
           }
         } catch (err) { live = { checked: false, error: err instanceof Error ? err.message : String(err) }; }
       }
@@ -160,15 +187,12 @@ export function registerGithub(app: VoidbaseApp, d: GithubDeps) {
     const { conn, token } = await connectionFor(uid);
     const tplKey = String(body.template ?? "").trim(); if (!tplKey) throw new H.BadRequestError("Pick a template.");
     let tpl: HookRecord; try { tpl = await H.$app.findFirstRecordByFilter("vb_templates", "name = {:n} || id = {:n}", { n: tplKey }); } catch { throw new H.BadRequestError(`Unknown template "${tplKey}".`); }
-    const instId = String(body.instance ?? "").trim(); if (!instId) throw new H.BadRequestError("Pick the voidbase instance the repository should use.");
-    let inst: HookRecord; try { inst = await H.$app.findRecordById("vb_instances", instId); } catch { throw new H.BadRequestError("Unknown instance."); }
-    if (inst.getString("owner") !== uid) throw new H.ForbiddenError("That instance is not yours.");
-    if (inst.getString("status") !== "live" || !inst.getString("url")) throw new H.BadRequestError("The instance is not live yet.");
+    const inst = await linkableInstance(e, uid, String(body.instance ?? "").trim());
     // GitHub treats repository names case-insensitively: keep them lowercase so the "already linked" check is exact
     const name = String(body.name ?? "").trim().toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^[-.]+|[-.]+$/g, "");
     if (!name || name.length > 100) throw new H.BadRequestError("Give the repository a name (letters, digits, dashes, dots, underscores).");
     const owner = String(body.owner ?? conn.getString("login")); const fullName = `${owner}/${name}`;
-    if (await H.$app.findRecordsByFilter("vb_repos", "full_name = {:f}", "", 1, 0, { f: fullName }).then((r: HookRecord[]) => r.length)) throw new H.BadRequestError(`${fullName} is already linked here.`);
+    if (await alreadyLinked(fullName)) throw new H.BadRequestError(`${fullName} is already linked here.`);
     const row = new H.Record(H.$app.findCollectionByNameOrId("vb_repos"));
     row.set("user", uid); row.set("instance", inst.id); row.set("template", tpl.id); row.set("full_name", fullName); row.set("private", !!body.private); row.set("status", "creating");
     await H.$app.save(row);
@@ -187,8 +211,32 @@ export function registerGithub(app: VoidbaseApp, d: GithubDeps) {
       throw new H.BadRequestError(`Creating ${fullName} failed: ${message}`);
     }
   }, H.$apis.requireAuth("users"));
+  // link a repository that already exists (a fork of this site, a hand-made app): the instance URL is written as its
+  // PB_VB_URL variable, plus the instance-derived variables of the template it came from when one is named
+  H.routerAdd("POST", "/api/vbcloud/repos/link", async (e: Ev) => {
+    const uid = d.userId(e); const body = await d.readBody(e);
+    const { token } = await connectionFor(uid);
+    const fullName = String(body.fullName ?? body.full_name ?? "").trim().toLowerCase().replace(/^https?:\/\/github\.com\//, "").replace(/\.git$/, "").replace(/\/+$/, "");
+    if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\/[a-z0-9._-]+$/.test(fullName)) throw new H.BadRequestError("Give the repository as owner/name (or its GitHub URL).");
+    const inst = await linkableInstance(e, uid, String(body.instance ?? "").trim());
+    if (await alreadyLinked(fullName)) throw new H.BadRequestError(`${fullName} is already linked here.`);
+    let tpl: HookRecord | null = null; const tplKey = String(body.template ?? "").trim();
+    if (tplKey) { try { tpl = await H.$app.findFirstRecordByFilter("vb_templates", "name = {:n} || id = {:n}", { n: tplKey }); } catch { throw new H.BadRequestError(`Unknown template "${tplKey}".`); } }
+    const repo = await gh<{ full_name: string; html_url: string; default_branch: string; private: boolean; permissions?: { push?: boolean } }>(token, "GET", `/repos/${fullName}`, undefined, [404]);
+    if (repo.status === 404) throw new H.BadRequestError(`${fullName} was not found on GitHub with your connection (does the account have access to it?).`);
+    if (repo.data.permissions && repo.data.permissions.push === false) throw new H.BadRequestError(`You cannot write to ${fullName}, so its variables cannot be set.`);
+    const set: Record<string, string> = {};
+    const vars = tpl ? templateJSON(tpl).variables : [];
+    if (!vars.some((v) => v.name === "PB_VB_URL")) vars.unshift({ name: "PB_VB_URL", source: "instance_url" });
+    for (const v of vars) { if (!v.source.startsWith("instance_") && !(v.source.startsWith("input:") && body[v.source.slice(6)])) continue; const value = varValue(v.source, inst, body, v.value); if (!value) continue; await setVariable(token, repo.data.full_name, v.name, value); set[v.name] = value; }
+    const row = new H.Record(H.$app.findCollectionByNameOrId("vb_repos"));
+    row.set("user", uid); row.set("instance", inst.id); row.set("template", tpl?.id ?? ""); row.set("full_name", repo.data.full_name.toLowerCase()); row.set("html_url", repo.data.html_url); row.set("default_branch", repo.data.default_branch ?? ""); row.set("private", !!repo.data.private); row.set("status", "ready");
+    await H.$app.save(row);
+    return e.json(200, { repo: repoJSON(row, { variables: set, instanceName: inst.getString("name"), instanceUrl: inst.getString("url"), templateName: tpl?.getString("name") ?? "", templateTitle: tpl?.getString("title") ?? "" }) });
+  }, H.$apis.requireAuth("users"));
   H.routerAdd("DELETE", "/api/vbcloud/repos/{id}", async (e: Ev) => {
     const uid = d.userId(e); const row = await H.$app.findRecordById("vb_repos", e.pathParam("id")); if (!row) throw new H.NotFoundError();
+    if (row.getBool("system")) throw new H.ForbiddenError("This site's own repository stays linked to its backend.");
     if (row.getString("owner") !== uid && row.getString("user") !== uid) throw new H.ForbiddenError();
     await H.$app.delete(row); // unlinks only: the repository stays in the visitor's GitHub account
     return e.json(200, { unlinked: true });

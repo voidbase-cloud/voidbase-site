@@ -21,7 +21,8 @@
     let templates = [];
     let repos = [];
     let repoForm = null; // { template, name, instance, private, domain }
-    $: linkable = instances.filter((i) => i.status === "live" && !i.system); // instances a repository can be wired to (never the site's own backend)
+    let linkForm = null; // { fullName, instance }
+    $: linkable = instances.filter((i) => i.status === "live" && i.canLink); // instances a repository can be wired to (the site's own backend only for admins)
 
     onMount(() => {
         const pb = vb();
@@ -98,6 +99,7 @@
     }
 
     function startRepo(tpl) {
+        linkForm = null;
         repoForm = { template: tpl.name, title: tpl.title, kind: tpl.kind, name: "", instance: linkable[0]?.id || "", private: false, domain: "" };
     }
 
@@ -109,6 +111,27 @@
             const r = await cloud("POST", "/api/vbcloud/repos", repoForm);
             notice = `${r.repo.fullName} created from ${repoForm.title} and wired to ${r.repo.instanceName}.`;
             repoForm = null;
+            await load();
+        } catch (err) {
+            error = errorMessage(err);
+        } finally {
+            busy = "";
+        }
+    }
+
+    function startLink() {
+        repoForm = null;
+        linkForm = { fullName: "", instance: linkable[0]?.id || "" };
+    }
+
+    async function linkRepo() {
+        error = "";
+        notice = "";
+        busy = "link";
+        try {
+            const r = await cloud("POST", "/api/vbcloud/repos/link", linkForm);
+            notice = `${r.repo.fullName} linked to ${r.repo.instanceName} (PB_VB_URL set to ${r.repo.instanceUrl}).`;
+            linkForm = null;
             await load();
         } catch (err) {
             error = errorMessage(err);
@@ -346,6 +369,7 @@
                 <div class="cloud-toolbar">
                     <div><i class="ri-github-fill" /> GitHub: <strong>@{github.connection.login}</strong></div>
                     <div class="flex-fill" />
+                    <button type="button" class="btn btn-sm btn-secondary" disabled={!linkable.length} title={!linkable.length ? "Create an instance first" : "Wire a repository you already have to one of your instances"} on:click={startLink}>Link a repository</button>
                     <button type="button" class="btn btn-sm btn-secondary" on:click={disconnectGithub}>Disconnect</button>
                 </div>
             {/if}
@@ -386,6 +410,23 @@
                 </form>
             {/if}
 
+            {#if linkForm}
+                <form class="cloud-form repo-form" on:submit|preventDefault={linkRepo}>
+                    <h3 class="form-title">Link a repository you already have</h3>
+                    <label>Repository (owner/name or URL) <input type="text" bind:value={linkForm.fullName} placeholder="you/my-site" required /></label>
+                    <label>Instance
+                        <select bind:value={linkForm.instance} required>
+                            {#each linkable as inst}<option value={inst.id}>{inst.name} ({inst.url})</option>{/each}
+                        </select>
+                    </label>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" disabled={busy === "link"}>{busy === "link" ? "Linking…" : "Link repository"}</button>
+                        <button type="button" class="btn btn-secondary" on:click={() => (linkForm = null)}>Cancel</button>
+                    </div>
+                    <p class="txt-hint form-hint">Its <code>PB_VB_URL</code> Actions variable is set to the instance URL; nothing else in the repository changes.</p>
+                </form>
+            {/if}
+
             <h2>Your repositories</h2>
             {#if !repos.length}
                 <p class="txt-hint">No repository is linked to an instance yet.</p>
@@ -396,7 +437,7 @@
                         <tbody>
                             {#each repos as repo (repo.id)}
                                 <tr>
-                                    <td><a href={repo.htmlUrl} target="_blank" rel="noopener noreferrer">{repo.fullName}</a>{#if repo.private} <span class="label">private</span>{/if}{#if repo.status !== "ready"} <span class="label label-{repo.status}">{repo.status}</span>{/if}</td>
+                                    <td><a href={repo.live?.htmlUrl || repo.htmlUrl} target="_blank" rel="noopener noreferrer">{repo.fullName}</a>{#if repo.system} <span class="label label-warning" title="The repository this very page is built from, wired to this site's backend">this site</span>{/if}{#if repo.private || repo.live?.private} <span class="label">private</span>{/if}{#if repo.status !== "ready"} <span class="label label-{repo.status}">{repo.status}</span>{/if}</td>
                                     <td>{repo.templateTitle || repo.templateName || "—"}</td>
                                     <td>{#if repo.instanceUrl}<a href={repo.instanceUrl} target="_blank" rel="noopener noreferrer">{repo.instanceName}</a>{:else}{repo.instanceName || "—"}{/if}</td>
                                     <td>
@@ -406,8 +447,8 @@
                                         {:else}<span class="label label-warning" title="PB_VB_URL is {repo.live.backendUrl || 'unset'}">no</span>{/if}
                                     </td>
                                     <td class="actions">
-                                        <a href="{repo.htmlUrl}/actions" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary">Actions</a>
-                                        <button type="button" class="btn btn-sm btn-secondary" on:click={() => unlinkRepo(repo)}>Unlink</button>
+                                        <a href="{repo.live?.htmlUrl || repo.htmlUrl}/actions" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary">Actions</a>
+                                        {#if repo.canUnlink}<button type="button" class="btn btn-sm btn-secondary" on:click={() => unlinkRepo(repo)}>Unlink</button>{/if}
                                     </td>
                                 </tr>
                             {/each}
@@ -463,6 +504,7 @@
     .repo-form { padding: 15px; border: 1px solid var(--baseAlt2Color); border-radius: var(--lgRadius); margin-bottom: 25px; }
     .repo-form .form-title { flex-basis: 100%; margin: 0 0 5px; }
     .repo-form .form-actions { margin-top: 0; }
+    .repo-form .form-hint { flex-basis: 100%; margin: 0; }
     .form-actions { display: flex; gap: 10px; margin-top: 10px; }
     .cloud-panel { padding: var(--baseSpacing, 30px) 0; }
     .cloud-toolbar { display: flex; align-items: center; gap: 10px; margin: 20px 0; flex-wrap: wrap; }

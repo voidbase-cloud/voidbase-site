@@ -172,7 +172,7 @@ export function register(app: VoidbaseApp) {
   }, H.$apis.requireAuth("users"));
 
   // ---- instances ---------------------------------------------------------------------------------------------------
-  const instanceJSON = (r: HookRecord, viewer: HookRecord | null) => ({ id: r.id, name: r.getString("name"), url: r.getString("url"), status: r.getString("status"), error: r.getString("error"), release: r.getString("release"), account: { id: r.getString("account_id"), name: r.getString("account_name") }, owner: r.getString("owner"), system: r.getBool("system"), superuserEmail: r.getString("superuser_email"), created: String(r.get("created") ?? ""), updated: String(r.get("updated") ?? ""), canDelete: !!viewer && (r.getString("owner") === viewer.id || (r.getBool("system") && isAdmin(viewer))), self: !!cfg().worker && r.getString("name") === cfg().worker });
+  const instanceJSON = (r: HookRecord, viewer: HookRecord | null) => ({ id: r.id, name: r.getString("name"), url: r.getString("url"), status: r.getString("status"), error: r.getString("error"), release: r.getString("release"), account: { id: r.getString("account_id"), name: r.getString("account_name") }, owner: r.getString("owner"), system: r.getBool("system"), superuserEmail: r.getString("superuser_email"), created: String(r.get("created") ?? ""), updated: String(r.get("updated") ?? ""), canDelete: !!viewer && (r.getString("owner") === viewer.id || (r.getBool("system") && isAdmin(viewer))), canLink: !!viewer && (r.getString("owner") === viewer.id || (r.getBool("system") && isAdmin(viewer))), self: !!cfg().worker && r.getString("name") === cfg().worker });
   H.routerAdd("GET", "/api/vbcloud/instances", async (e: Ev) => {
     const auth = e.auth!; const origin = new URL(e.request.url).origin;
     try { await ensureSelf(origin); } catch (err) { console.warn("vbcloud: self registration", err); }
@@ -245,5 +245,5 @@ export function register(app: VoidbaseApp) {
   }, H.$apis.requireAuth("users"));
 
   // the template marketplace: GitHub connection, templates, repositories wired to instances (see ./github.ts)
-  registerGithub(app, { env, seal, open, userId, readBody });
+  registerGithub(app, { env, seal, open, userId, readBody, isAdmin });
 }
