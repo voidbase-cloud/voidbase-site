@@ -9,7 +9,7 @@
     let classes = "m-b-sm";
     export { classes as class }; // export reserved keyword
 
-    export let theme = "light";
+    export let theme = "dark";
     export let content = "";
     export let language = "javascript"; // go, javascript, html, css
 
@@ -55,7 +55,7 @@
         background: var(--baseAlt1Color);
     }
     .prism-dark code {
-        background: var(--primaryColor);
-        color: #fff;
+        background: var(--baseColor);
+        color: var(--txtPrimaryColor);
     }
 </style>

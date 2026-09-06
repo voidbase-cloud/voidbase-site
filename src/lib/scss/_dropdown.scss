@@ -16,7 +16,7 @@
     max-height: 330px;
     overflow-x: hidden;
     overflow-y: auto;
-    background: #fff;
+    background: var(--baseColor);
     border-radius: var(--baseRadius);
     border: 1px solid var(--baseAlt2Color);
     @include shadowize();

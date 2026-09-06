@@ -3,32 +3,34 @@
     --monospaceFontFamily: 'Ubuntu Mono', monospace, emoji;
     --iconFontFamily: 'remixicon';
 
-    --txtPrimaryColor:  #25272d;
-    --txtHintColor:     #617079;
-    --txtDisabledColor: #a0a6ac;
+    --txtPrimaryColor:  #ededed;
+    --txtHintColor:     #a1a1a1;
+    --txtDisabledColor: #6b6b6b;
 
-    --primaryColor: #25272d;
+    --primaryColor:         #ffffff; // white on black: the primary button, the accent
+    --primaryContrastColor: #000000; // text on top of the primary color
 
-    --bodyColor: #ffffff;
+    --bodyColor: #000000;
 
-    --baseColor:     #f6f7f9;
-    --baseAlt1Color: #e8eaee;
-    --baseAlt2Color: #dfe2e7;
-    --baseAlt3Color: #d9dde2;
-    --baseAlt4Color: #d1d6dc;
+    --baseColor:     #0a0a0a;
+    --baseAlt1Color: #171717;
+    --baseAlt2Color: #262626;
+    --baseAlt3Color: #333333;
+    --baseAlt4Color: #444444;
 
-    --infoColor:       #5499e8;
-    --infoAltColor:    #cee2f8;
-    --successColor:    #32ad84;
-    --successAltColor: #c4eedc;
-    --dangerColor:     #e34562;
-    --dangerAltColor:  #f7cad2;
-    --warningColor:    #ff944d;
-    --warningAltColor: #ffd4b8;
+    --infoColor:       #52a8ff;
+    --infoAltColor:    #0f2a44;
+    --successColor:    #3ecf8e;
+    --successAltColor: #0f3324;
+    --dangerColor:     #ff6166;
+    --dangerAltColor:  #3d1518;
+    --warningColor:    #f5a623;
+    --warningAltColor: #3b2a0c;
 
-    --overlayColor:   rgba(53, 71, 104, 0.28);
-    --tooltipColor:   rgba(0, 0, 0, 0.85);
-    --shadowColor:    rgba(0, 0, 0, 0.06);
+    --overlayColor:   rgba(0, 0, 0, 0.6);
+    --tooltipColor:   #ededed;
+    --tooltipTxtColor: #000000;
+    --shadowColor:    rgba(0, 0, 0, 0.5);
 
     --baseFontSize: 14.5px;
     --xsFontSize:   12px;
@@ -65,6 +67,7 @@
     --lgRadius:   12px;
     --btnRadius:  4px;
 
+    color-scheme: dark;
     // https://developer.mozilla.org/en-US/docs/Web/CSS/accent-color
     accent-color: var(--primaryColor);
 }

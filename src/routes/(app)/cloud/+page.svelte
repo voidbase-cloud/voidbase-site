@@ -306,12 +306,12 @@
     .table td.actions .btn { margin-left: 5px; }
     .table tr.creds td { font-size: 0.9em; background: var(--baseAlt1Color, rgba(0, 0, 0, 0.03)); }
     .label { display: inline-block; padding: 1px 8px; border-radius: 12px; font-size: 0.8em; background: var(--baseAlt2Color, #eee); margin-left: 5px; vertical-align: middle; }
-    .label-live { background: #dcfce7; color: #166534; }
-    .label-creating, .label-deleting { background: #fef3c7; color: #92400e; }
-    .label-error { background: #fee2e2; color: #991b1b; }
-    .label-warning { background: #fef3c7; color: #92400e; }
-    .txt-danger { color: #b91c1c; }
-    .btn-danger { background: #b91c1c; color: #fff; border-color: #b91c1c; }
+    .label-live { background: var(--successAltColor); color: var(--successColor); }
+    .label-creating, .label-deleting { background: var(--warningAltColor); color: var(--warningColor); }
+    .label-error { background: var(--dangerAltColor); color: var(--dangerColor); }
+    .label-warning { background: var(--warningAltColor); color: var(--warningColor); }
+    .txt-danger { color: var(--dangerColor); }
+    .btn-danger { background: var(--dangerColor); color: #fff; border-color: var(--dangerColor); }
     .cloud-form { display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 10px; }
     .cloud-form .form-field { margin: 0; min-width: 220px; }
     .cloud-form .inline-flex { align-items: center; gap: 4px; }

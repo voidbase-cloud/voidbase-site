@@ -83,7 +83,7 @@
             border-bottom-left-radius: $size;
             border-top-right-radius: 0;
             border-bottom-right-radius: 0;
-            color: #fff;
+            color: var(--primaryContrastColor);
             background: var(--primaryColor);
             opacity: 0.5;
             transition: opacity var(--baseAnimationSpeed);

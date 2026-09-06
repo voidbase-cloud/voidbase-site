@@ -30,11 +30,11 @@ button {
     text-decoration: none;
     line-height: 1;
     font-weight: 600;
-    color: #fff;
+    color: var(--primaryContrastColor);
     font-size: var(--baseFontSize);
     font-family: var(--baseFontFamily);
     border-radius: var(--btnRadius);
-    background: #fff;
+    background: var(--bodyColor);
     backface-visibility: hidden;
     transition: color var(--baseAnimationSpeed);
     i {
@@ -89,6 +89,7 @@ button {
     // primary styles
     @each $name, $color in $variationsMap {
         &.btn-#{$name} {
+            color: #fff;
             &:before {
                 background: $color;
             }
@@ -109,7 +110,7 @@ button {
     // secondary/bordered styles
     &.btn-outline {
         border: 2px solid currentColor;
-        background: #fff;
+        background: var(--bodyColor);
     }
     &.btn-secondary {
         background: none;
@@ -632,7 +633,7 @@ select {
         }
         &:checked ~ label:before {
             content: '\eb7c';
-            color: #fff;
+            color: var(--primaryContrastColor);
         }
     }
 

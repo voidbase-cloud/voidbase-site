@@ -1,4 +1,5 @@
-// The void gopher: recolors a gopher image whose fur is warm (pink or tan) into the site's violet-charcoal, keeping the
+// The void gopher: recolors a gopher image whose fur is warm (pink or tan) into the site's fur color (defaults: the first violet;
+// the dark theme uses `0 0 0.36 0.7` = neutral gray), keeping the
 // drawing, the white coat, the eyes and the line work. Chrome does the pixel work through Playwright, so run it from a
 // checkout that has playwright installed (../voidbase does):
 //   cd ../voidbase && CHROME_PATH=/usr/bin/google-chrome bun ../voidbase-site/scripts/void-gopher.ts <in.png> <out.png> [scale]
@@ -6,11 +7,11 @@
 // the PocketBase site's gopher; the eye-tracking overlay keeps working because the geometry is unchanged.
 import { chromium } from "playwright";
 import { readFileSync, writeFileSync } from "node:fs";
-const [src, out, scale = "1"] = process.argv.slice(2);
+const [src, out, scale = "1", hueArg = "262", satArg = "0.24", lminArg = "0.09", lmaxArg = "0.47"] = process.argv.slice(2); // hue/sat/L range of the new fur
 const b64 = readFileSync(src!).toString("base64");
 const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH ?? "/usr/bin/google-chrome" });
 const page = await browser.newPage();
-const result = await page.evaluate(async ({ b64, scale }) => {
+const result = await page.evaluate(async ({ b64, scale, hue, sat, lmin, lmax }) => {
   const img = new Image(); img.src = "data:image/png;base64," + b64; await img.decode();
   const w = img.naturalWidth, h = img.naturalHeight;
   const c = document.createElement("canvas"); c.width = w; c.height = h; const ctx = c.getContext("2d")!; ctx.drawImage(img, 0, 0);
@@ -29,15 +30,15 @@ const result = await page.evaluate(async ({ b64, scale }) => {
     if (!pink) continue;
     fur++;
     // keep the shading, move it into the void: violet hue, muted, dark
-    const L = 0.09 + Math.max(0, l - 0.2) * 0.5; // 0.2..0.97 -> 0.09..0.47: shading kept, pushed into the dark
-    const [r, g, b] = hsl2rgb(262, 0.24 + s * 0.2, L);
+    const L = lmin + Math.max(0, l - 0.2) / 0.77 * (lmax - lmin); // 0.2..0.97 -> lmin..lmax: the shading survives
+    const [r, g, b] = hsl2rgb(hue, sat === 0 ? 0 : sat + s * 0.2, L);
     p[i] = r!; p[i + 1] = g!; p[i + 2] = b!;
   }
   ctx.putImageData(d, 0, 0);
   const sc = Number(scale); let outCanvas = c;
   if (sc !== 1) { outCanvas = document.createElement("canvas"); outCanvas.width = Math.round(w * sc); outCanvas.height = Math.round(h * sc); const o = outCanvas.getContext("2d")!; o.imageSmoothingQuality = "high"; o.drawImage(c, 0, 0, outCanvas.width, outCanvas.height); }
   return { fur, png: outCanvas.toDataURL("image/png").split(",")[1] };
-}, { b64, scale });
+}, { b64, scale, hue: Number(hueArg), sat: Number(satArg), lmin: Number(lminArg), lmax: Number(lmaxArg) });
 await browser.close();
 writeFileSync(out!, Buffer.from(result.png, "base64"));
 console.log(`recolored ${result.fur} fur pixels -> ${out}`);
