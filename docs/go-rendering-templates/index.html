@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Primary Meta Tags -->
+    <meta name="description" content="A PocketBase-compatible backend on Cloudflare: PocketBase's API and admin panel on D1, R2 and Durable Objects, built on Void. An independent project, not affiliated with PocketBase.">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="voidbase - PocketBase-compatible backend on Cloudflare">
+    <meta property="og:description" content="A PocketBase-compatible backend on Cloudflare: PocketBase's API and admin panel on D1, R2 and Durable Objects, built on Void. An independent project, not affiliated with PocketBase.">
+    <meta property="og:image" content="/images/og.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:title" content="voidbase - PocketBase-compatible backend on Cloudflare">
+    <meta property="twitter:description" content="A PocketBase-compatible backend on Cloudflare: PocketBase's API and admin panel on D1, R2 and Durable Objects, built on Void. An independent project, not affiliated with PocketBase.">
+    <meta property="twitter:image" content="/images/og.png">
+
+    <!-- favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon/favicon-16x16.png">
+    <link rel="manifest" href="/images/favicon/site.webmanifest">
+    <link rel="mask-icon" href="/images/favicon/safari-pinned-tab.svg" color="#000000">
+    <link rel="shortcut icon" href="/images/favicon/favicon.ico">
+    <meta name="msapplication-TileColor" content="#000000">
+    <meta name="msapplication-config" content="/images/favicon/browserconfig.xml">
+    <meta name="theme-color" content="#000000">
+
+    <!-- preload -->
+    <link rel="preload" href="/fonts/source-sans-pro/source-sans-pro-v18-latin_cyrillic-regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/source-sans-pro/source-sans-pro-v18-latin_cyrillic-600.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/source-sans-pro/source-sans-pro-v18-latin_cyrillic-700.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/source-sans-pro/source-sans-pro-v18-latin_cyrillic-italic.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/ubuntu-mono/ubuntu-mono-v17-cyrillic_latin-regular.woff2" as="font" type="font/woff2" crossorigin>
+
+    <script>
+        // CSS3 animations support check
+        (function () {
+            if (typeof document === "undefined") {
+                return; // serverside rendering
+            }
+
+            let elem = document.createElement("div");
+            let hasAnimation = elem.style.animationName !== undefined;
+
+            if (!hasAnimation) {
+                document.documentElement.classList.add("no-animations");
+            }
+        })();
+    </script>
+
+    <script>
+        // silent svelte console errors
+        if (typeof window === "undefined") {
+            window = {};
+        }
+        window.Prism = window.Prism || {};
+        window.Prism.manual = true;
+
+        if (typeof navigator !== "undefined" && navigator.userAgentData) {
+            navigator.userAgentData.getHighEntropyValues([
+                "architecture",
+            ]).then((ua) => {
+                window.UA_ARCHITECTURE = ua.architecture
+            });
+        }
+    </script>
+
+    <link href="../../_app/immutable/entry/start.hXVHQl4p.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/DZ8gc1Yz.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/BDLcFjNi.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/8u5WfZgX.js" rel="modulepreload">
+		<link href="../../_app/immutable/entry/app.vNISQno_.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/xihTtKlq.js" rel="modulepreload">
+		<link href="../../_app/immutable/nodes/0.DVtGCnfv.js" rel="modulepreload">
+		<link href="../../_app/immutable/nodes/2.Bo_2_zFx.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/C3kXMaAy.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/8Hf144lt.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/DxB8CMVb.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/CpXSjVPa.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/TqxhnWm2.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/JhE-H64I.js" rel="modulepreload">
+		<link href="../../_app/immutable/nodes/3.CSB8161Y.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/_V9J1g6r.js" rel="modulepreload">
+		<link href="../../_app/immutable/nodes/35.mCgRjN2z.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/BnicrACe.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/CKGhWLYV.js" rel="modulepreload">
+		<link href="../../_app/immutable/chunks/CKC416Ky.js" rel="modulepreload">
+		<!--jzzxb6--><!----><title>Extend with Go - Rendering templates - Docs - PocketBase</title>
+		<link href="../../_app/immutable/assets/CloudflareSignIn.DWeukUJW.css" rel="stylesheet">
+		<link href="../../_app/immutable/assets/2.BZM1vCEc.css" rel="stylesheet">
+		<link href="../../_app/immutable/assets/main.Bv17Byor.css" rel="stylesheet">
+		<link href="../../_app/immutable/assets/3.DET4KRPB.css" rel="stylesheet">
+		<link href="../../_app/immutable/assets/CodeBlock.CvPQxemz.css" rel="stylesheet">
+
+    <script src="/pagefind/pagefind-ui.js"></script>
+</head>
+<body>
+    <div class="page-body"><!--[--><!--[0--><!--[--><!--[0--><!--[--><header class="page-header"><div class="wrapper wrapper-lg"><div class="header-section left"><a href="/" class="logo logo-sm" data-sveltekit-preload-data="" title="voidbase 0.1.0 · PocketBase 0.39.11 API"><img src="/images/logo.svg" alt="voidbase logo" width="40" height="40"/> <span class="txt">void<strong>base</strong></span> <span class="version">0.1.0</span></a></div> <div class="header-section center"><div tabindex="-1" class="form-field searchbar"><div class="form-field-addon prefix"><i class="ri-search-line"></i></div> <!--[-1--><!--]--> <input type="text" class="searchbar-input" placeholder="Search..." value=""/> <div tabindex="-1" class="dropdown searchbar-dropdown"><div class="tabs-header compact"><button type="button" class="tab-item active">Go</button> <button type="button" class="tab-item">JavaScript</button></div> <div id="pagefind_searchEimPP"></div></div></div><!----></div> <div class="header-section right"><button type="button" class="btn btn-circle btn-secondary responsive-menu-btn" title="Menu"><span></span> <i class="ri-menu-3-fill"></i> <div class="toggler-container" tabindex="-1" role="menu"><!--[-1--><!--]--></div><!----></button> <nav class="main-menu"><a href="/faq" class="btn btn-secondary" data-sveltekit-preload-data="">FAQ</a> <a href="https://github.com/voidbase-cloud/voidbase" class="btn btn-circle btn-secondary" target="_blank" rel="noreferrer noopener" title="GitHub Repo"><i class="ri-github-line"></i></a> <a href="/docs" class="btn btn-outline" data-sveltekit-preload-data=""><span class="txt">Documentation</span></a> <!--[-1--><button type="button" class="btn btn-secondary cf-header cf-signin svelte-bcdonz" title="Sign in with your Cloudflare account"><!--[0--><svg class="cf-mark svelte-bcdonz" viewBox="0 0 128 128" aria-hidden="true"><path fill="#FFF" d="m115.679 69.288-15.591-8.94-2.689-1.163-63.781.436v32.381h82.061z"></path><path fill="#F38020" d="M87.295 89.022c.763-2.617.472-5.015-.8-6.796-1.163-1.635-3.125-2.58-5.488-2.689l-44.737-.581c-.291 0-.545-.145-.691-.363s-.182-.509-.109-.8c.145-.436.581-.763 1.054-.8l45.137-.581c5.342-.254 11.157-4.579 13.192-9.885l2.58-6.723c.109-.291.145-.581.073-.872-2.906-13.158-14.644-22.97-28.672-22.97-12.938 0-23.913 8.359-27.838 19.952a13.35 13.35 0 0 0-9.267-2.58c-6.215.618-11.193 5.597-11.811 11.811-.145 1.599-.036 3.162.327 4.615C10.104 70.051 2 78.337 2 88.549c0 .909.073 1.817.182 2.726a.895.895 0 0 0 .872.763h82.57c.472 0 .909-.327 1.054-.8l.617-2.216z"></path><path fill="#FAAE40" d="M101.542 60.275c-.4 0-.836 0-1.236.036-.291 0-.545.218-.654.509l-1.744 6.069c-.763 2.617-.472 5.015.8 6.796 1.163 1.635 3.125 2.58 5.488 2.689l9.522.581c.291 0 .545.145.691.363.145.218.182.545.109.8-.145.436-.581.763-1.054.8l-9.924.582c-5.379.254-11.157 4.579-13.192 9.885l-.727 1.853c-.145.363.109.727.509.727h34.089c.4 0 .763-.254.872-.654.581-2.108.909-4.325.909-6.614 0-13.447-10.975-24.422-24.458-24.422"></path></svg><!--]--> <span class="txt">Sign in with Cloudflare</span></button><!--]--><!----></nav></div></div></header><!----> <main class="wrapper wrapper-lg page-content-wrapper"><!--[--><!--[0--><!--[--><aside class="page-sidebar highlight docs-sidebar"><div class="sticky-wrapper svelte-bbvkp8"><div class="sidebar-content"><nav class="sidebar-list"><!--[--><a href="/docs" class="list-item"><!--[--><!--]--> <!--[0--><span class="icon"><i class="ri-home-2-line"></i></span><!--]--> <span class="txt">Introduction</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/going-to-production" class="list-item"><!--[--><!--]--> <!--[0--><span class="icon"><i class="ri-check-double-line"></i></span><!--]--> <span class="txt">Going to production</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/api-records" class="list-item"><!--[--><!--]--> <!--[0--><span class="icon"><i class="ri-file-list-2-line"></i></span><!--]--> <span class="txt">Web APIs reference</span> <!--[--><!--]--></a> <!--[-1--><!--]--><!--]--></nav><!----> <div class="clearfix m-t-base"></div> <div class="sidebar-bg-section"><div class="tabs-header stretched compact"><a class="tab-item active" href="/docs/go-overview"><div class="block">Extend with <br/> <strong>Go</strong></div></a> <a class="tab-item" href="/docs/js-overview"><div class="block">Extend with <br/> <strong>JavaScript</strong></div></a></div> <div class="tabs-content"><div class="tab-item active"><nav class="sidebar-list"><!--[--><a href="/docs/go-overview" class="list-item"><!--[--><span class="label label-sm label-info svelte-bbvkp8">Go</span><!--]--> <!--[-1--><!--]--> <span class="txt">Overview</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/go-event-hooks" class="list-item"><!--[--><span class="label label-sm label-info svelte-bbvkp8">Go</span><!--]--> <!--[-1--><!--]--> <span class="txt">Event hooks</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/go-routing" class="list-item"><!--[--><span class="label label-sm label-info svelte-bbvkp8">Go</span><!--]--> <!--[-1--><!--]--> <span class="txt">Routing</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/go-database" class="list-item"><!--[--><span class="label label-sm label-info svelte-bbvkp8">Go</span><!--]--> <!--[-1--><!--]--> <span class="txt">Database</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/go-records" class="list-item"><!--[--><span class="label label-sm label-info svelte-bbvkp8">Go</span><!--]--> <!--[-1--><!--]--> <span class="txt">Record operations</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/go-collections" class="list-item"><!--[--><span class="label label-sm label-info svelte-bbvkp8">Go</span><!--]--> <!--[-1--><!--]--> <span class="txt">Collection operations</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/go-migrations" class="list-item"><!--[--><span class="label label-sm label-info svelte-bbvkp8">Go</span><!--]--> <!--[-1--><!--]--> <span class="txt">Migrations</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/go-jobs-scheduling" class="list-item"><!--[--><span class="label label-sm label-info svelte-bbvkp8">Go</span><!--]--> <!--[-1--><!--]--> <span class="txt">Jobs scheduling</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/go-sending-emails" class="list-item"><!--[--><span class="label label-sm label-info svelte-bbvkp8">Go</span><!--]--> <!--[-1--><!--]--> <span class="txt">Sending emails</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/go-rendering-templates" class="list-item active"><!--[--><span class="label label-sm label-info svelte-bbvkp8">Go</span><!--]--> <!--[-1--><!--]--> <span class="txt">Rendering templates</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/go-console-commands" class="list-item"><!--[--><span class="label label-sm label-info svelte-bbvkp8">Go</span><!--]--> <!--[-1--><!--]--> <span class="txt">Console commands</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/go-realtime" class="list-item"><!--[--><span class="label label-sm label-info svelte-bbvkp8">Go</span><!--]--> <!--[-1--><!--]--> <span class="txt">Realtime messaging</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/go-filesystem" class="list-item"><!--[--><span class="label label-sm label-info svelte-bbvkp8">Go</span><!--]--> <!--[-1--><!--]--> <span class="txt">Filesystem</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/go-logging" class="list-item"><!--[--><span class="label label-sm label-info svelte-bbvkp8">Go</span><!--]--> <!--[-1--><!--]--> <span class="txt">Logging</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/go-testing" class="list-item"><!--[--><span class="label label-sm label-info svelte-bbvkp8">Go</span><!--]--> <!--[-1--><!--]--> <span class="txt">Testing</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/go-miscellaneous" class="list-item"><!--[--><span class="label label-sm label-info svelte-bbvkp8">Go</span><!--]--> <!--[-1--><!--]--> <span class="txt">Miscellaneous</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/go-record-proxy" class="list-item"><!--[--><span class="label label-sm label-info svelte-bbvkp8">Go</span><!--]--> <!--[-1--><!--]--> <span class="txt">Record proxy</span> <!--[--><!--]--></a> <!--[-1--><!--]--><!--]--></nav><!----></div> <div class="tab-item"><nav class="sidebar-list"><!--[--><a href="/docs/js-overview" class="list-item"><!--[--><span class="label label-sm label-warning svelte-bbvkp8">JS</span><!--]--> <!--[-1--><!--]--> <span class="txt">Overview</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/js-event-hooks" class="list-item"><!--[--><span class="label label-sm label-warning svelte-bbvkp8">JS</span><!--]--> <!--[-1--><!--]--> <span class="txt">Event hooks</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/js-routing" class="list-item"><!--[--><span class="label label-sm label-warning svelte-bbvkp8">JS</span><!--]--> <!--[-1--><!--]--> <span class="txt">Routing</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/js-database" class="list-item"><!--[--><span class="label label-sm label-warning svelte-bbvkp8">JS</span><!--]--> <!--[-1--><!--]--> <span class="txt">Database</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/js-records" class="list-item"><!--[--><span class="label label-sm label-warning svelte-bbvkp8">JS</span><!--]--> <!--[-1--><!--]--> <span class="txt">Record operations</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/js-collections" class="list-item"><!--[--><span class="label label-sm label-warning svelte-bbvkp8">JS</span><!--]--> <!--[-1--><!--]--> <span class="txt">Collection operations</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/js-migrations" class="list-item"><!--[--><span class="label label-sm label-warning svelte-bbvkp8">JS</span><!--]--> <!--[-1--><!--]--> <span class="txt">Migrations</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/js-jobs-scheduling" class="list-item"><!--[--><span class="label label-sm label-warning svelte-bbvkp8">JS</span><!--]--> <!--[-1--><!--]--> <span class="txt">Jobs scheduling</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/js-sending-emails" class="list-item"><!--[--><span class="label label-sm label-warning svelte-bbvkp8">JS</span><!--]--> <!--[-1--><!--]--> <span class="txt">Sending emails</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/js-rendering-templates" class="list-item"><!--[--><span class="label label-sm label-warning svelte-bbvkp8">JS</span><!--]--> <!--[-1--><!--]--> <span class="txt">Rendering templates</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/js-console-commands" class="list-item"><!--[--><span class="label label-sm label-warning svelte-bbvkp8">JS</span><!--]--> <!--[-1--><!--]--> <span class="txt">Console commands</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/js-sending-http-requests" class="list-item"><!--[--><span class="label label-sm label-warning svelte-bbvkp8">JS</span><!--]--> <!--[-1--><!--]--> <span class="txt">Sending HTTP requests</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/js-realtime" class="list-item"><!--[--><span class="label label-sm label-warning svelte-bbvkp8">JS</span><!--]--> <!--[-1--><!--]--> <span class="txt">Realtime messaging</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/js-filesystem" class="list-item"><!--[--><span class="label label-sm label-warning svelte-bbvkp8">JS</span><!--]--> <!--[-1--><!--]--> <span class="txt">Filesystem</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/docs/js-logging" class="list-item"><!--[--><span class="label label-sm label-warning svelte-bbvkp8">JS</span><!--]--> <!--[-1--><!--]--> <span class="txt">Logging</span> <!--[--><!--]--></a> <!--[-1--><!--]--><a href="/jsvm/index.html" class="list-item" target="_blank" rel="noopener noreferrer"><!--[--><span class="label label-sm label-warning svelte-bbvkp8">JS</span><!--]--> <!--[-1--><!--]--> <span class="txt">Types reference</span> <!--[--><!--]--></a> <!--[-1--><!--]--><!--]--></nav><!----></div></div></div></div></div></aside><!----> <div class="page-content"><nav class="breadcrumbs"><!--[0--><div class="breadcrumb-item">Extend with Go - Rendering templates</div><!--]--></nav> <div class="content" data-pagefind-body="" data-tag-javascript="javascript" data-tag-go="go" data-tag-other="other" data-pagefind-filter="tag[data-tag-go],tag[data-tag-other]"><span class="hidden" data-pagefind-meta="title">Rendering templates</span> <!--[--><!--[--><div class="toc"><!--[0--><ul class="toc-list-1"><!--[--><!--]--></ul><!--]--><!----></div><!----> <!----><h3 id="overview" class="heading-link "><a href="#overview" class="link-primary"><!--[--><!--]--> Overview <!--[--><!--]--></a><!----></h3><!----><!----> <p>A common task when creating custom routes or emails is the need of generating HTML output.</p> <p>There are plenty of Go template-engines available that you can use for this, but often for simple cases
+    the Go standard library <code>html/template</code> package should work just fine.</p> <p>To make it slightly easier to load template files concurrently and on the fly, PocketBase also provides a
+    thin wrapper around the standard library in the <a href="https://pkg.go.dev/github.com/pocketbase/pocketbase/tools/template" target="_blank" rel="noopener noreferrer"><code>github.com/pocketbase/pocketbase/tools/template</code></a> utility package.</p> <div class="code-wrapper m-b-sm prism-dark svelte-1e06m8e"><code class="svelte-1e06m8e"><!----><span class="token keyword">import</span> <span class="token string">"github.com/pocketbase/pocketbase/tools/template"</span>
+
+data <span class="token operator">:=</span> <span class="token keyword">map</span><span class="token punctuation">[</span><span class="token builtin">string</span><span class="token punctuation">]</span>any<span class="token punctuation">{</span><span class="token string">"name"</span><span class="token punctuation">:</span> <span class="token string">"John"</span><span class="token punctuation">}</span>
+
+html<span class="token punctuation">,</span> err <span class="token operator">:=</span> template<span class="token punctuation">.</span><span class="token function">NewRegistry</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">LoadFiles</span><span class="token punctuation">(</span>
+    <span class="token string">"views/base.html"</span><span class="token punctuation">,</span>
+    <span class="token string">"views/partial1.html"</span><span class="token punctuation">,</span>
+    <span class="token string">"views/partial2.html"</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">Render</span><span class="token punctuation">(</span>data<span class="token punctuation">)</span><!----></code></div><!----> <p>The general flow when working with composed and nested templates is that you create "base" template(s)
+    that defines various placeholders using the <code>{{template "placeholderName" .}}</code> or <code>{{block "placeholderName" .}}default...{{end}}</code> actions.</p> <p>Then in the partials, you define the content for those placeholders using the <code>{{define "placeholderName"}}custom...{{end}}</code> action.</p> <p>The dot object (<code class="txt-bold">.</code>) in the above represents the data passed to the templates
+    via the <code>Render(data)</code> method.</p> <p>By default the templates apply contextual (HTML, JS, CSS, URI) auto escaping so the generated template
+    content should be injection-safe. To render raw/verbatim trusted content in the templates you can use the
+    builtin <code>raw</code> function (e.g. <code>{{.content|raw}}</code>).</p> <div class="alert alert-info m-t-10 m-b-sm"><div class="icon"><i class="ri-information-line"></i></div> <div class="content"><p>For more information about the template syntax please refer to the <a href="https://pkg.go.dev/html/template#hdr-A_fuller_picture" target="_blank" rel="noopener noreferrer"><em>html/template</em></a> and <a href="https://pkg.go.dev/text/template" target="_blank" rel="noopener noreferrer"><em>text/template</em></a> package godocs. <strong>Another great resource is also the Hashicorp's <a href="https://developer.hashicorp.com/nomad/tutorials/templates/go-template-syntax" target="_blank" rel="noopener noreferrer">Learn Go Template Syntax</a> tutorial.</strong></p></div></div> <!----><h3 id="example-html-page-with-layout" class="heading-link "><a href="#example-html-page-with-layout" class="link-primary"><!--[--><!--]--> Example HTML page with layout <!--[--><!--]--></a><!----></h3><!----><!----> <p>Consider the following app directory structure:</p> <div class="code-wrapper m-b-sm prism-dark svelte-1e06m8e"><code class="svelte-1e06m8e"><!---->myapp/
+    views/
+        layout.html
+        hello.html
+    main.go<!----></code></div><!----> <p>We define the content for <code>layout.html</code> as:</p> <div class="code-wrapper m-b-sm prism-dark svelte-1e06m8e"><code class="svelte-1e06m8e"><!----><span class="token doctype"><span class="token punctuation">&lt;!</span><span class="token doctype-tag">DOCTYPE</span> <span class="token name">html</span><span class="token punctuation">></span></span>
+<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>html</span> <span class="token attr-name">lang</span><span class="token attr-value"><span class="token punctuation attr-equals">=</span><span class="token punctuation">"</span>en<span class="token punctuation">"</span></span><span class="token punctuation">></span></span>
+<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>head</span><span class="token punctuation">></span></span>
+    <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>title</span><span class="token punctuation">></span></span>{{block "title" .}}Default app title{{end}}<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>title</span><span class="token punctuation">></span></span>
+<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>head</span><span class="token punctuation">></span></span>
+<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>body</span><span class="token punctuation">></span></span>
+    Header...
+
+    {{block "body" .}}
+        Default app body...
+    {{end}}
+
+    Footer...
+<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>body</span><span class="token punctuation">></span></span>
+<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>html</span><span class="token punctuation">></span></span><!----></code></div><!----> <p>We define the content for <code>hello.html</code> as:</p> <div class="code-wrapper m-b-sm prism-dark svelte-1e06m8e"><code class="svelte-1e06m8e"><!---->{{define "title"}}
+    Page 1
+{{end}}
+
+{{define "body"}}
+    <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>p</span><span class="token punctuation">></span></span>Hello from {{.name}}<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>p</span><span class="token punctuation">></span></span>
+{{end}}<!----></code></div><!----> <p>Then to output the final page, we'll register a custom <code>/hello/:name</code> route:</p> <div class="code-wrapper m-b-sm prism-dark svelte-1e06m8e"><code class="svelte-1e06m8e"><!----><span class="token comment">// main.go</span>
+<span class="token keyword">package</span> main
+
+<span class="token keyword">import</span> <span class="token punctuation">(</span>
+    <span class="token string">"log"</span>
+    <span class="token string">"net/http"</span>
+
+    <span class="token string">"github.com/pocketbase/pocketbase"</span>
+    <span class="token string">"github.com/pocketbase/pocketbase/core"</span>
+    <span class="token string">"github.com/pocketbase/pocketbase/tools/template"</span>
+<span class="token punctuation">)</span>
+
+<span class="token keyword">func</span> <span class="token function">main</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    app <span class="token operator">:=</span> pocketbase<span class="token punctuation">.</span><span class="token function">New</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+    app<span class="token punctuation">.</span><span class="token function">OnServe</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">BindFunc</span><span class="token punctuation">(</span><span class="token keyword">func</span><span class="token punctuation">(</span>se <span class="token operator">*</span>core<span class="token punctuation">.</span>ServeEvent<span class="token punctuation">)</span> <span class="token builtin">error</span> <span class="token punctuation">{</span>
+        <span class="token comment">// this is safe to be used by multiple goroutines</span>
+        <span class="token comment">// (it acts as store for the parsed templates)</span>
+        registry <span class="token operator">:=</span> template<span class="token punctuation">.</span><span class="token function">NewRegistry</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+        se<span class="token punctuation">.</span>Router<span class="token punctuation">.</span><span class="token function">GET</span><span class="token punctuation">(</span><span class="token string">"/hello/{name}"</span><span class="token punctuation">,</span> <span class="token keyword">func</span><span class="token punctuation">(</span>e <span class="token operator">*</span>core<span class="token punctuation">.</span>RequestEvent<span class="token punctuation">)</span> <span class="token builtin">error</span> <span class="token punctuation">{</span>
+            name <span class="token operator">:=</span> e<span class="token punctuation">.</span>Request<span class="token punctuation">.</span><span class="token function">PathValue</span><span class="token punctuation">(</span><span class="token string">"name"</span><span class="token punctuation">)</span>
+
+            html<span class="token punctuation">,</span> err <span class="token operator">:=</span> registry<span class="token punctuation">.</span><span class="token function">LoadFiles</span><span class="token punctuation">(</span>
+                <span class="token string">"views/layout.html"</span><span class="token punctuation">,</span>
+                <span class="token string">"views/hello.html"</span><span class="token punctuation">,</span>
+            <span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">Render</span><span class="token punctuation">(</span><span class="token keyword">map</span><span class="token punctuation">[</span><span class="token builtin">string</span><span class="token punctuation">]</span>any<span class="token punctuation">{</span>
+                <span class="token string">"name"</span><span class="token punctuation">:</span> name<span class="token punctuation">,</span>
+            <span class="token punctuation">}</span><span class="token punctuation">)</span>
+
+            <span class="token keyword">if</span> err <span class="token operator">!=</span> <span class="token boolean">nil</span> <span class="token punctuation">{</span>
+                <span class="token comment">// or redirect to a dedicated 404 HTML page</span>
+                <span class="token keyword">return</span> e<span class="token punctuation">.</span><span class="token function">NotFoundError</span><span class="token punctuation">(</span><span class="token string">""</span><span class="token punctuation">,</span> err<span class="token punctuation">)</span>
+            <span class="token punctuation">}</span>
+
+            <span class="token keyword">return</span> e<span class="token punctuation">.</span><span class="token function">HTML</span><span class="token punctuation">(</span>http<span class="token punctuation">.</span>StatusOK<span class="token punctuation">,</span> html<span class="token punctuation">)</span>
+        <span class="token punctuation">}</span><span class="token punctuation">)</span>
+
+        <span class="token keyword">return</span> se<span class="token punctuation">.</span><span class="token function">Next</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+    <span class="token punctuation">}</span><span class="token punctuation">)</span>
+
+    <span class="token keyword">if</span> err <span class="token operator">:=</span> app<span class="token punctuation">.</span><span class="token function">Start</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span> err <span class="token operator">!=</span> <span class="token boolean">nil</span> <span class="token punctuation">{</span>
+        log<span class="token punctuation">.</span><span class="token function">Fatal</span><span class="token punctuation">(</span>err<span class="token punctuation">)</span>
+    <span class="token punctuation">}</span>
+<span class="token punctuation">}</span><!----></code></div><!----><!--]--><!--]--></div> <!--[0--><hr/><!--]--> <div class="docs-footer svelte-1g8ksr7" data-pagefind-ignore=""><!--[0--><a href="/docs/go-sending-emails" class="btn btn-secondary btn-prev svelte-1g8ksr7"><i class="ri-arrow-left-line"></i> <span class="txt">Prev: Sending emails</span></a><!--]--> <!--[0--><a href="/docs/go-console-commands" class="btn btn-outline btn-expanded btn-next svelte-1g8ksr7"><span class="txt">Next: Console commands</span> <i class="ri-arrow-right-line"></i></a><!--]--></div><!----></div><!--]--><!--]--><!--]--></main> <footer class="page-footer"><div class="wrapper wrapper-lg"><div class="primary-bar"><nav class="footer-col links"><a href="/faq" class="link-item">FAQ</a> <a href="https://github.com/voidbase-cloud/voidbase/discussions" class="link-item" target="_blank" rel="noopener noreferrer">Discussions</a> <a href="/docs" class="link-item">Documentation</a></nav> <nav class="footer-col links"><a href="https://github.com/pocketbase/js-sdk" class="link-item" target="_blank" rel="noopener noreferrer">JavaScript SDK</a> <a href="https://github.com/pocketbase/dart-sdk" class="link-item" target="_blank" rel="noopener noreferrer">Dart SDK</a></nav> <div class="footer-col socials"><div class="watermark-logo">void<strong>base</strong></div> <a href="https://github.com/voidbase-cloud" rel="noopener noreferrer" target="_blank" class="btn btn-secondary btn-circle btn-hint social-item" aria-label="voidbase on GitHub"><i class="ri-community-line"></i></a> <a href="https://github.com/voidbase-cloud/voidbase" rel="noopener noreferrer" target="_blank" class="btn btn-secondary btn-circle btn-hint social-item" aria-label="Go to GitHub"><i class="ri-github-line"></i></a></div></div> <div class="credits-bar"><span class="txt">void<strong>base</strong> is an independent project, not affiliated with or endorsed by PocketBase.</span> <span class="txt">It runs <a href="https://pocketbase.io" target="_blank" rel="noopener noreferrer">PocketBase</a>'s API and admin
+                panel and is built on <a href="https://void.cloud" target="_blank" rel="noopener noreferrer">Void</a>'s Cloudflare runtime; the two
+                power most of what runs here and keep shipping the updates voidbase builds on.</span></div> <div class="secondary-bar"><div class="terms"><span class="txt">© 2026 void<strong>base</strong></span> <span class="gopher-credit">The Gopher artwork is from <a href="https://github.com/marcusolsson/gophers" target="_blank" rel="noreferrer noopener">marcusolsson/gophers</a></span></div> <div class="flex-fill"></div> <div class="credit">Site design by <a href="https://gani.bg" target="_blank" rel="noopener noreferrer" class="link-hint"><strong>Gani</strong></a> (PocketBase)</div></div></div></footer><!----> <button type="button" class="btn btn-lg btn-circle btn-secondary scroll-to-top svelte-15yu17n" arial-label="Go to top"><i class="ri-arrow-up-line"></i></button><!----><!--]--><!--]--><!----><!--]--><!--]--> <!--[-1--><!--]--><!--]-->
+			
+			<script>
+				{
+					__sveltekit_r4l15 = {
+						base: new URL("../..", location).pathname.slice(0, -1)
+					};
+
+					const element = document.currentScript.parentElement;
+
+					Promise.all([
+						import("../../_app/immutable/entry/start.hXVHQl4p.js"),
+						import("../../_app/immutable/entry/app.vNISQno_.js")
+					]).then(([kit, app]) => {
+						kit.start(app, element, {
+							node_ids: [0, 2, 3, 35],
+							data: [null,null,null,null],
+							form: null,
+							error: null
+						});
+					});
+				}
+			</script>
+		</div>
+</body>
+</html>

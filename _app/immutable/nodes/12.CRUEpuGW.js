@@ -1,0 +1,9 @@
+import{A as e,I as t,N as n,P as r,V as i,X as a,at as o,b as s,bt as c,it as l,nt as u,rt as d,st as f,tt as p,z as m}from"../chunks/BDLcFjNi.js";import"../chunks/xihTtKlq.js";import"../chunks/C3kXMaAy.js";import{t as h}from"../chunks/B6gCHVlt.js";import{t as g}from"../chunks/CKGhWLYV.js";import{t as _}from"../chunks/DK-N8Yuz.js";var v=t(`<button> </button>`),y=t(`<div><!></div>`),b=t(`<div class="content m-b-sm"><p>Returns the health status of the server.</p></div> <h6 class="m-b-xs">API details</h6> <div class="api-route alert alert-info"><strong class="label label-primary">GET/HEAD</strong> <div class="content">/api/health</div></div> <div class="section-title">Query parameters</div> <table class="table-compact table-border m-b-base"><thead><tr><th>Param</th><th>Type</th><th width="50%">Description</th></tr></thead><tbody><!></tbody></table> <div class="section-title">Responses</div> <div class="tabs"><div class="tabs-header compact combined left"></div> <div class="tabs-content"></div></div>`,1);function x(t){let x=[{code:200,body:`
+                {
+                  "status": 200,
+                  "message": "API is healthy.",
+                  "data": {
+                    "canBackup": false
+                  }
+                }
+            `}],S=o(x[0].code);h(t,{single:!0,title:`Health check`,children:(t,o)=>{var h=b(),C=l(u(h),8),w=l(p(C)),T=p(w);_(T,{}),c(w),c(C);var E=l(C,4),D=p(E);e(D,5,()=>x,e=>e.code,(e,t)=>{var o=v();let c;var l=d(o,!0);a(()=>{c=s(o,1,`tab-item`,null,c,{active:i(S)===i(t).code}),n(l,i(t).code)}),m(`click`,o,()=>f(S,i(t).code)),r(e,o)}),c(D);var O=l(D,2);e(O,5,()=>x,e=>e.code,(e,t)=>{var n=y();let o;var l=p(n);g(l,{get content(){return i(t).body}}),c(n),a(()=>o=s(n,1,`tab-item`,null,o,{active:i(S)===i(t).code})),r(e,n)}),c(O),c(E),r(t,h)},$$slots:{default:!0}})}var S=t(`<div class="accordions"><!></div>`);function C(e){var t=S();x(p(t),{}),c(t),r(e,t)}export{C as component};

@@ -1,0 +1,5 @@
+<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="voidbase">
+  <!-- the void: an open ring; the satellite crossing the gap is the base -->
+  <path d="M32.56 16.64 A13 13 0 1 1 23.36 7.44" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="29.19" cy="10.81" r="3.2" fill="#a1a1a1"/>
+</svg>

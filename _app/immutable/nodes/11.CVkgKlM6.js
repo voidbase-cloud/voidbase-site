@@ -1,0 +1,30 @@
+import{A as e,I as t,N as n,P as r,V as i,X as a,at as o,b as s,bt as c,it as l,nt as u,rt as d,st as f,tt as p,yt as m,z as h}from"../chunks/BDLcFjNi.js";import"../chunks/xihTtKlq.js";import"../chunks/C3kXMaAy.js";import{t as g}from"../chunks/B6gCHVlt.js";import{t as _}from"../chunks/CKGhWLYV.js";import{t as v}from"../chunks/VQa_QBsN.js";var y=t(`<button> </button>`),b=t(`<div><!></div>`),x=t(`<div class="content m-b-base"><p>Downloads a single file resource (aka. the URL address to the file). Example:</p> <!></div> <h6 class="m-b-xs">API details</h6> <div class="api-route alert alert-info"><strong class="label label-primary">GET</strong> <div class="content">/api/files/<code>collectionIdOrName</code>/<code>recordId</code>/<code>filename</code></div></div> <div class="section-title">Path parameters</div> <table class="table-compact table-border m-b-base"><thead><tr><th>Param</th><th>Type</th><th width="50%">Description</th></tr></thead><tbody><tr><td>collectionIdOrName</td><td><span class="label">String</span></td><td>ID or name of the collection whose record model contains the file resource.</td></tr><tr><td>recordId</td><td><span class="label">String</span></td><td>ID of the record model that contains the file resource.</td></tr><tr><td>filename</td><td><span class="label">String</span></td><td>Name of the file resource.</td></tr></tbody></table> <div class="section-title">Query parameters</div> <table class="table-compact table-border m-b-base"><thead><tr><th>Param</th><th>Type</th><th width="60%">Description</th></tr></thead><tbody><tr><td valign="top">thumb</td><td valign="top"><span class="label">String</span></td><td valign="top">Get the thumb of the requested file. <!> If the thumb size is not defined in the file schema field options or the file resource is not
+                    an image (jpg, png, gif, webp), then the original file resource is returned unmodified.</td></tr><tr><td valign="top">token</td><td valign="top"><span class="label">String</span></td><td valign="top">Optional <strong>file token</strong> for granting access to <strong>protected file(s)</strong>. <br/> For an example, you can check <a href="/docs/files-handling/#protected-files">"Files upload and handling"</a>.</td></tr><tr><td valign="top">download</td><td valign="top"><span class="label">Boolean</span></td><td valign="top">If it is set to a truthy value (<em>1</em>, <em>t</em>, <em>true</em>) the file will be
+                    served with <code>Content-Disposition: attachment</code> header instructing the browser to
+                    ignore the file preview for pdf, images, videos, etc. and to directly download the file.</td></tr></tbody></table> <div class="section-title">Responses</div> <div class="tabs"><div class="tabs-header compact combined left"></div> <div class="tabs-content"></div></div>`,1);function S(t){let S=o(200),C=[{code:200,body:`[file resource]`},{code:400,body:`
+                {
+                  "status": 400,
+                  "message": "Filesystem initialization failure.",
+                  "data": {}
+                }
+            `},{code:404,body:`
+                {
+                  "status": 404,
+                  "message": "The requested resource wasn't found.",
+                  "data": {}
+                }
+            `}];g(t,{single:!0,title:`Download / Fetch file`,children:(t,o)=>{var g=x(),w=u(g),T=l(p(w),2);_(T,{language:`html`,content:`
+                    <img src="http://example.com/api/files/demo/1234abcd/test.png" alt="Test image" />
+                `}),c(w);var E=l(w,12),D=l(p(E)),O=p(D),k=l(p(O),2),A=l(p(k));v(A,{}),m(),c(k),c(O),m(2),c(D),c(E);var j=l(E,4),M=p(j);e(M,5,()=>C,e=>e.code,(e,t)=>{var o=y();let c;var l=d(o,!0);a(()=>{c=s(o,1,`tab-item`,null,c,{active:i(S)===i(t).code}),n(l,i(t).code)}),h(`click`,o,()=>f(S,i(t).code)),r(e,o)}),c(M);var N=l(M,2);e(N,5,()=>C,e=>e.code,(e,t)=>{var n=b();let o;var l=p(n);_(l,{get content(){return i(t).body}}),c(n),a(()=>o=s(n,1,`tab-item`,null,o,{active:i(S)===i(t).code})),r(e,n)}),c(N),c(j),r(t,g)},$$slots:{default:!0}})}var C=t(`<button> </button>`),w=t(`<div><!></div>`),T=t(`<div class="content m-b-base"><p>Generates a <strong>short-lived file token</strong> for accessing <strong>protected file(s)</strong>.</p> <p>The client must be superuser or auth record authenticated (aka. have regular authorization token
+            sent with the request).</p></div> <h6 class="m-b-xs">API details</h6> <div class="api-route alert alert-success"><strong class="label label-primary">POST</strong> <div class="content">/api/files/token</div> <small class="txt-hint auth-header">Requires <code>Authorization:TOKEN</code></small></div> <div class="section-title">Responses</div> <div class="tabs"><div class="tabs-header compact combined left"></div> <div class="tabs-content"></div></div>`,1);function E(t){let m=o(200),v=[{code:200,body:`
+                {
+                    "token": "..."
+                }
+            `},{code:400,body:`
+                {
+                  "status": 400,
+                  "message": "Failed to generate file token.",
+                  "data": {}
+                }
+            `}];g(t,{single:!0,title:`Generate protected file token`,children:(t,o)=>{var g=T(),y=l(u(g),8),b=p(y);e(b,5,()=>v,e=>e.code,(e,t)=>{var o=C();let c;var l=d(o,!0);a(()=>{c=s(o,1,`tab-item`,null,c,{active:i(m)===i(t).code}),n(l,i(t).code)}),h(`click`,o,()=>f(m,i(t).code)),r(e,o)}),c(b);var x=l(b,2);e(x,5,()=>v,e=>e.code,(e,t)=>{var n=w();let o;var l=p(n);_(l,{get content(){return i(t).body}}),c(n),a(()=>o=s(n,1,`tab-item`,null,o,{active:i(m)===i(t).code})),r(e,n)}),c(x),c(y),r(t,g)},$$slots:{default:!0}})}var D=t(`<p>Files are uploaded, updated or deleted via the <a href="/docs/api-records">Records API</a>.</p> <p>The File API is usually used to fetch/download a file resource (with support for basic image
+    manipulations, like generating thumbs).</p> <div class="clearfix m-t-base"></div> <div class="accordions"><!> <!></div>`,1);function O(e){var t=D(),n=l(u(t),6),i=p(n);S(i,{}),E(l(i,2),{}),c(n),r(e,t)}export{O as component};

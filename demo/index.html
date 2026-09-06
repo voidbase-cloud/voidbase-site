@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Primary Meta Tags -->
+    <meta name="description" content="A PocketBase-compatible backend on Cloudflare: PocketBase's API and admin panel on D1, R2 and Durable Objects, built on Void. An independent project, not affiliated with PocketBase.">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="voidbase - PocketBase-compatible backend on Cloudflare">
+    <meta property="og:description" content="A PocketBase-compatible backend on Cloudflare: PocketBase's API and admin panel on D1, R2 and Durable Objects, built on Void. An independent project, not affiliated with PocketBase.">
+    <meta property="og:image" content="/images/og.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:title" content="voidbase - PocketBase-compatible backend on Cloudflare">
+    <meta property="twitter:description" content="A PocketBase-compatible backend on Cloudflare: PocketBase's API and admin panel on D1, R2 and Durable Objects, built on Void. An independent project, not affiliated with PocketBase.">
+    <meta property="twitter:image" content="/images/og.png">
+
+    <!-- favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon/favicon-16x16.png">
+    <link rel="manifest" href="/images/favicon/site.webmanifest">
+    <link rel="mask-icon" href="/images/favicon/safari-pinned-tab.svg" color="#000000">
+    <link rel="shortcut icon" href="/images/favicon/favicon.ico">
+    <meta name="msapplication-TileColor" content="#000000">
+    <meta name="msapplication-config" content="/images/favicon/browserconfig.xml">
+    <meta name="theme-color" content="#000000">
+
+    <!-- preload -->
+    <link rel="preload" href="/fonts/source-sans-pro/source-sans-pro-v18-latin_cyrillic-regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/source-sans-pro/source-sans-pro-v18-latin_cyrillic-600.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/source-sans-pro/source-sans-pro-v18-latin_cyrillic-700.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/source-sans-pro/source-sans-pro-v18-latin_cyrillic-italic.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/ubuntu-mono/ubuntu-mono-v17-cyrillic_latin-regular.woff2" as="font" type="font/woff2" crossorigin>
+
+    <script>
+        // CSS3 animations support check
+        (function () {
+            if (typeof document === "undefined") {
+                return; // serverside rendering
+            }
+
+            let elem = document.createElement("div");
+            let hasAnimation = elem.style.animationName !== undefined;
+
+            if (!hasAnimation) {
+                document.documentElement.classList.add("no-animations");
+            }
+        })();
+    </script>
+
+    <script>
+        // silent svelte console errors
+        if (typeof window === "undefined") {
+            window = {};
+        }
+        window.Prism = window.Prism || {};
+        window.Prism.manual = true;
+
+        if (typeof navigator !== "undefined" && navigator.userAgentData) {
+            navigator.userAgentData.getHighEntropyValues([
+                "architecture",
+            ]).then((ua) => {
+                window.UA_ARCHITECTURE = ua.architecture
+            });
+        }
+    </script>
+
+    <link href="../_app/immutable/entry/start.hXVHQl4p.js" rel="modulepreload">
+		<link href="../_app/immutable/chunks/DZ8gc1Yz.js" rel="modulepreload">
+		<link href="../_app/immutable/chunks/BDLcFjNi.js" rel="modulepreload">
+		<link href="../_app/immutable/chunks/8u5WfZgX.js" rel="modulepreload">
+		<link href="../_app/immutable/entry/app.vNISQno_.js" rel="modulepreload">
+		<link href="../_app/immutable/chunks/xihTtKlq.js" rel="modulepreload">
+		<link href="../_app/immutable/nodes/0.DVtGCnfv.js" rel="modulepreload">
+		<link href="../_app/immutable/nodes/5.C1_4Fw2M.js" rel="modulepreload">
+		<link href="../_app/immutable/chunks/C3kXMaAy.js" rel="modulepreload">
+		<link href="../_app/immutable/nodes/62.BKOysOn-.js" rel="modulepreload">
+		<link href="../_app/immutable/chunks/DxB8CMVb.js" rel="modulepreload">
+		<!--1up3dkm--><!----><title>Dashboard demo - PocketBase</title>
+		<link href="../_app/immutable/assets/main.Bv17Byor.css" rel="stylesheet">
+		<link href="../_app/immutable/assets/62.Dchrgzya.css" rel="stylesheet">
+
+    <script src="/pagefind/pagefind-ui.js"></script>
+</head>
+<body>
+    <div class="page-body"><!--[--><!--[0--><!--[--><!--[0--><!--[--><!--[--><!--[-1--><!--[--><div class="iframe-wrapper svelte-1up3dkm"><!--[0--><div class="alert svelte-1up3dkm"><div class="content txt-center">This is a demo of <a href="/">PocketBase</a> admin dashboard. The database resets every hour.
+                Realtime data and file upload are disabled. <br/> To login, use <div class="inline-flex flex-gap-0">Email: <strong>test@example.com</strong> <i class="link-hint txt-base ri-file-copy-line" title="Copy to clipboard"></i></div> and <div class="inline-flex flex-gap-0">Password: <strong>123456</strong> <i class="link-hint txt-base ri-file-copy-line" title="Copy to clipboard"></i></div></div></div><!--]--> <iframe src="https://pocketbase.io/_/#/login?demoEmail=test@example.com&amp;demoPassword=123456" title="Demo dashboard" frameborder="0" class="svelte-1up3dkm"></iframe></div><!--]--><!--]--><!--]--><!--]--><!--]--><!----><!--]--><!--]--> <!--[-1--><!--]--><!--]-->
+			
+			<script>
+				{
+					__sveltekit_r4l15 = {
+						base: new URL("..", location).pathname.slice(0, -1)
+					};
+
+					const element = document.currentScript.parentElement;
+
+					Promise.all([
+						import("../_app/immutable/entry/start.hXVHQl4p.js"),
+						import("../_app/immutable/entry/app.vNISQno_.js")
+					]).then(([kit, app]) => {
+						kit.start(app, element, {
+							node_ids: [0, 5, 62],
+							data: [null,null,null],
+							form: null,
+							error: null
+						});
+					});
+				}
+			</script>
+		</div>
+</body>
+</html>

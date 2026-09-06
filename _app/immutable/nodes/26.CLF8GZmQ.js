@@ -1,0 +1,75 @@
+import{I as e,P as t,X as n,_ as r,bt as i,gt as a,ht as o,it as s,nt as c,o as l,rt as u,tt as d,yt as f}from"../chunks/BDLcFjNi.js";import"../chunks/xihTtKlq.js";import"../chunks/C3kXMaAy.js";import{t as p}from"../chunks/BnicrACe.js";import{t as m}from"../chunks/CKGhWLYV.js";import{t as h}from"../chunks/CKC416Ky.js";var g=e(`<p>PocketBase comes with a thin abstraction between the local filesystem and S3.</p> <p>To configure which one will be used you can adjust the storage settings from <em>Dashboard > Settings > Files storage</em> section.</p> <p>The filesystem abstraction can be accessed programmatically via the <a target="_blank" rel="noopener noreferrer"><code>app.NewFilesystem()</code></a> method.</p> <p>Below are listed some of the most common operations but you can find more details in the <a target="_blank" rel="noopener noreferrer"><code>filesystem</code></a> subpackage.</p> <div class="alert alert-warning"><div class="icon"><i class="ri-error-warning-line"></i></div> <div class="content"><p>Always make sure to call <code>Close()</code> at the end for both the created filesystem instance and
+            the retrieved file readers to prevent leaking resources.</p></div></div> <!> <!> <p>To retrieve the file content of a single stored file you can use <a target="_blank" rel="noopener noreferrer"><code>GetReader(key)</code></a> . <br/> Note that file keys often contain a <strong>prefix</strong> (aka. the "path" to the file). For record
+    files the full key is <code>collectionId/recordId/filename</code>. <br/> To retrieve multiple files matching a specific <em>prefix</em> you can use <a target="_blank" rel="noopener noreferrer"><code>List(prefix)</code></a> .</p> <p>The below code shows a minimal example how to retrieve a single record file and copy its content into a <code>bytes.Buffer</code>.</p> <!> <!> <p>There are several methods to save <em>(aka. write/upload)</em> files depending on the available file content
+    source:</p> <ul><li><a target="_blank" rel="noopener noreferrer"><code>Upload([]byte, key)</code></a></li> <li><a target="_blank" rel="noopener noreferrer"><code>UploadFile(*filesystem.File, key)</code></a></li> <li><a target="_blank" rel="noopener noreferrer"><code>UploadMultipart(*multipart.FileHeader, key)</code></a></li></ul> <p>Most users rarely will have to use the above methods directly because for collection records the file
+    persistence is handled transparently when saving the record model (it will also perform size and MIME type
+    validation based on the collection <code>file</code> field options). For example:</p> <!> <!> <p>Files can be deleted from the storage filesystem using <a target="_blank" rel="noopener noreferrer"><code>Delete(key)</code></a> .</p> <p>Similar to the previous section, most users rarely will have to use the <code>Delete</code> file method directly
+    because for collection records the file deletion is handled transparently when removing the existing filename
+    from the record model (this also ensures that the db entry referencing the file is also removed). For example:</p> <!>`,1);function _(e,_){a(_,!1),l();var v=g(),y=s(c(v),4),b=s(d(y));f(),i(y);var x=s(y,2),S=s(d(x));f(),i(x);var C=s(x,4);h(C,{});var w=s(C,2);p(w,{title:`Reading files`});var T=s(w,2),E=s(d(T)),D=s(E,12);f(),i(T);var O=s(T,4);m(O,{language:`go`,content:`
+        record, err := app.FindAuthRecordByEmail("users", "test@example.com")
+        if err != nil {
+            return err
+        }
+
+        // construct the full file key by concatenating the record storage path with the specific filename
+        avatarKey := record.BaseFilesPath() + "/" + record.GetString("avatar")
+
+        // initialize the filesystem
+        fsys, err := app.NewFilesystem()
+        if err != nil {
+            return err
+        }
+        defer fsys.Close()
+
+        // retrieve a file reader for the avatar key
+        r, err := fsys.GetReader(avatarKey)
+        if err != nil {
+            return err
+        }
+        defer r.Close()
+
+        // do something with the reader...
+        content := new(bytes.Buffer)
+        _, err = io.Copy(content, r)
+        if err != nil {
+            return err
+        }
+    `});var k=s(O,2);p(k,{title:`Saving files`});var A=s(k,4),j=d(A),M=u(j),N=s(j,2),P=u(N),F=s(N,2),I=u(F);i(A);var L=s(A,4);m(L,{language:`go`,content:`
+        record, err := app.FindRecordById("articles", "RECORD_ID")
+        if err != nil {
+            return err
+        }
+
+        // Other available File factories
+        // - filesystem.NewFileFromBytes(data, name)
+        // - filesystem.NewFileFromURL(ctx, url)
+        // - filesystem.NewFileFromMultipart(mh)
+        f, err := filesystem.NewFileFromPath("/local/path/to/file")
+
+        // set new file (can be single *filesytem.File or multiple []*filesystem.File)
+        // (if the record has an old file it is automatically deleted on successful Save)
+        record.Set("yourFileField", f)
+
+        err = app.Save(record)
+        if err != nil {
+            return err
+        }
+    `});var R=s(L,2);p(R,{title:`Deleting files`});var z=s(R,2),B=s(d(z));f(),i(z);var V=s(z,4);m(V,{language:`go`,content:`
+        record, err := app.FindRecordById("articles", "RECORD_ID")
+        if err != nil {
+            return err
+        }
+
+        // if you want to "reset" a file field (aka. deleting the associated single or multiple files)
+        // you can set it to nil
+        record.Set("yourFileField", nil)
+
+        // OR if you just want to remove individual file(s) from a multiple file field you can use the "-" modifier
+        // (the value could be a single filename string or slice of filename strings)
+        record.Set("yourFileField-", "example_52iWbGinWd.txt")
+
+        err = app.Save(record)
+        if err != nil {
+            return err
+        }
+    `}),n(()=>{r(b,`href`,`https://pkg.go.dev/github.com/pocketbase/pocketbase/core#BaseApp.NewFilesystem`),r(S,`href`,`https://pkg.go.dev/github.com/pocketbase/pocketbase/tools/filesystem`),r(E,`href`,`https://pkg.go.dev/github.com/pocketbase/pocketbase/tools/filesystem#System.GetReader`),r(D,`href`,`https://pkg.go.dev/github.com/pocketbase/pocketbase/tools/filesystem#System.List`),r(M,`href`,`https://pkg.go.dev/github.com/pocketbase/pocketbase/tools/filesystem#System.Upload`),r(P,`href`,`https://pkg.go.dev/github.com/pocketbase/pocketbase/tools/filesystem#System.UploadFile`),r(I,`href`,`https://pkg.go.dev/github.com/pocketbase/pocketbase/tools/filesystem#System.UploadFile`),r(B,`href`,`https://pkg.go.dev/github.com/pocketbase/pocketbase/tools/filesystem#System.Delete`)}),t(e,v),o()}export{_ as component};
