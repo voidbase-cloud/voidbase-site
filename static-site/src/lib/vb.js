@@ -1,12 +1,13 @@
-// The site's voidbase backend (vb/): the PocketBase JS SDK against PB_VB_URL, plus the cloud control plane routes.
+// The site's voidbase backend: the PocketBase JS SDK against the origin this site is served from (the backend serves
+// pb_public itself, so "/" is right in production and behind the vite dev proxy); PB_VB_URL points elsewhere when set.
 import PocketBase from "pocketbase";
 
-export const VB_URL = (import.meta.env.PB_VB_URL || "http://127.0.0.1:8090").replace(/\/$/, "");
+export const VB_URL = (import.meta.env.PB_VB_URL || "").replace(/\/$/, "");
 
 let client = null;
 export function vb() {
     if (!client) {
-        client = new PocketBase(VB_URL);
+        client = new PocketBase(VB_URL || "/");
         client.autoCancellation(false);
     }
     return client;

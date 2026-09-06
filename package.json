@@ -1,17 +1,18 @@
 {
-  "name": "vb",
+  "name": "voidbase-site",
   "private": true,
   "type": "module",
-  "description": "The voidbase site's own backend: PocketBase's API and admin panel plus the voidbase cloud control plane (Cloudflare sign-in, one-click instances), as a Bun process locally and on Cloudflare Workers in production",
+  "description": "voidbase.cloud: the static site (static-site/, prerendered into pb_public/) and its backend (PocketBase's API and admin panel plus the voidbase cloud control plane), one voidbase process locally and one Cloudflare Worker in production",
   "scripts": {
     "dev": "voidbase serve --dev --entry main.ts --http 0.0.0.0:8090",
-    "dev:custom": "voidbase serve --dev --entry main.ts --http 0.0.0.0:8090 --publicDir ../sk/build",
     "start": "bun main.ts --http 0.0.0.0:8090",
-    "start:custom": "bun main.ts --http 0.0.0.0:8090 --publicDir ../sk/build",
+    "site:dev": "cd static-site && bun run dev",
+    "site:build": "cd static-site && bun run build",
+    "build": "bun run site:build",
     "check": "tsc -p tsconfig.json",
     "superuser": "voidbase superuser upsert",
     "token": "voidbase token",
-    "deploy": "voidbase deploy",
+    "deploy": "bun run site:build && voidbase deploy",
     "bundle": "voidbase bundle",
     "release:push": "voidbase release push",
     "test": "bun test/cloud.ts"

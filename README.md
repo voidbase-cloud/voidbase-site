@@ -1,70 +1,48 @@
-# Backend with voidbase (`vb`)
+# voidbase.cloud
 
-The backend of this starter on [voidbase](../../voidbase): PocketBase's HTTP API, admin panel, JS hooks and
-migrations, as a single Bun process locally and on Cloudflare Workers (D1, R2, cron) in production. The frontend in
-`../sk` talks to `/api` and `/_` on port 8090. This directory keeps the layout of a PocketBase project (it is the
-`pb/` of [pocketbase-sveltekit-starter](https://github.com/spinspire/pocketbase-sveltekit-starter), in TypeScript):
+The site at https://voidbase.cloud and its backend, in one repository and one deployment. The layout is PocketBase's:
+the backend is the repository root (`main.ts`, `pb_hooks/`, `pb_migrations/`, `pb_data/`), and the site is served from
+`pb_public/` by that backend, next to `/api` and the admin panel at `/_/`. `static-site/` holds the site's source
+(SvelteKit, prerendered), whose build lands in `pb_public/`.
 
-| file | role |
+| path | role |
 | --- | --- |
-| `main.ts` | composes voidbase (as a library) with the extensions below and exports `register(app)`; the counterpart of a custom `main.go` |
-| `auditlog/auditlog.ts` | audit rows for the collections named in `AUDITLOG` |
-| `hooks/hooks.ts`, `hooks/email.ts` | the `hooks` collection actions (command, HTTP post, email templates) |
-| `webauthn/webauthn.ts` | passkeys (`/api/webauthn/*`) over `voidbase/passkeys` |
-| `data/email_templates/` | templates for the email action |
+| `main.ts` | voidbase as a library composed with this project's extensions (`register(app)`); `bun main.ts` runs it, `voidbase deploy` composes it into the Worker |
+| `cloud/` | the voidbase cloud control plane behind `/cloud`: Cloudflare sign-in, releases, one-click instances, the template marketplace (see below) |
+| `webauthn/`, `auditlog/`, `hooks/`, `data/` | passkeys (on), audit log and the `hooks` collection actions (off), email templates |
 | `pb_hooks/`, `pb_migrations/` | PocketBase-style JS hooks and migrations |
+| `pb_public/` | the built site (git-ignored): `bun run site:build` writes it, voidbase serves it at `/` |
 | `pb_data/` | SQLite, storage, `types.d.ts`, `.superuser-credentials` (created on first run, git-ignored) |
-
-There are two flavours of the backend:
-
-1. **standard** (`bun run dev` / `bun run start`): the stock `voidbase serve`, extended only by `./pb_hooks` and
-   `./pb_migrations`.
-2. **custom** (`bun run dev:custom` / `bun run start:custom`): `main.ts`, where voidbase is a library and this
-   project's TypeScript extensions are registered (passkeys by default; audit log and the `hooks` collection actions
-   are ready to switch on). Everything registered in `register(app)` also runs on Cloudflare: `voidbase deploy`
-   composes `main.ts` into the Worker.
+| `static-site/` | the site's source: docs, FAQ, the `/cloud` page; `bun run dev` there is a hot-reloading dev server proxying `/api` and `/_` to the backend |
+| `test/` | `bun test/cloud.ts`: the control plane end to end against mocks of Cloudflare, its OAuth and GitHub |
 
 ## Run it
 
 ```bash
-bun install             # once, at the repository root (workspaces: sk and vb)
-bun run dev             # from the root: sk on 5173 (proxying /api and /_) and vb on 8090, both with hot reload
+bun install && (cd static-site && bun install)
+cp .env.example .env               # fill in the OAuth clients, see Setup below
+bun run site:build                 # static-site -> pb_public
+bun run dev                        # http://127.0.0.1:8090: the site, /api, /_/ (restarts on changes to main.ts, pb_hooks, pb_migrations)
 ```
 
-Or per package: `cd vb && bun run dev` (stock server) / `bun run dev:custom` (`main.ts`), `cd sk && bun run dev`.
-The scripts are plain `voidbase serve` invocations with PocketBase's flags (`--http`, `--dir`, `--hooksDir`,
-`--migrationsDir`, `--publicDir`; `--dev` restarts on changes to `pb_hooks/`, `pb_migrations/` or `main.ts`);
-append your own after `--`, e.g. `bun run dev -- --http 127.0.0.1:8091`.
+While working on the site itself: `bun run site:dev` (port 5173, hot reload, backend calls proxied to 8090).
+`voidbase serve` picks `./pb_public` up automatically, like PocketBase's `--publicDir` default; the panel comes from
+the pinned PocketBase release (fetched once into `~/.cache/voidbase`).
 
-There is no `.env` here: voidbase reads `../.env` as well, where `PB_SUPERUSER_*` (upserted at start),
-`PB_USER_*` (a test user, created once) and `AUDITLOG` live. The admin panel (PocketBase's own build) is fetched
-once from the pinned release into `~/.cache/voidbase`.
-
-## Deploy to Cloudflare
-
-1. Create the deploy token (permissions pre-selected): `bun run token` prints the dashboard link.
-2. Put it in `../.env` as `VOIDBASE_DEPLOY_CF_API_KEY=...` (next to the `PB_*` variables), then:
+## Deploy
 
 ```bash
-cd sk && bun run build && cd ../vb
-bun run deploy            # voidbase deploy --public-dir ../sk/build
+bun run token                      # the dashboard link for the deploy token; put it in .env.local as VOIDBASE_DEPLOY_CF_API_KEY
+bun run deploy                     # site:build, then voidbase deploy: D1, R2, queue, hub, the Worker with pb_public as its assets
 ```
 
-It creates the D1 database and R2 bucket on your account, generates the Void project inside the voidbase package
-(`node_modules/voidbase/.cloud/<name>`, nothing new in this directory) with `main.ts` composed in, stores the
-superuser as worker secrets (`PB_SUPERUSER_*` from `../.env` if set, otherwise a generated password saved in
-`pb_data/.superuser-credentials`) and uploads the Worker. The URL and a health check are printed at the end.
-Details, quotas and the other paths are in `voidbase/docs/deploy.md`.
+One Worker serves everything: `VOIDBASE_DEPLOY_DOMAIN` lists its hostnames (`voidbase.cloud,www.voidbase.cloud,api.voidbase.cloud`
+for the real site; the first is the URL the deploy reports), attached through the Workers Custom Domains API. The
+values in `VOIDBASE_DEPLOY_VARS` are baked into the Worker, `VOIDBASE_DEPLOY_SECRETS` become Worker secrets.
+`.github/workflows/deploy.yml` does the same on every push when the repository has the deploy token and the OAuth
+secrets; without them it only builds the site. Details and quotas: `voidbase/docs/deploy.md`.
 
-## Notes
-
-- `/api/config`, `/api/hello`, `/api/generate` come from `pb_hooks`; `/api/ts-hello` from `main.ts`.
-- `sk`'s `typegen` reads a SQLite `data.db`: `pb_data/data.db` here has PocketBase's table layout, so
-  `pocketbase-typegen --db ../vb/pb_data/data.db` works too.
-- Platform differences on Cloudflare (D1 batches instead of transactions, per-isolate rate limits, polling
-  realtime, backup format) are in `voidbase/docs/differences.md`; none apply to the local Bun process.
-
-## voidbase cloud (the /cloud page's backend)
+## The /cloud page's backend
 
 `cloud/index.ts` turns this backend into the control plane of the site's **Cloud** page: sign in with Cloudflare,
 see your voidbase instances, create or delete one with a click. It is the dogfood loop: this backend is itself an
@@ -72,7 +50,7 @@ instance, listed as the `system` row, and an admin can delete it from the page.
 
 | piece | what it does |
 | --- | --- |
-| `cloudflare` OAuth2 provider on `users` | enabled on the first request from `CF_OAUTH_CLIENT_ID` / `CF_OAUTH_CLIENT_SECRET` (voidbase's provider: OIDC on dash.cloudflare.com, identity from the API's `GET /user`, scopes from `CF_OAUTH_SCOPES`) |
+| `cloudflare` OAuth2 provider on `users` | enabled at bootstrap from `CF_OAUTH_CLIENT_ID` / `CF_OAUTH_CLIENT_SECRET` (voidbase's provider: OIDC on dash.cloudflare.com, identity from the API's `GET /user`, scopes from `CF_OAUTH_SCOPES`) |
 | `cf_connections` | per user: access/refresh token (sealed with `VOIDBASE_ENCRYPTION_KEY`; a deployed backend refuses to store them unsealed), expiry, the accounts granted on the consent screen (no API rules: superuser-only) |
 | `vb_instances` | the registry: owner, name, account, url, status, release, superuser email, `system` for this backend. The generated password is returned once with the creation and never stored (`GET .../credentials` gives url, email and panel) |
 | `__releases__/<version>/` in storage | the generic voidbase Worker + panel built by `voidbase bundle`, uploaded with `voidbase bundle --push` (or `voidbase release push <dir>`); `__releases__/current` points at the active one |
@@ -113,9 +91,9 @@ never unlinkable; admins may also wire further repositories (from a template or 
    a logo; the logo is `static/images/favicon/android-chrome-512x512.png`, set through `PATCH .../oauth_clients/<id>` with
    `logo_uri`, then `visibility: public` (Cloudflare re-hosts the image). A private client is enough for members of your own account.
 2. `cp .env.example .env`, fill in the client id/secret (and the GitHub OAuth app's for the marketplace), `VOIDBASE_ENCRYPTION_KEY` (32 random chars: `openssl rand -hex 16`), `VB_ADMIN_EMAILS` (who may delete the system instance; that action also needs `VB_ALLOW_SELF_DELETE=1`, off by default).
-3. `bun run dev`, then build and upload a release: `bun run bundle -- --push http://127.0.0.1:8090 --token <superuser token>`
+3. `bun run site:build && bun run dev`, then build and upload a release: `bun run bundle -- --push http://127.0.0.1:8090 --token <superuser token>`
    (`voidbase superuser` / `POST /api/collections/_superusers/auth-with-password` gives the token).
-4. Deploy: `bun run deploy` (`VOIDBASE_DEPLOY_CF_API_KEY` in `../.env.local`, never in the committed `.env`). The account
+4. Deploy: `bun run deploy` (`VOIDBASE_DEPLOY_CF_API_KEY` in `.env.local`, never in the committed `.env`). The account
    needs R2 enabled once in the dashboard (R2 Object Storage > Enable). `VOIDBASE_DEPLOY_DOMAIN=api.voidbase.cloud` binds the
    Worker to that hostname on the account's zone through the Workers Custom Domains API (workers.dev off; Cloudflare creates the
    DNS record and certificate; needs only Workers Scripts edit, and the account must have a workers.dev subdomain, which

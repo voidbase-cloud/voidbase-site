@@ -3,4 +3,8 @@
 /*.zip
 /tmp
 /.env
+/.env.local
 /.void
+# the static site's build (bun run site:build); voidbase serves it at /
+/pb_public/*
+!/pb_public/.gitkeep

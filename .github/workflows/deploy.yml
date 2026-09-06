@@ -1,4 +1,13 @@
-name: Build and publish to gh-pages
+# voidbase.cloud: the static site is prerendered into pb_public/ and deployed together with its backend as one
+# Cloudflare Worker (`voidbase deploy`), which serves the site at /, the API at /api and the admin panel at /_/.
+#
+# Secrets (Settings > Secrets and variables > Actions): VOIDBASE_DEPLOY_CF_API_KEY (`bun run token` prints the
+# dashboard link that pre-selects its permissions), CF_OAUTH_CLIENT_ID, CF_OAUTH_CLIENT_SECRET, GH_OAUTH_CLIENT_ID,
+# GH_OAUTH_CLIENT_SECRET, VOIDBASE_ENCRYPTION_KEY, VOIDBASE_SUPERUSER_EMAIL, VOIDBASE_SUPERUSER_PASSWORD.
+# Variables: VOIDBASE_DEPLOY_DOMAIN (e.g. voidbase.cloud,www.voidbase.cloud,api.voidbase.cloud), VB_ADMIN_EMAILS.
+# Without the deploy token the workflow only builds the site (a fork or a repository made from this template
+# deploys from its owner's machine with `bun run deploy`, or adds the secrets).
+name: Build the site and deploy the Worker
 
 on:
   push:
@@ -6,50 +15,50 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: gh-pages
+  group: deploy
   cancel-in-progress: true
 
 jobs:
-  build-and-publish:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      VOIDBASE_DEPLOY_CF_API_KEY: ${{ secrets.VOIDBASE_DEPLOY_CF_API_KEY }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: "1.3.14"
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+      - name: Install (backend and site)
+        run: |
+          bun install --frozen-lockfile
+          cd static-site && bun install --frozen-lockfile
 
-      - name: Generate Void codegen (.void/tsconfig.json)
-        run: bunx void prepare
+      # .env files are git-ignored: the public PB_* values come from the tracked examples
+      - name: Build the site into pb_public
+        run: |
+          cd static-site
+          cp -n .env.example .env
+          bun run build
+          test -f ../pb_public/index.html
 
-      # .env is git-ignored: the public PB_* values come from the tracked .env.example
-      - name: Provide .env from .env.example
-        run: cp -n .env.example .env
-
-      - name: Build static site
-        run: bun run build
+      - name: Deploy the Worker (site + API)
+        if: ${{ env.VOIDBASE_DEPLOY_CF_API_KEY != '' }}
         env:
-          # the deployed vb backend that /cloud talks to (Settings > Secrets and variables > Actions > Variables)
-          PB_VB_URL: ${{ vars.PB_VB_URL }}
-
-      # Push ONLY the built output to the `gh-pages` branch.
-      # force_orphan keeps that branch at a single commit, so neither the
-      # source history nor the gh-pages history accumulates build artifacts.
-      - name: Publish build/ to gh-pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build
-          publish_branch: gh-pages
-          force_orphan: true
-          # the site's custom domain, from the PAGES_CNAME repository variable (Settings > Secrets and variables >
-          # Actions > Variables); unset, GitHub Pages serves the site at <owner>.github.io/<repo>. voidbase.cloud sets
-          # it for itself, and a repository created from this template on voidbase.cloud gets it from the form.
-          cname: ${{ vars.PAGES_CNAME }}
-          commit_message: "deploy: ${{ github.sha }}"
+          CF_OAUTH_CLIENT_ID: ${{ secrets.CF_OAUTH_CLIENT_ID }}
+          CF_OAUTH_CLIENT_SECRET: ${{ secrets.CF_OAUTH_CLIENT_SECRET }}
+          GH_OAUTH_CLIENT_ID: ${{ secrets.GH_OAUTH_CLIENT_ID }}
+          GH_OAUTH_CLIENT_SECRET: ${{ secrets.GH_OAUTH_CLIENT_SECRET }}
+          VOIDBASE_ENCRYPTION_KEY: ${{ secrets.VOIDBASE_ENCRYPTION_KEY }}
+          VOIDBASE_SUPERUSER_EMAIL: ${{ secrets.VOIDBASE_SUPERUSER_EMAIL }}
+          VOIDBASE_SUPERUSER_PASSWORD: ${{ secrets.VOIDBASE_SUPERUSER_PASSWORD }}
+          VOIDBASE_DEPLOY_DOMAIN: ${{ vars.VOIDBASE_DEPLOY_DOMAIN }}
+          VB_ADMIN_EMAILS: ${{ vars.VB_ADMIN_EMAILS }}
+          VOIDBASE_APP_DIR: pb_public
+        run: |
+          cp -n .env.example .env
+          bunx voidbase deploy --public-dir pb_public

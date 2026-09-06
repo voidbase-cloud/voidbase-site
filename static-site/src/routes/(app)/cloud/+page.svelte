@@ -201,7 +201,7 @@
             <CloudflareSignIn class="btn btn-lg btn-primary" />
             <p class="txt-hint">
                 Cloudflare shows which accounts and permissions this site asks for. Nothing is created until you click
-                create. Backend: <code>{host(VB_URL)}</code>
+                create. Backend: <code>{VB_URL ? host(VB_URL) : "this site"}</code>
             </p>
         </div>
     {:else}
