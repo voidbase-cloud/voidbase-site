@@ -649,8 +649,8 @@ a,
         font-weight: normal;
         padding: 2px 3px;
         border-radius: var(--baseRadius);
-        background: var(--dangerAltColor);
-        color: var(--txtPrimaryColor);
+        background: #e7e2f8; // the void violet, tinted
+        color: #2b2447;
     }
     img {
         width: 40px;
