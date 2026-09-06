@@ -41,8 +41,8 @@ One Worker serves everything: `VOIDBASE_DEPLOY_DOMAIN` lists its hostnames (`voi
 for the real site; the first is the URL the deploy reports), attached through the Workers Custom Domains API.
 `static-site/static/_redirects` gives each hostname its role at the edge: `www` redirects to the apex, and the root of
 `api.voidbase.cloud` goes to the admin panel at `/_/` (the API is `/api` on every hostname; the site uses its own origin).
-Those host rules are written as zone Redirect Rules, which needs a user-owned token with Zone > Single Redirect (edit)
-in `VOIDBASE_DEPLOY_ZONE_TOKEN` (`.env.local`); the account-owned deploy token cannot carry that permission. The
+Those host rules are written as zone Redirect Rules, which needs Zone > Single Redirect > Edit on the deploy token
+(a zone permission, scoped to voidbase.cloud like its DNS permission). The
 values in `VOIDBASE_DEPLOY_VARS` are baked into the Worker, `VOIDBASE_DEPLOY_SECRETS` become Worker secrets.
 `.github/workflows/deploy.yml` does the same on every push when the repository has the deploy token and the OAuth
 secrets; without them it only builds the site. Details and quotas: `voidbase/docs/deploy.md`.
