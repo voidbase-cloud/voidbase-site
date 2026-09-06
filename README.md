@@ -20,6 +20,7 @@ the backend is the repository root (`main.ts`, `pb_hooks/`, `pb_migrations/`, `p
 
 ```bash
 bun install && (cd static-site && bun install)
+bun link @voidbase-cloud/voidbase   # optional: use the local voidbase checkout instead of the npm release (after `bun link` there)
 cp .env.example .env               # fill in the OAuth clients, see Setup below
 bun run site:build                 # static-site -> pb_public
 bun run dev                        # http://127.0.0.1:8090: the site, /api, /_/ (restarts on changes to main.ts, pb_hooks, pb_migrations)
