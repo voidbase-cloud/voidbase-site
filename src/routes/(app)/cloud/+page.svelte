@@ -1,6 +1,7 @@
 <script>
     import { onMount } from "svelte";
     import { vb, cloud, errorMessage, VB_URL } from "@/vb.js";
+    import CloudflareSignIn from "@/components/CloudflareSignIn.svelte";
 
     let ready = false;
     let signedIn = false;
@@ -21,6 +22,7 @@
         signedIn = pb.authStore.isValid;
         const unsub = pb.authStore.onChange(() => {
             signedIn = pb.authStore.isValid;
+            if (signedIn && !me) load();
         });
         if (signedIn) load();
         ready = true;
@@ -148,10 +150,7 @@
         <div class="loader" />
     {:else if !signedIn}
         <div class="cloud-panel">
-            <button type="button" class="btn btn-lg btn-primary" on:click={signIn} disabled={busy === "signin"}>
-                <i class="ri-cloud-line" />
-                <span class="txt">{busy === "signin" ? "Waiting for Cloudflare…" : "Sign in with Cloudflare"}</span>
-            </button>
+            <CloudflareSignIn class="btn btn-lg btn-primary" />
             <p class="txt-hint m-t-10 m-b-0">
                 Cloudflare shows which account(s) and permissions this site asks for. Nothing is created until you click
                 create. Backend: <code>{VB_URL}</code>

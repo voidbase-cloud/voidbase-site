@@ -1,6 +1,7 @@
 <script>
     import Toggler from "@/components/Toggler.svelte";
     import Searchbar from "@/components/Searchbar.svelte";
+    import CloudflareSignIn from "@/components/CloudflareSignIn.svelte";
 
     export let compact = false;
 </script>
@@ -44,12 +45,13 @@
                     <a href="/docs" class="dropdown-item" data-sveltekit-preload-data>
                         <span class="txt">Documentation</span>
                     </a>
+                    <hr />
+                    <CloudflareSignIn class="dropdown-item" />
                 </Toggler>
             </button>
 
             <nav class="main-menu">
                 <a href="/faq" class="btn btn-secondary" data-sveltekit-preload-data>FAQ</a>
-                <a href="/cloud" class="btn btn-secondary" data-sveltekit-preload-data>Cloud</a>
                 <a
                     href={import.meta.env.PB_REPO_URL}
                     class="btn btn-circle btn-secondary"
@@ -62,6 +64,7 @@
                 <a href="/docs" class="btn btn-outline" data-sveltekit-preload-data>
                     <span class="txt">Documentation</span>
                 </a>
+                <CloudflareSignIn class="btn btn-secondary cf-header" />
             </nav>
         </div>
     </div>
