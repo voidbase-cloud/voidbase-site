@@ -316,7 +316,7 @@
 </script>
 
 <svelte:head>
-    <title>PocketBase - Open Source backend in 1 file</title>
+    <title>voidbase - PocketBase-compatible backend on Cloudflare</title>
 </svelte:head>
 
 <svelte:window on:mousemove={onMousemove} />

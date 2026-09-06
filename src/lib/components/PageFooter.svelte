@@ -1,14 +1,5 @@
 <script>
-    import { onMount } from "svelte";
     import tooltip from "@/actions/tooltip";
-
-    // build separately for very basic spam protection
-    let supportEmail = "support";
-    onMount(() => {
-        setTimeout(() => {
-            supportEmail += "@" + "pocketbase.io";
-        }, 1000);
-    });
 </script>
 
 <footer class="page-footer">
@@ -47,14 +38,16 @@
             </nav>
 
             <div class="footer-col socials">
-                <div class="watermark-logo">Pocket<strong>Base</strong></div>
+                <div class="watermark-logo">void<strong>base</strong></div>
                 <a
-                    href="mailto:{supportEmail}"
+                    href="https://github.com/voidbase-cloud"
+                    rel="noopener noreferrer"
+                    target="_blank"
                     class="btn btn-secondary btn-circle btn-hint social-item"
-                    aria-label="Contact support"
-                    use:tooltip={{ text: "Contact " + supportEmail, position: "top" }}
+                    aria-label="voidbase on GitHub"
+                    use:tooltip={{ text: "The voidbase-cloud organization", position: "top" }}
                 >
-                    <i class="ri-mail-line" />
+                    <i class="ri-community-line" />
                 </a>
                 <a
                     href={import.meta.env.PB_REPO_URL}
@@ -68,10 +61,22 @@
                 </a>
             </div>
         </div>
+        <div class="credits-bar">
+            <span class="txt">
+                void<strong>base</strong> is an independent project, not affiliated with or endorsed by PocketBase.
+            </span>
+            <span class="txt">
+                It runs
+                <a href="https://pocketbase.io" target="_blank" rel="noopener noreferrer">PocketBase</a>'s API and admin
+                panel and is built on
+                <a href="https://void.cloud" target="_blank" rel="noopener noreferrer">Void</a>'s Cloudflare runtime; the two
+                power most of what runs here and keep shipping the updates voidbase builds on.
+            </span>
+        </div>
         <div class="secondary-bar">
             <div class="terms">
                 <span class="txt">
-                    © 2023-{new Date().getFullYear()} Pocket<strong>Base</strong>
+                    © {new Date().getFullYear()} void<strong>base</strong>
                 </span>
                 <span class="gopher-credit">
                     The Gopher artwork is from
@@ -86,14 +91,14 @@
             </div>
             <div class="flex-fill" />
             <div class="credit">
-                Crafted by <a
+                Site design by <a
                     href="https://gani.bg"
                     target="_blank"
                     rel="noopener noreferrer"
                     class="link-hint"
                 >
                     <strong>Gani</strong>
-                </a>
+                </a> (PocketBase)
             </div>
         </div>
     </div>

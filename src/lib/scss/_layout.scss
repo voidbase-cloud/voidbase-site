@@ -159,6 +159,24 @@ body:has(.scroll-top-active) .page-header {
             user-select: none;
         }
     }
+    .credits-bar {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        width: 100%;
+        font-size: 0.9em;
+        line-height: 1.5;
+        color: var(--txtHintColor);
+        border-top: 1px solid var(--baseAlt2Color);
+        padding: var(--smSpacing) 0;
+        a {
+            color: inherit;
+            text-decoration: underline;
+            &:hover {
+                color: var(--txtPrimaryColor);
+            }
+        }
+    }
     .secondary-bar {
         display: flex;
         width: 100%;
