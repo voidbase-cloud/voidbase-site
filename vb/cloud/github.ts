@@ -104,7 +104,11 @@ export function registerGithub(app: VoidbaseApp, d: GithubDeps) {
   // the first template, this site, is seeded once the collection exists (a migration cannot see a collection it just created)
   H.onBootstrap(async (e: { next: () => Promise<unknown> }) => {
     await e.next();
-    try {
+    try { await seedTemplate(); } catch (err) { console.warn("vbcloud: template seeding", err); }
+    try { await ensureSiteRepo(); } catch (err) { console.warn("vbcloud: site repository", err); }
+  });
+  async function seedTemplate(): Promise<void> {
+    {
       const existing = (await H.$app.findRecordsByFilter("vb_templates", "name = 'voidbase-site'", "", 1, 0)) as HookRecord[];
       if (existing.length) return;
       const t = new H.Record(H.$app.findCollectionByNameOrId("vb_templates"));
@@ -113,9 +117,8 @@ export function registerGithub(app: VoidbaseApp, d: GithubDeps) {
       t.set("url", "https://github.com/voidbase-cloud/voidbase-site");
       t.set("variables", [{ name: "PB_VB_URL", source: "instance_url" }, { name: "PAGES_CNAME", source: "input:domain" }]);
       await H.$app.save(t); console.log("vbcloud: template voidbase-site registered");
-    } catch (err) { console.warn("vbcloud: template seeding", err); }
-    try { await ensureSiteRepo(); } catch (err) { console.warn("vbcloud: site repository", err); }
-  });
+    }
+  }
   // the site's own repository as a system row of vb_repos, wired to the system instance (this backend); idempotent
   async function ensureSiteRepo(): Promise<void> {
     const c = cfg(); if (!c.siteRepo || !c.worker) return;
