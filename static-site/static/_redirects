@@ -1,0 +1,4 @@
+# One Worker, three hostnames (VOIDBASE_DEPLOY_DOMAIN): the site on the apex, the API and the admin panel on api.
+# voidbase deploy turns these into Void edge rules (evaluated before the static assets and the Worker).
+https://www.voidbase.cloud/*  https://voidbase.cloud/:splat  301
+https://api.voidbase.cloud/   /_/                             302
