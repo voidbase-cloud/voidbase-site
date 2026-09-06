@@ -1,6 +1,21 @@
 {
-  "extends": "./.svelte-kit/tsconfig.json",
   "compilerOptions": {
-    "types": ["void/env"]
-  }
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "types": [
+      "bun-types"
+    ],
+    "skipLibCheck": true
+  },
+  "include": [
+    "main.ts",
+    "auditlog",
+    "hooks",
+    "webauthn",
+    "cloud",
+    "test"
+  ]
 }
