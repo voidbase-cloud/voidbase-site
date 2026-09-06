@@ -1,0 +1,44 @@
+name: Build and publish to gh-pages
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gh-pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Void codegen (.void/tsconfig.json)
+        run: bunx void prepare
+
+      - name: Build static site
+        run: bun run build
+
+      # Push ONLY the built output to the `gh-pages` branch.
+      # force_orphan keeps that branch at a single commit, so neither the
+      # source history nor the gh-pages history accumulates build artifacts.
+      - name: Publish build/ to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build
+          publish_branch: gh-pages
+          force_orphan: true
+          commit_message: "deploy: ${{ github.sha }}"

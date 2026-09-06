@@ -6,7 +6,7 @@
   "scripts": {
     "jstypes": "typedoc --options ./jsvm/typedoc.json",
     "dev": "vite dev",
-    "build": "vite build && rm -rf static/pagefind && pagefind --site build --output-path static/pagefind --glob docs/**/*.{html}",
+    "build": "vite build && rm -rf static/pagefind && pagefind --site build --output-path static/pagefind --glob docs/**/*.{html} && rm -rf build/pagefind && cp -r static/pagefind build/pagefind",
     "preview": "vite preview"
   },
   "prettier": {
@@ -17,16 +17,16 @@
   "devDependencies": {
     "@sveltejs/adapter-cloudflare": "^7.2.9",
     "@sveltejs/adapter-static": "^3.0.0",
-    "@sveltejs/kit": "^2.0.0",
-    "@sveltejs/vite-plugin-svelte": "^3.0.0",
+    "@sveltejs/kit": "^2.70.3",
+    "@sveltejs/vite-plugin-svelte": "^7",
     "luxon": "^3.5.0",
     "pagefind": "^1.1.1",
     "prismjs": "^1.29.0",
-    "sass": "^1.56.2",
-    "svelte": "^4.0.0",
+    "sass": "^1.70",
+    "svelte": "^5",
     "typedoc": "^0.24.8",
     "typedoc-theme-hierarchy": "^4.0.0",
-    "vite": "^5.4.10",
+    "vite": "^8",
     "void": "^0.10.13"
   }
 }
