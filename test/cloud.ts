@@ -177,7 +177,7 @@ try {
   check("the collection itself lists only the owner's rows through the API rules, without the password", viaSdk.status === 200 && viaSdk.json.totalItems === 2 && viaSdk.json.items.every((i: Record<string, unknown>) => i.superuser_password === undefined), JSON.stringify(viaSdk.json).slice(0, 300));
   const del = await api("DELETE", `/api/vbcloud/instances/${inst.id}`, undefined, U);
   const st2 = await cfState();
-  check("one click delete: worker, queue, D1 and bucket gone, row removed", del.status === 200 && del.json.deleted.length === 4 && del.json.errors.length === 0 && !st2.scripts["vb-my-shop"] && !st2.d1.some((d: string[]) => d[0] === "vb-my-shop-db") && (await api("GET", "/api/vbcloud/instances", undefined, U)).json.instances.every((i: Record<string, unknown>) => i.name !== "vb-my-shop"), JSON.stringify([del.json, Object.keys(st2.scripts)]));
+  check("one click delete: queue consumer, worker, queue, D1 and bucket gone, row removed", del.status === 200 && del.json.deleted.length === 5 && del.json.errors.length === 0 && !st2.scripts["vb-my-shop"] && !st2.d1.some((d: string[]) => d[0] === "vb-my-shop-db") && (await api("GET", "/api/vbcloud/instances", undefined, U)).json.instances.every((i: Record<string, unknown>) => i.name !== "vb-my-shop"), JSON.stringify([del.json, Object.keys(st2.scripts)]));
   const delAgain = await api("DELETE", `/api/vbcloud/instances/${inst.id}`, undefined, U);
   check("deleting a removed instance is a 404", delAgain.status === 404);
 
