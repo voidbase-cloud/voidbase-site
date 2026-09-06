@@ -34,9 +34,22 @@ One-time setup in the GitHub repo, after the first workflow run has created
 the branch: **Settings → Pages → Build and deployment → Source: Deploy from a
 branch → Branch: `gh-pages` / `/ (root)`**.
 
-The site is served at **voidbase.cloud**: the workflow writes the `CNAME` file for GitHub Pages, the zone on Cloudflare needs
-A/AAAA records for the apex pointing at GitHub Pages (185.199.108-111.153, 2606:50c0:8000-8003::153, DNS only), and the
-backend lives at api.voidbase.cloud (`PB_VB_URL`).
+The site is served at **voidbase.cloud**: the workflow writes the `CNAME` file for GitHub Pages from the `PAGES_CNAME`
+repository variable, the zone on Cloudflare needs A/AAAA records for the apex pointing at GitHub Pages
+(185.199.108-111.153, 2606:50c0:8000-8003::153, DNS only), and the backend lives at api.voidbase.cloud (`PB_VB_URL`).
+
+## Using this repository as a template
+
+This is a GitHub template repository, and the first template of the [voidbase cloud marketplace](https://voidbase.cloud/cloud):
+"Use this template" there creates a copy in your GitHub account wired to one of your voidbase instances. Everything a
+copy needs is a repository variable (Settings > Secrets and variables > Actions > Variables), never an edit:
+
+| Variable | Purpose |
+| --- | --- |
+| `PB_VB_URL` | the voidbase backend the site talks to (`/cloud` and the SDK); the marketplace sets it to your instance's URL |
+| `PAGES_CNAME` | your custom domain for GitHub Pages; leave it unset to serve at `<owner>.github.io/<repo>` (then root-absolute links need a custom domain, see below) |
+
+Then enable Pages on the `gh-pages` branch after the first workflow run.
 
 The site uses root-absolute links and asset paths (`/docs`, `/images/...`,
 `/fonts/...`), so it must be served from the domain root. That means either:

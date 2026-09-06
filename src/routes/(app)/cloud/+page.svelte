@@ -16,10 +16,20 @@
     let account = "";
     let creds = {};
     let logs = [];
+    // template marketplace
+    let github = null; // { configured, connected, connection }
+    let templates = [];
+    let repos = [];
+    let repoForm = null; // { template, name, instance, private, domain }
 
     onMount(() => {
         const pb = vb();
         signedIn = pb.authStore.isValid;
+        // back from GitHub's consent screen (the backend's callback sends the browser here)
+        const q = new URLSearchParams(location.search);
+        if (q.get("github") === "connected") notice = "GitHub connected.";
+        else if (q.get("github") === "error") error = "GitHub: " + (q.get("message") || "sign-in failed");
+        if (q.has("github")) history.replaceState(null, "", location.pathname);
         const unsub = pb.authStore.onChange(() => {
             signedIn = pb.authStore.isValid;
             if (signedIn && !me) load();
@@ -34,10 +44,13 @@
         try {
             me = await cloud("GET", "/api/vbcloud/me");
             if (!account && me?.connection?.accounts?.length) account = me.connection.accounts[0].id;
-            [release, instances] = await Promise.all([
+            [release, instances, github, templates] = await Promise.all([
                 cloud("GET", "/api/vbcloud/release").catch(() => null),
                 cloud("GET", "/api/vbcloud/instances").then((r) => r.instances),
+                cloud("GET", "/api/vbcloud/github").catch(() => null),
+                cloud("GET", "/api/vbcloud/templates").then((r) => r.templates).catch(() => []),
             ]);
+            repos = me?.user?.superuser ? [] : await cloud("GET", "/api/vbcloud/repos").then((r) => r.repos).catch(() => []);
         } catch (err) {
             if (err?.status === 401 || err?.status === 403) {
                 vb().authStore.clear();
@@ -57,6 +70,60 @@
             error = errorMessage(err);
         } finally {
             busy = "";
+        }
+    }
+
+    async function connectGithub() {
+        error = "";
+        busy = "github";
+        try {
+            const r = await cloud("GET", "/api/vbcloud/github/connect");
+            location.href = r.url; // GitHub, then back here through the backend's callback
+        } catch (err) {
+            error = errorMessage(err);
+            busy = "";
+        }
+    }
+
+    async function disconnectGithub() {
+        if (!confirm("Disconnect GitHub? Linked repositories stay in your account; this site only forgets the token.")) return;
+        error = "";
+        try {
+            await cloud("DELETE", "/api/vbcloud/github");
+            await load();
+        } catch (err) {
+            error = errorMessage(err);
+        }
+    }
+
+    function startRepo(tpl) {
+        repoForm = { template: tpl.name, title: tpl.title, kind: tpl.kind, name: "", instance: instances.find((i) => i.status === "live")?.id || "", private: false, domain: "" };
+    }
+
+    async function createRepo() {
+        error = "";
+        notice = "";
+        busy = "repo";
+        try {
+            const r = await cloud("POST", "/api/vbcloud/repos", repoForm);
+            notice = `${r.repo.fullName} created from ${repoForm.title} and wired to ${r.repo.instanceName}.`;
+            repoForm = null;
+            await load();
+        } catch (err) {
+            error = errorMessage(err);
+        } finally {
+            busy = "";
+        }
+    }
+
+    async function unlinkRepo(repo) {
+        if (!confirm(`Unlink ${repo.fullName}?\n\nThe repository stays in your GitHub account; this site just stops listing it.`)) return;
+        error = "";
+        try {
+            await cloud("DELETE", `/api/vbcloud/repos/${repo.id}`);
+            await load();
+        } catch (err) {
+            error = errorMessage(err);
         }
     }
 
@@ -258,6 +325,96 @@
         {/if}
 
         {#if me && !me.user.superuser}
+            <h2>Templates</h2>
+            <p class="txt-hint">
+                Start from a template: a repository is created from it in your GitHub account and wired to one of your
+                instances (the instance URL becomes a repository variable its workflow reads). This site is the first
+                template.
+            </p>
+            {#if github && !github.configured}
+                <div class="alert alert-warning"><div class="content">The backend has no GitHub OAuth app configured (GH_OAUTH_CLIENT_ID). See vb/.env.example.</div></div>
+            {:else if github && !github.connected}
+                <div class="cloud-panel">
+                    <button type="button" class="btn btn-secondary" on:click={connectGithub} disabled={busy === "github"}>
+                        <i class="ri-github-fill" />
+                        <span class="txt">{busy === "github" ? "Going to GitHub…" : "Connect GitHub"}</span>
+                    </button>
+                    <p class="txt-hint m-t-10 m-b-0">GitHub asks for repository access ({github.scopes}) so this site can create repositories from templates in your account and set their variables.</p>
+                </div>
+            {:else if github}
+                <div class="cloud-toolbar">
+                    <div><i class="ri-github-fill" /> GitHub: <strong>@{github.connection.login}</strong></div>
+                    <div class="flex-fill" />
+                    <button type="button" class="btn btn-sm btn-secondary" on:click={disconnectGithub}>Disconnect</button>
+                </div>
+            {/if}
+
+            <div class="templates">
+                {#each templates as tpl (tpl.id)}
+                    <div class="template">
+                        <div class="template-body">
+                            <strong>{tpl.title}</strong>
+                            <span class="label">{tpl.kind}</span>
+                            <p class="txt-hint m-t-5 m-b-5">{tpl.description}</p>
+                            <a href={tpl.url} target="_blank" rel="noopener noreferrer" class="txt-hint">{tpl.repo}</a>
+                        </div>
+                        <div class="template-actions">
+                            <button type="button" class="btn btn-sm btn-primary" disabled={!github?.connected || !instances.some((i) => i.status === "live")} on:click={() => startRepo(tpl)} title={!github?.connected ? "Connect GitHub first" : !instances.some((i) => i.status === "live") ? "Create an instance first" : ""}>Use this template</button>
+                        </div>
+                    </div>
+                {/each}
+            </div>
+
+            {#if repoForm}
+                <form class="cloud-form" on:submit|preventDefault={createRepo}>
+                    <h3 class="m-b-10">New repository from {repoForm.title}</h3>
+                    <label>Repository name <input type="text" bind:value={repoForm.name} placeholder="my-site" required /></label>
+                    <label>Instance
+                        <select bind:value={repoForm.instance} required>
+                            {#each instances.filter((i) => i.status === "live") as inst}<option value={inst.id}>{inst.name} ({inst.url})</option>{/each}
+                        </select>
+                    </label>
+                    {#if repoForm.kind === "site"}
+                        <label>Custom domain for GitHub Pages (optional) <input type="text" bind:value={repoForm.domain} placeholder="www.example.com" /></label>
+                    {/if}
+                    <label class="inline"><input type="checkbox" bind:checked={repoForm.private} /> Private repository</label>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" disabled={busy === "repo"}>{busy === "repo" ? "Creating…" : "Create repository"}</button>
+                        <button type="button" class="btn btn-secondary" on:click={() => (repoForm = null)}>Cancel</button>
+                    </div>
+                </form>
+            {/if}
+
+            <h2>Your repositories</h2>
+            {#if !repos.length}
+                <p class="txt-hint">No repository is linked to an instance yet.</p>
+            {:else}
+                <div class="table-wrapper">
+                    <table class="table">
+                        <thead><tr><th>Repository</th><th>Template</th><th>Instance</th><th>Connected</th><th></th></tr></thead>
+                        <tbody>
+                            {#each repos as repo (repo.id)}
+                                <tr>
+                                    <td><a href={repo.htmlUrl} target="_blank" rel="noopener noreferrer">{repo.fullName}</a>{#if repo.private} <span class="label">private</span>{/if}{#if repo.status !== "ready"} <span class="label label-{repo.status}">{repo.status}</span>{/if}</td>
+                                    <td>{repo.templateTitle || repo.templateName || "—"}</td>
+                                    <td>{#if repo.instanceUrl}<a href={repo.instanceUrl} target="_blank" rel="noopener noreferrer">{repo.instanceName}</a>{:else}{repo.instanceName || "—"}{/if}</td>
+                                    <td>
+                                        {#if !repo.live?.checked}<span class="txt-hint">not checked</span>
+                                        {:else if !repo.live.exists}<span class="label label-error">repository gone</span>
+                                        {:else if repo.live.connected}<span class="label label-live">yes</span>
+                                        {:else}<span class="label label-warning" title="PB_VB_URL is {repo.live.backendUrl || 'unset'}">no</span>{/if}
+                                    </td>
+                                    <td class="actions">
+                                        <a href="{repo.htmlUrl}/actions" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-secondary">Actions</a>
+                                        <button type="button" class="btn btn-sm btn-secondary" on:click={() => unlinkRepo(repo)}>Unlink</button>
+                                    </td>
+                                </tr>
+                            {/each}
+                        </tbody>
+                    </table>
+                </div>
+            {/if}
+
             <h2>Create an instance</h2>
             {#if !release || !release.current}
                 <div class="alert alert-warning"><div class="content">No voidbase release has been uploaded to this backend yet (<code>voidbase bundle --push</code>).</div></div>
@@ -297,6 +454,12 @@
 </div>
 
 <style lang="scss">
+    .templates { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 15px; margin: 15px 0 25px; }
+    .template { display: flex; flex-direction: column; gap: 10px; padding: 15px; border: 1px solid var(--baseAlt2Color); border-radius: var(--lgRadius); background: var(--baseColor); }
+    .template-body .label { margin-left: 6px; }
+    .template-actions { margin-top: auto; }
+    .cloud-form label.inline { display: flex; align-items: center; gap: 8px; }
+    .form-actions { display: flex; gap: 10px; margin-top: 10px; }
     .cloud-panel { padding: var(--baseSpacing, 30px) 0; }
     .cloud-toolbar { display: flex; align-items: center; gap: 10px; margin: 20px 0; flex-wrap: wrap; }
     .flex-fill { flex: 1; }

@@ -8,20 +8,22 @@ import { join, resolve } from "node:path";
 import { assetHash, contentTypeFor, type ReleaseManifest } from "@voidbase-cloud/voidbase/cloud";
 const VOIDBASE = resolve(import.meta.dir, "../node_modules/@voidbase-cloud/voidbase");
 const freePort = () => { const s = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch: () => new Response() }); const p = s.port; s.stop(true); return p; };
-const OIDC_PORT = freePort(), CF_PORT = freePort(), VB_PORT = freePort();
-const OIDC = `http://127.0.0.1:${OIDC_PORT}`, CF = `http://127.0.0.1:${CF_PORT}`, VB = `http://127.0.0.1:${VB_PORT}`;
+const OIDC_PORT = freePort(), CF_PORT = freePort(), VB_PORT = freePort(), GH_PORT = freePort();
+const OIDC = `http://127.0.0.1:${OIDC_PORT}`, CF = `http://127.0.0.1:${CF_PORT}`, VB = `http://127.0.0.1:${VB_PORT}`, GH = `http://127.0.0.1:${GH_PORT}`;
 let pass = 0, fail = 0; const check = (l: string, ok: boolean, d = "") => { ok ? pass++ : fail++; console.log(`${ok ? "PASS" : "FAIL"}  ${l}${ok ? "" : "  " + d}`); };
 const waitFor = async (url: string, tries = 100) => { for (let i = 0; i < tries; i++) { try { const r = await fetch(url); if (r.status < 500) return; } catch { /* not up */ } await Bun.sleep(150); } throw new Error(`${url} did not come up`); };
 const data = mkdtempSync(join(tmpdir(), "vb-cloud-")); mkdirSync(`${data}/pb_data`, { recursive: true });
 const procs: ReturnType<typeof Bun.spawn>[] = [];
 procs.push(Bun.spawn(["bun", `${VOIDBASE}/test/mock-oidc.ts`, String(OIDC_PORT)], { stdout: "ignore", stderr: "inherit" }));
 procs.push(Bun.spawn(["bun", `${VOIDBASE}/test/cf-mock.ts`, String(CF_PORT)], { stdout: "ignore", stderr: "inherit" }));
+procs.push(Bun.spawn(["bun", resolve(import.meta.dir, "gh-mock.ts"), String(GH_PORT)], { stdout: "ignore", stderr: "inherit" }));
 const env = {
   ...process.env, VOIDBASE_SUPERUSER_EMAIL: "root@example.com", VOIDBASE_SUPERUSER_PASSWORD: "root-password-1", VOIDBASE_USER_EMAIL: "", VOIDBASE_USER_PASSWORD: "",
   CF_OAUTH_CLIENT_ID: "cf-test-client", CF_OAUTH_CLIENT_SECRET: "cf-s3cret", CF_OAUTH_AUTH_URL: `${OIDC}/authorize`, CF_OAUTH_TOKEN_URL: `${OIDC}/token`, CF_OAUTH_USERINFO_URL: `${OIDC}/userinfo`,
   CLOUDFLARE_API_BASE: CF, VOIDBASE_WORKER_NAME: "voidbase-site-backend", VOIDBASE_ACCOUNT_ID: "acc123", VB_ADMIN_EMAILS: "owner@example.com", VB_INSTANCE_PREFIX: "vb-", VB_MAX_INSTANCES_PER_USER: "2",
   VOIDBASE_LOG_MIN_LEVEL: "8",
   VOIDBASE_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef", VB_ALLOW_SELF_DELETE: "1",
+  GH_OAUTH_CLIENT_ID: "gh-test-client", GH_OAUTH_CLIENT_SECRET: "gh-s3cret", GITHUB_API_BASE: GH, GITHUB_OAUTH_BASE: GH, VB_SITE_URL: "http://site.test",
 };
 const server = Bun.spawn(["bun", resolve(import.meta.dir, "../main.ts"), "--http", `127.0.0.1:${VB_PORT}`, "--dir", `${data}/pb_data`], { cwd: resolve(import.meta.dir, ".."), env, stdout: "pipe", stderr: "pipe" });
 procs.push(server);
@@ -41,7 +43,7 @@ function fakeRelease(): string {
 const walk = (dir: string, base = dir): string[] => readdirSync(dir).flatMap((n) => { const f = join(dir, n); return statSync(f).isDirectory() ? walk(f, base) : [f.slice(base.length + 1)]; });
 
 try {
-  await waitFor(`${OIDC}/userinfo`); await waitFor(`${CF}/__calls`); await waitFor(`${VB}/api/health`);
+  await waitFor(`${OIDC}/userinfo`); await waitFor(`${CF}/__calls`); await waitFor(`${GH}/__state`); await waitFor(`${VB}/api/health`);
   const su = await api("POST", "/api/collections/_superusers/auth-with-password", { identity: "root@example.com", password: "root-password-1" });
   check("superuser login", su.status === 200, JSON.stringify(su.json)); const SU = String(su.json.token);
 
@@ -101,6 +103,47 @@ try {
     db.close();
     check("cloudflare tokens are sealed at rest (enc: prefix, not the bearer)", rows.length === 1 && rows[0]!.access_token.startsWith("enc:") && !rows[0]!.access_token.includes("cf-test-token") && rows[0]!.refresh_token.startsWith("enc:"), JSON.stringify(rows).slice(0, 120));
   }
+  // ---- template marketplace: connect GitHub, create a repository from the site template wired to the instance
+  const gh0 = await api("GET", "/api/vbcloud/github", undefined, U);
+  check("github: configured, not connected yet", gh0.status === 200 && gh0.json.configured === true && gh0.json.connected === false, JSON.stringify(gh0.json));
+  const tplAnon = await api("GET", "/api/vbcloud/templates");
+  const tpl = await api("GET", "/api/vbcloud/templates", undefined, U);
+  check("templates: auth required, the site template is registered with its variables", tplAnon.status === 401 && tpl.status === 200 && tpl.json.templates?.[0]?.name === "voidbase-site" && tpl.json.templates[0].repo === "voidbase-cloud/voidbase-site" && tpl.json.templates[0].variables?.some((v: { name: string }) => v.name === "PB_VB_URL"), JSON.stringify(tpl.json).slice(0, 300));
+  const tooEarly = await api("POST", "/api/vbcloud/repos", { template: "voidbase-site", name: "my-site", instance: inst.id }, U);
+  check("creating a repository needs a GitHub connection", tooEarly.status === 400 && /Connect your GitHub/.test(tooEarly.json.message ?? ""), JSON.stringify(tooEarly.json));
+  const connect = await api("GET", "/api/vbcloud/github/connect", undefined, U);
+  check("connect returns GitHub's authorize url with our callback, scopes and a signed state", connect.status === 200 && String(connect.json.url).startsWith(`${GH}/login/oauth/authorize`) && decodeURIComponent(connect.json.url).includes(`${VB}/api/vbcloud/github/callback`) && /scope=repo/.test(connect.json.url) && /state=[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/.test(connect.json.url), String(connect.json.url).slice(0, 200));
+  const ghAuthz = await fetch(connect.json.url, { redirect: "manual" }); const cb = ghAuthz.headers.get("location")!;
+  const done = await fetch(cb, { redirect: "manual" });
+  check("callback exchanges the code, stores the connection and sends the browser back to the site", done.status === 302 && done.headers.get("location") === "http://site.test/cloud?github=connected", `${done.status} ${done.headers.get("location")}`);
+  const tampered = await fetch(cb.replace(/state=([^&]+)/, (m, st) => "state=" + st.replace(/\.(.)/, ".x")), { redirect: "manual" });
+  check("a tampered state is refused", /github=error&message=invalid\+state|invalid%20state/.test(tampered.headers.get("location") ?? ""), tampered.headers.get("location") ?? "");
+  const gh1 = await api("GET", "/api/vbcloud/github", undefined, U);
+  check("github: connected as the mock account", gh1.json.connected === true && gh1.json.connection?.login === "octo-tester", JSON.stringify(gh1.json));
+  {
+    const { Database } = await import("bun:sqlite");
+    const db = new Database(`${data}/pb_data/data.db`, { readonly: true });
+    const rows = db.query("SELECT access_token FROM gh_connections").all() as { access_token: string }[]; db.close();
+    check("the GitHub token is sealed at rest", rows.length === 1 && rows[0]!.access_token.startsWith("enc:") && !rows[0]!.access_token.includes("gh-test-token"), JSON.stringify(rows).slice(0, 80));
+  }
+  const mk = await api("POST", "/api/vbcloud/repos", { template: "voidbase-site", name: "My Site!", instance: inst.id, private: true, domain: "site.example.com" }, U);
+  const ghs = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  check("repository generated from the template in the user's account, private, from the right template", mk.status === 200 && mk.json.repo?.fullName === "octo-tester/my-site" && mk.json.repo.status === "ready" && ghs.repos["octo-tester/my-site"]?.template === "voidbase-cloud/voidbase-site" && ghs.repos["octo-tester/my-site"].private === true, JSON.stringify(mk.json).slice(0, 300));
+  check("the instance url and the domain were written as repository variables", ghs.variables["octo-tester/my-site"]?.PB_VB_URL === inst.url && ghs.variables["octo-tester/my-site"]?.PAGES_CNAME === "site.example.com", JSON.stringify(ghs.variables));
+  const dupRepo = await api("POST", "/api/vbcloud/repos", { template: "voidbase-site", name: "my-site", instance: inst.id }, U);
+  check("the same repository cannot be linked twice", dupRepo.status === 400 && /already linked/.test(dupRepo.json.message ?? ""), JSON.stringify(dupRepo.json));
+  const repos = await api("GET", "/api/vbcloud/repos", undefined, U);
+  const r0 = repos.json.repos?.[0];
+  check("repos: listed with instance, template and a live connection check", repos.status === 200 && r0?.fullName === "octo-tester/my-site" && r0.instanceName === "vb-my-shop" && r0.templateName === "voidbase-site" && r0.live?.checked === true && r0.live.exists === true && r0.live.connected === true, JSON.stringify(repos.json).slice(0, 300));
+  const viaSdkRepos = await api("GET", "/api/collections/vb_repos/records", undefined, U);
+  check("vb_repos through the API rules: only the owner's rows", viaSdkRepos.status === 200 && viaSdkRepos.json.totalItems === 1, JSON.stringify(viaSdkRepos.json).slice(0, 120));
+  const unlink = await api("DELETE", `/api/vbcloud/repos/${r0.id}`, undefined, U);
+  const ghs2 = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  check("unlink removes the link and leaves the repository on GitHub", unlink.status === 200 && unlink.json.unlinked === true && "octo-tester/my-site" in ghs2.repos && (await api("GET", "/api/vbcloud/repos", undefined, U)).json.repos.length === 0, JSON.stringify(unlink.json));
+  const disc = await api("DELETE", "/api/vbcloud/github", undefined, U);
+  const ghs3 = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  check("disconnect removes the connection and revokes the grant on GitHub", disc.json.disconnected === true && ghs3.grantRevoked === 1 && (await api("GET", "/api/vbcloud/github", undefined, U)).json.connected === false, JSON.stringify(disc.json));
+
   const dup = await api("POST", "/api/vbcloud/instances", { name: "my-shop" }, U);
   check("duplicate name refused", dup.status === 400 && /named vb-my-shop|taken/.test(dup.json.message ?? ""), JSON.stringify(dup.json));
   const second = await api("POST", "/api/vbcloud/instances", { name: "second" }, U);

@@ -83,6 +83,19 @@ Creating an instance runs entirely over Cloudflare's REST API with the user's OA
 the Worker script with its modules and assets, the realtime hub Durable Object, the hourly cron, the workers.dev
 subdomain. Deleting removes the same, worker first, bucket last (emptied before). Names get the `VB_INSTANCE_PREFIX`.
 
+### Template marketplace (GitHub)
+
+`cloud/github.ts`: a visitor connects GitHub (OAuth app, `GH_OAUTH_CLIENT_ID` / `_SECRET`; the token is sealed at rest like
+the Cloudflare one), picks a template from `vb_templates` (GitHub template repositories; this site is the first, seeded
+at bootstrap; superusers add more from the panel, with a `variables` list of the repository variables to write:
+`instance_url`, `instance_panel`, `instance_name`, `input:<form field>` or a literal), and gets a repository created
+from it in their account wired to one of their instances: the instance URL is written as the repository's
+`PB_VB_URL` Actions variable, which is what "connected" means. `/api/vbcloud/repos` lists those repositories with a
+live check (repository still there, `PB_VB_URL` still the instance). Routes: `github` (GET status, DELETE
+disconnect + grant revoked), `github/connect` (the authorize URL with an HMAC-signed state), `github/callback`,
+`templates`, `repos` (GET, POST), `repos/{id}` (DELETE unlinks only). `test/gh-mock.ts` stands in for GitHub in
+`bun test/cloud.ts`.
+
 ### Setup
 
 1. Create the OAuth client: dash.cloudflare.com > Manage Account > OAuth clients > Create client. Authorization
@@ -90,9 +103,11 @@ subdomain. Deleting removes the same, worker first, bucket last (emptied before)
    `http://127.0.0.1:8090/api/oauth2-redirect` for local dev). Pick the scopes the control plane needs: User Details Read, Account Settings
    Read, Workers Scripts Write, D1 Write, Workers R2 Storage Write, Workers R2 Storage Bucket Item Read/Write, Queues Write
    (ids `offline_access user-details.read account-settings.read workers-scripts.write d1.write workers-r2.write
-   workers-r2-bucket-item.read workers-r2-bucket-item.write queues.write`, the `CF_OAUTH_SCOPES` default; there is no `openid` scope; `GET /oauth/scopes` with an API token lists them). A
-   private client is enough for members of your account; making it public requires domain verification of the client URL.
-2. `cp .env.example .env`, fill in the client id/secret, `VOIDBASE_ENCRYPTION_KEY` (32 random chars: `openssl rand -hex 16`), `VB_ADMIN_EMAILS` (who may delete the system instance; that action also needs `VB_ALLOW_SELF_DELETE=1`, off by default).
+   workers-r2-bucket-item.read workers-r2-bucket-item.write queues.write`, the `CF_OAUTH_SCOPES` default; there is no `openid` scope; `GET /oauth/scopes` with an API token lists them). The
+   site's client is public (any Cloudflare user can sign in): that needs the client URL verified through the DNS TXT record and
+   a logo; the logo is `static/images/favicon/android-chrome-512x512.png`, set through `PATCH .../oauth_clients/<id>` with
+   `logo_uri`, then `visibility: public` (Cloudflare re-hosts the image). A private client is enough for members of your own account.
+2. `cp .env.example .env`, fill in the client id/secret (and the GitHub OAuth app's for the marketplace), `VOIDBASE_ENCRYPTION_KEY` (32 random chars: `openssl rand -hex 16`), `VB_ADMIN_EMAILS` (who may delete the system instance; that action also needs `VB_ALLOW_SELF_DELETE=1`, off by default).
 3. `bun run dev`, then build and upload a release: `bun run bundle -- --push http://127.0.0.1:8090 --token <superuser token>`
    (`voidbase superuser` / `POST /api/collections/_superusers/auth-with-password` gives the token).
 4. Deploy: `bun run deploy` (`VOIDBASE_DEPLOY_CF_API_KEY` in `../.env.local`, never in the committed `.env`). The account

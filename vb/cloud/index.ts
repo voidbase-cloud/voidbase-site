@@ -9,6 +9,7 @@
 //   - this backend registers itself in `vb_instances` as the `system` row (VOIDBASE_WORKER_NAME / VOIDBASE_ACCOUNT_ID,
 //     baked by `voidbase deploy`), so an admin (VB_ADMIN_EMAILS) can delete the site's own backend from the site.
 import type { VoidbaseApp, RequestEvent, HookRecord, CollectionRef } from "@voidbase-cloud/voidbase";
+import { registerGithub } from "./github";
 import { CfApi, CF_API_BASE, destroyInstance, listAccounts, openSecret, provisionInstance, refreshOAuthToken, sealSecret, workerExists, type CfAccount, type ReleaseManifest, type ReleaseSource } from "@voidbase-cloud/voidbase/cloud";
 
 const RELEASES = "__releases__/";
@@ -242,4 +243,7 @@ export function register(app: VoidbaseApp) {
     await H.$app.delete(row);
     return e.json(200, { deleted: report.deleted, skipped: report.skipped, errors: report.errors, self: false, log: lines });
   }, H.$apis.requireAuth("users"));
+
+  // the template marketplace: GitHub connection, templates, repositories wired to instances (see ./github.ts)
+  registerGithub(app, { env, seal, open, userId, readBody });
 }

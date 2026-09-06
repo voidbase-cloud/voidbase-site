@@ -48,6 +48,8 @@ jobs:
           publish_dir: ./build
           publish_branch: gh-pages
           force_orphan: true
-          # the site's custom domain: writes the CNAME file GitHub Pages reads (DNS: A records to GitHub's Pages IPs)
-          cname: voidbase.cloud
+          # the site's custom domain, from the PAGES_CNAME repository variable (Settings > Secrets and variables >
+          # Actions > Variables); unset, GitHub Pages serves the site at <owner>.github.io/<repo>. voidbase.cloud sets
+          # it for itself, and a repository created from this template on voidbase.cloud gets it from the form.
+          cname: ${{ vars.PAGES_CNAME }}
           commit_message: "deploy: ${{ github.sha }}"
