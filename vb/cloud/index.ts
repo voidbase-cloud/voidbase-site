@@ -8,8 +8,8 @@
 //   - instances are provisioned and destroyed on the user's Cloudflare account through `voidbase/cloud` (REST only)
 //   - this backend registers itself in `vb_instances` as the `system` row (VOIDBASE_WORKER_NAME / VOIDBASE_ACCOUNT_ID,
 //     baked by `voidbase deploy`), so an admin (VB_ADMIN_EMAILS) can delete the site's own backend from the site.
-import type { VoidbaseApp, RequestEvent, HookRecord, CollectionRef } from "voidbase";
-import { CfApi, CF_API_BASE, destroyInstance, listAccounts, openSecret, provisionInstance, refreshOAuthToken, sealSecret, workerExists, type CfAccount, type ReleaseManifest, type ReleaseSource } from "voidbase/cloud";
+import type { VoidbaseApp, RequestEvent, HookRecord, CollectionRef } from "@voidbase-cloud/voidbase";
+import { CfApi, CF_API_BASE, destroyInstance, listAccounts, openSecret, provisionInstance, refreshOAuthToken, sealSecret, workerExists, type CfAccount, type ReleaseManifest, type ReleaseSource } from "@voidbase-cloud/voidbase/cloud";
 
 const RELEASES = "__releases__/";
 const CF_TOKEN_URL = "https://dash.cloudflare.com/oauth2/token";

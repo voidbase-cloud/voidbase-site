@@ -1,6 +1,6 @@
 // The counterpart of ../pb/main.go: voidbase as a library, composed with this project's own extensions.
 //   bun main.ts serve --http 0.0.0.0:8090 --publicDir ../sk/build      (or: bunx voidbase serve --entry main.ts ...)
-import type { VoidbaseApp } from "voidbase";
+import type { VoidbaseApp } from "@voidbase-cloud/voidbase";
 import * as webauthn from "./webauthn/webauthn";
 import * as cloud from "./cloud";
 // import * as auditlog from "./auditlog/auditlog";
@@ -33,8 +33,8 @@ export function register(app: VoidbaseApp) {
 if (import.meta.main) {
   // `bun main.ts`: the Bun runtime. Imported dynamically (and hidden from the bundler) because `voidbase deploy` composes
   // this file into the Worker for register() only, and the runtime entry pulls in bun:sqlite and the filesystem shims.
-  const runtime = "voidbase";
-  const { voidbase, parseServeArgs } = (await import(/* @vite-ignore */ runtime)) as typeof import("voidbase");
+  const runtime = "@voidbase-cloud/voidbase";
+  const { voidbase, parseServeArgs } = (await import(/* @vite-ignore */ runtime)) as typeof import("@voidbase-cloud/voidbase");
   const app = await voidbase(parseServeArgs(process.argv.slice(2).filter((a) => a !== "serve")));
   register(app);
   await app.start();

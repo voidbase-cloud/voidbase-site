@@ -5,8 +5,8 @@
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { assetHash, contentTypeFor, type ReleaseManifest } from "voidbase/cloud";
-const VOIDBASE = resolve(import.meta.dir, "../node_modules/voidbase");
+import { assetHash, contentTypeFor, type ReleaseManifest } from "@voidbase-cloud/voidbase/cloud";
+const VOIDBASE = resolve(import.meta.dir, "../node_modules/@voidbase-cloud/voidbase");
 const freePort = () => { const s = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch: () => new Response() }); const p = s.port; s.stop(true); return p; };
 const OIDC_PORT = freePort(), CF_PORT = freePort(), VB_PORT = freePort();
 const OIDC = `http://127.0.0.1:${OIDC_PORT}`, CF = `http://127.0.0.1:${CF_PORT}`, VB = `http://127.0.0.1:${VB_PORT}`;

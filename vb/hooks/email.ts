@@ -4,7 +4,7 @@
 //   {"to": "{{ .record.expand.creator.email }}", "subject": "ticket updated - {{ .record.title }}"}
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import type { VoidbaseApp } from "voidbase";
+import type { VoidbaseApp } from "@voidbase-cloud/voidbase";
 
 const templatesDir = resolve(import.meta.dir, "../data/email_templates");
 const templates = new Map<string, string>();

@@ -2,7 +2,7 @@
 // action_params, expands, disabled) run an action after insert/update/delete of any collection's records:
 // "command" (a local program receives the record as JSON on stdin), "post" (HTTP POST of the record as JSON)
 // or "email" (a template from ../data/email_templates rendered for the record). See email.ts.
-import type { VoidbaseApp } from "voidbase";
+import type { VoidbaseApp } from "@voidbase-cloud/voidbase";
 import { doEmail } from "./email";
 
 interface Rec { id: string; collection(): { name: string }; publicExport(): Record<string, unknown>; getString(k: string): string; getBool(k: string): boolean; ignoreEmailVisibility(v?: boolean): unknown }

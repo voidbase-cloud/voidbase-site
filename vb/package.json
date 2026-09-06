@@ -17,7 +17,7 @@
     "test": "bun test/cloud.ts"
   },
   "dependencies": {
-    "voidbase": "link:voidbase"
+    "@voidbase-cloud/voidbase": "link:@voidbase-cloud/voidbase"
   },
   "devDependencies": {
     "@types/bun": "latest",

@@ -1,6 +1,6 @@
 // The counterpart of ../pb/auditlog/auditlog.go: audit rows for the collections named in AUDITLOG (e.g.
 // AUDITLOG=users,posts), written after every create/update/delete request.
-import type { VoidbaseApp } from "voidbase";
+import type { VoidbaseApp } from "@voidbase-cloud/voidbase";
 
 const collections = (process.env.AUDITLOG ?? "").split(",").filter(Boolean);
 
