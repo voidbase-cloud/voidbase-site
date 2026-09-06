@@ -63,3 +63,46 @@ Details, quotas and the other paths are in `voidbase/docs/deploy.md`.
   `pocketbase-typegen --db ../vb/pb_data/data.db` works too.
 - Platform differences on Cloudflare (D1 batches instead of transactions, per-isolate rate limits, polling
   realtime, backup format) are in `voidbase/docs/differences.md`; none apply to the local Bun process.
+
+## voidbase cloud (the /cloud page's backend)
+
+`cloud/index.ts` turns this backend into the control plane of the site's **Cloud** page: sign in with Cloudflare,
+see your voidbase instances, create or delete one with a click. It is the dogfood loop: this backend is itself an
+instance, listed as the `system` row, and an admin can delete it from the page.
+
+| piece | what it does |
+| --- | --- |
+| `cloudflare` OAuth2 provider on `users` | enabled on the first request from `CF_OAUTH_CLIENT_ID` / `CF_OAUTH_CLIENT_SECRET` (voidbase's provider: OIDC on dash.cloudflare.com, identity from the API's `GET /user`, scopes from `CF_OAUTH_SCOPES`) |
+| `cf_connections` | per user: access/refresh token (sealed with `VOIDBASE_ENCRYPTION_KEY`; a deployed backend refuses to store them unsealed), expiry, the accounts granted on the consent screen (no API rules: superuser-only) |
+| `vb_instances` | the registry: owner, name, account, url, status, release, superuser email, `system` for this backend. The generated password is returned once with the creation and never stored (`GET .../credentials` gives url, email and panel) |
+| `__releases__/<version>/` in storage | the generic voidbase Worker + panel built by `voidbase bundle`, uploaded with `voidbase bundle --push` (or `voidbase release push <dir>`); `__releases__/current` points at the active one |
+| `/api/vbcloud/*` | `me`, `accounts`, `release`, `instances` (GET/POST), `instances/{id}` (DELETE), `instances/{id}/credentials`, superuser: `releases`, `releases/{v}/files`, `releases/{v}/activate` |
+
+Creating an instance runs entirely over Cloudflare's REST API with the user's OAuth token (`voidbase/cloud`):
+`<name>-db` (D1, migrations applied through `/query`), `<name>-storage` (R2), `<name>-jobs` (queue + consumer),
+the Worker script with its modules and assets, the realtime hub Durable Object, the hourly cron, the workers.dev
+subdomain. Deleting removes the same, worker first, bucket last (emptied before). Names get the `VB_INSTANCE_PREFIX`.
+
+### Setup
+
+1. Create the OAuth client: dash.cloudflare.com > Manage Account > OAuth clients > Create client. Authorization
+   code grant, `code` response type, `client_secret_post`, redirect URL `<backend>/api/oauth2-redirect` (add
+   `http://127.0.0.1:8090/api/oauth2-redirect` for local dev). Pick the scopes the control plane needs: User Details Read, Account Settings
+   Read, Workers Scripts Write, D1 Write, Workers R2 Storage Write, Workers R2 Storage Bucket Item Read/Write, Queues Write
+   (ids `user-details.read account-settings.read workers-scripts.write d1.write workers-r2.write workers-r2-bucket-item.read
+   workers-r2-bucket-item.write queues.write`, the `CF_OAUTH_SCOPES` default; `GET /oauth/scopes` with an API token lists them). A
+   private client is enough for members of your account; making it public requires domain verification of the client URL.
+2. `cp .env.example .env`, fill in the client id/secret, `VOIDBASE_ENCRYPTION_KEY` (32 random chars: `openssl rand -hex 16`), `VB_ADMIN_EMAILS` (who may delete the system instance; that action also needs `VB_ALLOW_SELF_DELETE=1`, off by default).
+3. `bun run dev`, then build and upload a release: `bun run bundle -- --push http://127.0.0.1:8090 --token <superuser token>`
+   (`voidbase superuser` / `POST /api/collections/_superusers/auth-with-password` gives the token).
+4. Deploy: `bun run deploy` (`VOIDBASE_DEPLOY_CF_API_KEY` in `../.env.local`, never in the committed `.env`). The account
+   needs R2 enabled once in the dashboard (R2 Object Storage > Enable). `VOIDBASE_DEPLOY_DOMAIN=api.voidbase.cloud` binds the
+   Worker to that hostname on the account's zone through the Workers Custom Domains API (workers.dev off; Cloudflare creates the
+   DNS record and certificate; needs only Workers Scripts edit, and the account must have a workers.dev subdomain, which
+   the deploy registers when missing is not automatic: open Workers & Pages once or PUT /workers/subdomain);
+   `VOIDBASE_DEPLOY_VARS` / `VOIDBASE_DEPLOY_SECRETS` carry the OAuth settings into the Worker, the worker name and
+   account id are baked automatically (that is how the backend finds itself). Push the release to the deployed URL
+   too, and set the site's `PB_VB_URL` (GitHub Actions variable) to that URL.
+
+`bun test/cloud.ts` runs the whole flow on the Bun runtime against voidbase's OIDC and Cloudflare API mocks.
+

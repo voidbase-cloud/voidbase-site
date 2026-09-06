@@ -25,6 +25,7 @@
                 <i class="ri-menu-3-fill" />
                 <Toggler class="dropdown dropdown-lg dropdown-right dropdown-nowrap responsive-menu-dropdown">
                     <a href="/faq" class="dropdown-item" data-sveltekit-preload-data>FAQ</a>
+                    <a href="/cloud" class="dropdown-item" data-sveltekit-preload-data>Cloud</a>
                     <a
                         href={import.meta.env.PB_DISCUSSIONS_URL}
                         class="dropdown-item"
@@ -42,6 +43,7 @@
 
             <nav class="main-menu">
                 <a href="/faq" class="btn btn-secondary" data-sveltekit-preload-data>FAQ</a>
+                <a href="/cloud" class="btn btn-secondary" data-sveltekit-preload-data>Cloud</a>
                 <a
                     href={import.meta.env.PB_REPO_URL}
                     class="btn btn-circle btn-secondary"

@@ -28,8 +28,15 @@ jobs:
       - name: Generate Void codegen (.void/tsconfig.json)
         run: bunx void prepare
 
+      # .env is git-ignored: the public PB_* values come from the tracked .env.example
+      - name: Provide .env from .env.example
+        run: cp -n .env.example .env
+
       - name: Build static site
         run: bun run build
+        env:
+          # the deployed vb backend that /cloud talks to (Settings > Secrets and variables > Actions > Variables)
+          PB_VB_URL: ${{ vars.PB_VB_URL }}
 
       # Push ONLY the built output to the `gh-pages` branch.
       # force_orphan keeps that branch at a single commit, so neither the
@@ -41,4 +48,6 @@ jobs:
           publish_dir: ./build
           publish_branch: gh-pages
           force_orphan: true
+          # the site's custom domain: writes the CNAME file GitHub Pages reads (DNS: A records to GitHub's Pages IPs)
+          cname: voidbase.cloud
           commit_message: "deploy: ${{ github.sha }}"
