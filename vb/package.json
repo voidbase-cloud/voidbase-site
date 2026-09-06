@@ -1,0 +1,23 @@
+{
+  "name": "vb",
+  "private": true,
+  "type": "module",
+  "description": "The starter's backend on voidbase: PocketBase's API, admin panel, pb_hooks and pb_migrations, as a Bun process locally and on Cloudflare Workers in production",
+  "scripts": {
+    "dev": "voidbase serve --dev --http 0.0.0.0:8090 --publicDir ../sk/build",
+    "dev:custom": "voidbase serve --dev --entry main.ts --http 0.0.0.0:8090 --publicDir ../sk/build",
+    "start": "voidbase serve --http 0.0.0.0:8090 --publicDir ../sk/build",
+    "start:custom": "bun main.ts --http 0.0.0.0:8090 --publicDir ../sk/build",
+    "check": "tsc -p tsconfig.json",
+    "superuser": "voidbase superuser upsert",
+    "token": "voidbase token",
+    "deploy": "voidbase deploy --public-dir ../sk/build"
+  },
+  "dependencies": {
+    "voidbase": "link:voidbase"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.9.3"
+  }
+}
