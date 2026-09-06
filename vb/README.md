@@ -86,11 +86,11 @@ subdomain. Deleting removes the same, worker first, bucket last (emptied before)
 ### Setup
 
 1. Create the OAuth client: dash.cloudflare.com > Manage Account > OAuth clients > Create client. Authorization
-   code grant, `code` response type, `client_secret_post`, redirect URL `<backend>/api/oauth2-redirect` (add
+   code grant, `code` response type, `client_secret_basic` (the default; the backend authenticates with HTTP Basic), redirect URL `<backend>/api/oauth2-redirect` (add
    `http://127.0.0.1:8090/api/oauth2-redirect` for local dev). Pick the scopes the control plane needs: User Details Read, Account Settings
    Read, Workers Scripts Write, D1 Write, Workers R2 Storage Write, Workers R2 Storage Bucket Item Read/Write, Queues Write
-   (ids `user-details.read account-settings.read workers-scripts.write d1.write workers-r2.write workers-r2-bucket-item.read
-   workers-r2-bucket-item.write queues.write`, the `CF_OAUTH_SCOPES` default; `GET /oauth/scopes` with an API token lists them). A
+   (ids `offline_access user-details.read account-settings.read workers-scripts.write d1.write workers-r2.write
+   workers-r2-bucket-item.read workers-r2-bucket-item.write queues.write`, the `CF_OAUTH_SCOPES` default; there is no `openid` scope; `GET /oauth/scopes` with an API token lists them). A
    private client is enough for members of your account; making it public requires domain verification of the client URL.
 2. `cp .env.example .env`, fill in the client id/secret, `VOIDBASE_ENCRYPTION_KEY` (32 random chars: `openssl rand -hex 16`), `VB_ADMIN_EMAILS` (who may delete the system instance; that action also needs `VB_ALLOW_SELF_DELETE=1`, off by default).
 3. `bun run dev`, then build and upload a release: `bun run bundle -- --push http://127.0.0.1:8090 --token <superuser token>`

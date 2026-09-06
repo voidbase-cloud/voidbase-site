@@ -14,8 +14,9 @@ import { CfApi, CF_API_BASE, destroyInstance, listAccounts, openSecret, provisio
 const RELEASES = "__releases__/";
 const CF_TOKEN_URL = "https://dash.cloudflare.com/oauth2/token";
 // Resource scopes are Cloudflare API permission ids (GET /oauth/scopes lists them; verified 2026-09-06): identity and the
-// accounts granted on the consent screen, then what provisioning needs. Override with CF_OAUTH_SCOPES="openid offline_access ...".
-export const DEFAULT_SCOPES = ["openid", "offline_access", "user-details.read", "account-settings.read", "workers-scripts.write", "d1.write", "workers-r2.write", "workers-r2-bucket-item.read", "workers-r2-bucket-item.write", "queues.write"];
+// accounts granted on the consent screen, then what provisioning needs; `openid` is not one of them and is refused.
+// Override with CF_OAUTH_SCOPES="offline_access user-details.read ...".
+export const DEFAULT_SCOPES = ["offline_access", "user-details.read", "account-settings.read", "workers-scripts.write", "d1.write", "workers-r2.write", "workers-r2-bucket-item.read", "workers-r2-bucket-item.write", "queues.write"];
 
 type Hooks = VoidbaseApp["hooks"];
 type Ev = RequestEvent & { auth: HookRecord | null; record?: HookRecord | null; providerName?: string; oAuth2User?: { id: string; email: string; name: string; username: string; accessToken: string; refreshToken: string; expiry: string } };
