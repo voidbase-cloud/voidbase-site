@@ -21,6 +21,7 @@
     let templates = [];
     let repos = [];
     let repoForm = null; // { template, name, instance, private, domain }
+    $: linkable = instances.filter((i) => i.status === "live" && !i.system); // instances a repository can be wired to (never the site's own backend)
 
     onMount(() => {
         const pb = vb();
@@ -97,7 +98,7 @@
     }
 
     function startRepo(tpl) {
-        repoForm = { template: tpl.name, title: tpl.title, kind: tpl.kind, name: "", instance: instances.find((i) => i.status === "live")?.id || "", private: false, domain: "" };
+        repoForm = { template: tpl.name, title: tpl.title, kind: tpl.kind, name: "", instance: linkable[0]?.id || "", private: false, domain: "" };
     }
 
     async function createRepo() {
@@ -359,19 +360,19 @@
                             <a href={tpl.url} target="_blank" rel="noopener noreferrer" class="txt-hint">{tpl.repo}</a>
                         </div>
                         <div class="template-actions">
-                            <button type="button" class="btn btn-sm btn-primary" disabled={!github?.connected || !instances.some((i) => i.status === "live")} on:click={() => startRepo(tpl)} title={!github?.connected ? "Connect GitHub first" : !instances.some((i) => i.status === "live") ? "Create an instance first" : ""}>Use this template</button>
+                            <button type="button" class="btn btn-sm btn-primary" disabled={!github?.connected || !linkable.length} on:click={() => startRepo(tpl)} title={!github?.connected ? "Connect GitHub first" : !linkable.length ? "Create an instance first" : ""}>Use this template</button>
                         </div>
                     </div>
                 {/each}
             </div>
 
             {#if repoForm}
-                <form class="cloud-form" on:submit|preventDefault={createRepo}>
-                    <h3 class="m-b-10">New repository from {repoForm.title}</h3>
+                <form class="cloud-form repo-form" on:submit|preventDefault={createRepo}>
+                    <h3 class="form-title">New repository from {repoForm.title}</h3>
                     <label>Repository name <input type="text" bind:value={repoForm.name} placeholder="my-site" required /></label>
                     <label>Instance
                         <select bind:value={repoForm.instance} required>
-                            {#each instances.filter((i) => i.status === "live") as inst}<option value={inst.id}>{inst.name} ({inst.url})</option>{/each}
+                            {#each linkable as inst}<option value={inst.id}>{inst.name} ({inst.url})</option>{/each}
                         </select>
                     </label>
                     {#if repoForm.kind === "site"}
@@ -459,6 +460,9 @@
     .template-body .label { margin-left: 6px; }
     .template-actions { margin-top: auto; }
     .cloud-form label.inline { display: flex; align-items: center; gap: 8px; }
+    .repo-form { padding: 15px; border: 1px solid var(--baseAlt2Color); border-radius: var(--lgRadius); margin-bottom: 25px; }
+    .repo-form .form-title { flex-basis: 100%; margin: 0 0 5px; }
+    .repo-form .form-actions { margin-top: 0; }
     .form-actions { display: flex; gap: 10px; margin-top: 10px; }
     .cloud-panel { padding: var(--baseSpacing, 30px) 0; }
     .cloud-toolbar { display: flex; align-items: center; gap: 10px; margin: 20px 0; flex-wrap: wrap; }
