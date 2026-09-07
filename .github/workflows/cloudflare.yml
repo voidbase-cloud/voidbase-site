@@ -1,10 +1,12 @@
 # GitHub only starts builds; Cloudflare Workers Builds runs them. Every push builds the project (`bun run check`,
 # `bun run build`); a push to master also deploys the Worker (`bun run deploy:ci`: `voidbase deploy` from .voidbase/,
-# which serves the site at /, the API at /api and the admin panel at /_/). The app's secrets are the Worker's own,
-# declared in vb_secrets/main.ts and stored once from a maintainer's machine (`bun run deploy`, or `voidbase secrets
-# push` from .voidbase/); the build needs only the deploy token, VOIDBASE_DEPLOY_CF_API_KEY, and the non-secret
-# deploy variables, all on the master trigger of the Cloudflare project (dashboard: Workers > voidbase-site-backend >
-# Settings > Builds). The variables and the secret below point at that project: CF_ACCOUNT_ID, CF_CI_TRIGGER_MASTER,
+# which serves the site at /, the API at /api and the admin panel at /_/). The app's configuration is declared in
+# vb_secrets/main.ts: its secrets are the Worker's own, stored once from a maintainer's machine (`bun run deploy`, or
+# `voidbase secrets push` from .voidbase/); its vars are set by every deploy from the declared defaults and the
+# build's environment. So the build needs only the deploy token, VOIDBASE_DEPLOY_CF_API_KEY, the deploy target
+# (VOIDBASE_DEPLOY_NAME, VOIDBASE_DEPLOY_DOMAIN) and VB_ADMIN_EMAILS, all on the master trigger of the Cloudflare
+# project (dashboard: Workers > voidbase-site-backend > Settings > Builds). The variables and the secret below point
+# at that project: CF_ACCOUNT_ID, CF_CI_TRIGGER_MASTER,
 # CF_CI_TRIGGER_BRANCHES (Settings > Secrets and variables > Actions > Variables) and CLOUDFLARE_BUILDS_TOKEN (a user
 # API token with Workers Builds Configuration: Edit). Until they exist the job is skipped, and a fork deploys from its
 # owner's machine with `bun run deploy`.
