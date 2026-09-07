@@ -1,5 +1,6 @@
-// The public demo in a full-height frame: demo.voidbase.cloud is a voidbase instance of its own (demo/ in this
-// repository), running the unmodified PocketBase admin panel. Its database is restored every hour.
+// The public demo in a full-height frame: demo.voidbase.cloud is a voidbase instance of its own, kept in its own
+// repository (voidbase-cloud/voidbase-demo), running the unmodified PocketBase admin panel. Its database is
+// restored every hour.
 // It carries no site chrome, so it takes the blank layout instead of the root one.
 import { useState } from "react";
 import "@/scss/demo.scss";

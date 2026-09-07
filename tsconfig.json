@@ -1,5 +1,5 @@
 {
-  "//": "Standalone on purpose: extending the adapter's generated .voidbase/tsconfig.json makes every tool that walks up from this repository (the demo's build, for one) fail when that file has not been generated yet. The site uses no void/db or void/queues shims, so there is nothing to inherit.",
+  "//": "Standalone on purpose: extending the adapter's generated .voidbase/tsconfig.json makes every tool that walks up from this repository fail when that file has not been generated yet. The site uses no void/db or void/queues shims, so there is nothing to inherit.",
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",

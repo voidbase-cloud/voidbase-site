@@ -25,7 +25,6 @@
     "check": "bunx tsc --noEmit -p tsconfig.json && bunx tsc --noEmit -p tsconfig.server.json",
     "deploy": "bun scripts/pipeline.ts deploy",
     "test": "bun test/cloud.ts",
-    "demo:deploy": "cd demo && bunx voidbase sync --name voidbase-demo --domain demo.voidbase.cloud",
     "version": "bun scripts/pipeline.ts version",
     "build:site": "bunx --bun vite build"
   },

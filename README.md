@@ -87,12 +87,13 @@ shows the plan. Details: `voidbase/docs/deploy.md`.
 
 ## The demo
 
-`demo/` is the instance behind [demo.voidbase.cloud](https://demo.voidbase.cloud): PocketBase's own layout
-(`pb_hooks/`, `pb_secrets/`, `pb_public/`), the unmodified admin panel, and a database restored every hour by a
-hook cron. The landing page's "Live demo" button and `/demo` both point at it. `demo/README.md` has the details;
-`bun run demo:deploy` deploys it from a machine, and a push to master deploys it from its own Cloudflare Workers
-Builds trigger (a build may only deploy its own Worker, so the site's build deploys the site and the demo's deploys
-the demo).
+[demo.voidbase.cloud](https://demo.voidbase.cloud) is a voidbase instance of its own, and it lives in its own
+repository: [voidbase-cloud/voidbase-demo](https://github.com/voidbase-cloud/voidbase-demo). PocketBase's own layout
+(`pb_hooks/`, `pb_secrets/`, `pb_public/`), the unmodified admin panel, and a database restored every hour by a hook
+cron. The landing page's "Live demo" button and `/demo` both point at it. It builds and deploys itself from its own
+Cloudflare Workers Builds trigger, which is why it is a repository of its own: a build may deploy only the Worker
+its trigger belongs to, and keeping the two apart means a change to the site can never reach the demo's Worker or
+the other way round.
 
 ## How the two halves meet
 
