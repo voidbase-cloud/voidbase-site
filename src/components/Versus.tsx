@@ -1,32 +1,67 @@
-// The comparison table every "compared to" page uses, so the same questions get asked of each product and a reader
-// can hold two pages side by side without re-reading the headers.
+// The comparison table every "compared to" page uses.
+//
+// Two jobs. The same questions get asked of every product, so a reader can hold two pages side by side without
+// re-reading the headers. And every answer carries a verdict, so the shape of the trade is visible before any of it
+// is read: a column of green is a product that wins on these questions, and a mixed column is an honest table.
+//
+// A table where one side is all green is a table nobody believes, so the questions are chosen to include the ones
+// voidbase loses. If a page has no red in the voidbase column, the questions are wrong.
 import type { ReactNode } from "react";
 
+/** what an answer means for the reader: good, bad, or genuinely depends on what they are building */
+export type Verdict = "yes" | "no" | "depends";
+export type Cell = [Verdict, ReactNode];
 export interface VersusRow {
-  question: string;
-  voidbase: ReactNode;
-  other: ReactNode;
+  q: string;
+  vb: Cell;
+  them: Cell;
 }
 
-export default function Versus({ other, rows }: { other: string; rows: VersusRow[] }) {
+const MARK: Record<Verdict, { icon: string; label: string }> = {
+  yes: { icon: "ri-check-line", label: "in your favour" },
+  no: { icon: "ri-close-line", label: "against you" },
+  depends: { icon: "ri-subtract-line", label: "depends what you are building" },
+};
+
+function Answer({ cell }: { cell: Cell }) {
+  const [verdict, text] = cell;
+  const mark = MARK[verdict];
   return (
-    <table>
-      <thead>
-        <tr>
-          <th />
-          <th>voidbase</th>
-          <th>{other}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r) => (
-          <tr key={r.question}>
-            <td>{r.question}</td>
-            <td>{r.voidbase}</td>
-            <td>{r.other}</td>
+    <div className="why-answer">
+      <i className={`why-verdict why-${verdict} ${mark.icon}`} role="img" aria-label={mark.label} />
+      <span>{text}</span>
+    </div>
+  );
+}
+
+export default function Versus({ other, logo, rows }: { other: string; logo?: ReactNode; rows: VersusRow[] }) {
+  return (
+    <div className="why-table-wrap">
+      <table className="why-table">
+        <thead>
+          <tr>
+            <th />
+            <th>voidbase</th>
+            <th>
+              <span className="why-th">{logo}{other}</span>
+            </th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.q}>
+              <th scope="row">{r.q}</th>
+              <td><Answer cell={r.vb} /></td>
+              <td><Answer cell={r.them} /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="why-legend">
+        <span><i className="ri-check-line why-yes" /> in your favour</span>
+        <span><i className="ri-close-line why-no" /> against you</span>
+        <span><i className="ri-subtract-line why-depends" /> depends what you are building</span>
+      </p>
+    </div>
   );
 }

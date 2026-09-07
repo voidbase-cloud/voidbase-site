@@ -1,0 +1,303 @@
+// The "why" pages read as an argument, not a reference, so they get an editorial register inside the same docs
+// chrome: a narrower measure, larger type, no rules under the headings, and the years hanging in the margin where
+// they act as a spine for a sequence that is genuinely a sequence.
+//
+// Nothing here adds a typeface. The mono the site already loads carries the eyebrows, the years and the legend,
+// which is where the editorial texture comes from at no extra weight.
+
+.why {
+    --measure: 660px; // in px, so the lead, the body and the hero all line up whatever size they are set at
+    --rail: #262626;
+
+    font-size: 17px;
+    line-height: 28px;
+
+    // the measure applies to prose only: a table that has to be read across is not prose
+    p,
+    ul,
+    ol,
+    h1,
+    h2,
+    h3,
+    .docs-lead {
+        max-width: var(--measure);
+    }
+
+    p {
+        margin: 0 0 18px;
+        color: #d6d6d6;
+    }
+
+    // the docs rule puts a line under every heading; an essay does not want one
+    h1,
+    h2,
+    h3 {
+        border-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    h1 {
+        font-size: 40px;
+        line-height: 46px;
+        letter-spacing: -0.02em;
+        margin-bottom: 14px;
+    }
+
+    h2 {
+        font-size: 24px;
+        line-height: 32px;
+        letter-spacing: -0.01em;
+        margin: 44px 0 12px;
+    }
+
+    h3 {
+        font-size: 18px;
+        margin: 28px 0 8px;
+    }
+
+    .docs-lead {
+        font-size: 21px;
+        line-height: 32px;
+        color: var(--txtHintColor);
+        margin-bottom: 32px;
+    }
+
+    a {
+        text-decoration: underline;
+        text-underline-offset: 3px;
+        text-decoration-color: #4a4a4a;
+        &:hover { text-decoration-color: currentColor; }
+    }
+
+    ul {
+        margin: 0 0 18px;
+        padding-left: 20px;
+        li { margin-bottom: 6px; }
+    }
+}
+
+// an eyebrow: what this page is, in the mono, above the title
+.why-eyebrow {
+    display: block;
+    font-family: var(--monospaceFontFamily);
+    font-size: 14px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--txtDisabledColor);
+    margin-bottom: 10px;
+}
+
+.why-hero {
+    display: block;
+    width: 100%;
+    max-width: var(--measure);
+    height: auto;
+    border: 1px solid var(--baseAlt1Color);
+    border-radius: var(--baseRadius);
+    margin: 0 0 10px;
+}
+
+.why-caption {
+    font-family: var(--monospaceFontFamily);
+    font-size: 14px;
+    color: var(--txtDisabledColor);
+    margin: 0 0 36px;
+}
+
+// The eras. The year hangs in the left margin on a rail, because these four are in order and the order is the
+// argument: each one answered the previous one's complaint.
+.why-era {
+    position: relative;
+    padding-left: 96px;
+    margin-bottom: 8px;
+
+    &:before {
+        content: "";
+        position: absolute;
+        left: 68px;
+        top: 8px;
+        bottom: -8px;
+        width: 1px;
+        background: var(--rail);
+    }
+    &:last-of-type:before { bottom: auto; height: 30px; }
+
+    .why-year {
+        position: absolute;
+        left: 0;
+        top: 0;
+        font-family: var(--monospaceFontFamily);
+        font-size: 15px;
+        color: var(--txtHintColor);
+        background: var(--bodyColor);
+        padding: 2px 0 6px;
+    }
+    // the dot where the year meets the rail
+    .why-year:after {
+        content: "";
+        position: absolute;
+        left: 68px;
+        top: 11px;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--baseAlt3Color);
+        transform: translateX(-3px);
+    }
+    &.is-now .why-year { color: var(--successColor); }
+    &.is-now .why-year:after { background: var(--successColor); }
+
+    h2 { margin-top: 0; }
+    & + .why-era h2 { margin-top: 34px; }
+}
+
+// the marks: a product's logo, at one size, wherever a product is named
+.product-mark {
+    display: inline-block;
+    vertical-align: middle;
+    object-fit: contain;
+    flex: none;
+}
+
+.product-mark-letter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid currentColor;
+    border-radius: var(--baseRadius);
+    font-weight: 700;
+    line-height: 1;
+}
+
+// the header of a comparison page: the two marks, facing each other
+.why-marks {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 0 0 18px;
+
+    .product-mark { width: 40px; height: 40px; }
+    .why-vs {
+        font-family: var(--monospaceFontFamily);
+        font-size: 14px;
+        color: var(--txtDisabledColor);
+    }
+}
+
+// The table. Every answer carries its verdict, so a column can be read before it is read.
+.why-table-wrap {
+    width: 100%;
+    margin: 0 0 32px;
+    overflow-x: auto;
+}
+
+.why-table {
+    width: 100%;
+    min-width: 620px;
+    border-collapse: collapse;
+    font-size: 15px;
+    line-height: 22px;
+
+    th,
+    td {
+        text-align: left;
+        vertical-align: top;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--baseAlt1Color);
+    }
+    thead th {
+        font-family: var(--monospaceFontFamily);
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--txtHintColor);
+        border-bottom-color: var(--baseAlt2Color);
+        font-weight: 400;
+    }
+    tbody th {
+        width: 26%;
+        font-weight: 400;
+        text-transform: none;
+        letter-spacing: 0;
+        font-size: 15px;
+        color: var(--txtHintColor);
+    }
+    td { width: 36.5%; }
+    tbody tr:hover td { background: #0b0b0b; }
+
+    .why-th {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        .product-mark { width: 18px; height: 18px; }
+    }
+}
+
+.why-answer {
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+    color: #d6d6d6;
+}
+
+.why-verdict {
+    font-size: 17px;
+    line-height: 21px;
+    flex: none;
+}
+
+.why-yes { color: var(--successColor); }
+.why-no { color: var(--dangerColor); }
+.why-depends { color: var(--txtDisabledColor); }
+
+.why-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    margin: 12px 0 0;
+    font-family: var(--monospaceFontFamily);
+    font-size: 13px;
+    color: var(--txtDisabledColor);
+
+    span { display: inline-flex; align-items: center; gap: 6px; }
+    i { font-size: 15px; }
+}
+
+// the verdict pair that closes a comparison
+.why-picks {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+    margin: 24px 0 8px;
+}
+
+.why-pick {
+    border: 1px solid var(--baseAlt1Color);
+    border-left-width: 3px;
+    border-radius: var(--baseRadius);
+    padding: 16px 18px;
+
+    &.is-them { border-left-color: var(--baseAlt3Color); }
+    &.is-us { border-left-color: var(--successColor); }
+
+    h3 {
+        margin: 0 0 6px;
+        font-size: 16px;
+    }
+    p { margin: 0; font-size: 15px; line-height: 23px; }
+}
+
+@media only screen and (max-width: 700px) {
+    .why {
+        font-size: 16px;
+        line-height: 26px;
+        h1 { font-size: 30px; line-height: 36px; }
+        .docs-lead { font-size: 18px; line-height: 28px; }
+    }
+    .why-era {
+        padding-left: 0;
+        &:before { display: none; }
+        .why-year { position: static; display: block; margin-bottom: 4px; }
+        .why-year:after { display: none; }
+    }
+}

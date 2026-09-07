@@ -1,8 +1,16 @@
+import ProductMark from "@/components/ProductMark";
 import Versus from "@/components/Versus";
+import "@/scss/why.scss";
 
 export default function VsPocketBase() {
   return (
-    <>
+    <article className="why">
+      <span className="why-eyebrow">Compared to</span>
+      <div className="why-marks">
+        <ProductMark id="voidbase" size={40} />
+        <span className="why-vs">vs</span>
+        <ProductMark id="pocketbase" size={40} />
+      </div>
       <h1>voidbase compared to PocketBase</h1>
       <p className="docs-lead">
         This is the odd one out, because voidbase is PocketBase's API. The admin panel is PocketBase's, unmodified.
@@ -12,37 +20,37 @@ export default function VsPocketBase() {
 
       <Versus
         other="PocketBase"
+        logo={<ProductMark id="pocketbase" size={18} />}
         rows={[
-          { question: "API, panel, SDK", voidbase: "PocketBase's.", other: "PocketBase's." },
-          { question: "Runs on", voidbase: "Cloudflare Workers, in every region.", other: "One process on one machine." },
-          { question: "Database", voidbase: "D1, with the limits below.", other: "A SQLite file on local disk." },
-          { question: "Transactions", voidbase: "None. Writes validate, then run as one atomic batch.", other: "Real, interactive." },
-          { question: "You operate", voidbase: "Nothing.", other: "The machine: TLS, restarts, backups, disk, upgrades." },
-          { question: "Scaling", voidbase: "Per request, automatically.", other: "A bigger machine." },
-          { question: "Hooks", voidbase: "The same JavaScript, compiled into the Worker on deploy.", other: "The same JavaScript, or Go, reloaded on restart." },
-          { question: "Trying it", voidbase: "A local process, or one command to deploy.", other: "Download one file and run it." },
+          { q: "API, panel, SDK", vb: ["yes", "PocketBase's."], them: ["yes", "PocketBase's."] },
+          { q: "You operate", vb: ["yes", "Nothing."], them: ["no", "The machine: TLS, restarts, backups, disk, upgrades."] },
+          { q: "Where it runs", vb: ["yes", "Every Cloudflare region, wherever the request lands."], them: ["depends", "One machine in one place. Everyone else pays the round trip."] },
+          { q: "Scaling", vb: ["yes", "Per request, automatically."], them: ["no", "A bigger machine, and a restart."] },
+          { q: "Transactions", vb: ["no", "None. Writes validate, then run as one atomic batch."], them: ["yes", "Real and interactive."] },
+          { q: "Database limits", vb: ["no", "100 bound parameters per statement, 100 columns per table, a CPU ceiling per request."], them: ["yes", "SQLite's own, which you will not reach."] },
+          { q: "Maturity", vb: ["no", "A reimplementation of the wire protocol. A reimplementation is where bugs live."], them: ["yes", "The original, maintained for years."] },
+          { q: "Trying it", vb: ["depends", "A local process, or one command to deploy."], them: ["yes", "Download one file and run it."] },
+          { q: "Cost when idle", vb: ["yes", "Nothing."], them: ["depends", "The machine bills whether or not anyone visits."] },
         ]}
       />
 
       <h2>What PocketBase does better</h2>
       <p>
-        It has no platform limits, because there is no platform. Interactive transactions work. A statement can bind
-        as many parameters as SQLite allows rather than 100. A table can have 2000 columns rather than 100. A request
-        can take as long as it takes, so resizing a very large image is not a question of CPU budget. All of that is
-        written down on the{" "}
+        It has no platform limits, because there is no platform. Interactive transactions work. A statement binds as
+        many parameters as SQLite allows rather than 100. A table has 2000 columns rather than 100. A request takes
+        as long as it takes, so resizing a very large image is not a question of CPU budget. All of it is written
+        down on{" "}
         <a href="https://github.com/voidbase-cloud/voidbase/blob/master/docs/differences.md" target="_blank" rel="noreferrer noopener">
-          differences page
+          the differences page
         </a>
         , and if one of those lines is a problem for your data, PocketBase is the better answer.
       </p>
       <p>
-        It is also one binary written by people who have been maintaining it for years, and voidbase is a
-        reimplementation of its wire protocol. A reimplementation is a place bugs live. We test against the real
-        thing to keep that honest, and the original still has fewer moving parts.
+        It is also one binary written by people who have maintained it for years, and voidbase is a reimplementation
+        of its wire protocol. We test against the real thing to keep that honest, and the original still has fewer
+        moving parts.
       </p>
-      <p>
-        And if you already have a server, PocketBase costs nothing extra to run on it.
-      </p>
+      <p>And if you already have a server, PocketBase costs nothing extra to run on it.</p>
 
       <h2>What voidbase does better</h2>
       <p>
@@ -50,12 +58,12 @@ export default function VsPocketBase() {
         once and never tested, and no pager at 3am because a disk filled up.
       </p>
       <p>
-        Distance. PocketBase is in one region by construction, and everyone else pays the round trip. voidbase runs
+        Distance. PocketBase is in one region by construction and everyone else pays the round trip. voidbase runs
         wherever the request lands.
       </p>
       <p>
-        Load. One PocketBase handles a lot, until it does not, and then the answer is a bigger box and a restart.
-        Workers add capacity per request without being asked.
+        Load. One PocketBase handles a lot, until it does not, and then the answer is a bigger box. Workers add
+        capacity per request without being asked.
       </p>
 
       <h2>Moving between them</h2>
@@ -65,16 +73,19 @@ export default function VsPocketBase() {
         since the two store them differently. Migrate with export and import, not by copying a backup.
       </p>
 
-      <h2>Pick PocketBase if</h2>
-      <p>
-        You need transactions, or you have a server you are happy operating, or you would rather run the original
-        than a reimplementation of it.
-      </p>
-
-      <h2>Pick voidbase if</h2>
-      <p>
-        You like PocketBase and do not want the machine that comes with it.
-      </p>
-    </>
+      <div className="why-picks">
+        <div className="why-pick is-them">
+          <h3>Pick PocketBase if</h3>
+          <p>
+            You need transactions, or you have a server you are happy operating, or you would rather run the original
+            than a reimplementation of it.
+          </p>
+        </div>
+        <div className="why-pick is-us">
+          <h3>Pick voidbase if</h3>
+          <p>You like PocketBase and do not want the machine that comes with it.</p>
+        </div>
+      </div>
+    </article>
   );
 }

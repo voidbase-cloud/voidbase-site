@@ -2,9 +2,11 @@
 // breadcrumbs and the prose all come from _layout.scss, which the docs reuse unchanged. What is left is the few
 // things only these pages have.
 
-// The sidebar follows you down a long page, and scrolls on its own when it is taller than the window.
-.docs-sidebar {
-    .sidebar-content {
+// The sidebar follows you down a long page, and scrolls on its own when it is taller than the window. Only above the
+// breakpoint where it is a sidebar at all: below it the site lays it out in flow, and a `top` offset there shifts it
+// down over the page without moving the space it occupies.
+@media only screen and (min-width: 801px) {
+    .docs-sidebar .sidebar-content {
         position: sticky;
         top: 60px; // clear of the sticky header
         max-height: calc(100vh - 70px);

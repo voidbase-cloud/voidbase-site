@@ -1,8 +1,16 @@
+import ProductMark from "@/components/ProductMark";
 import Versus from "@/components/Versus";
+import "@/scss/why.scss";
 
 export default function VsAppwrite() {
   return (
-    <>
+    <article className="why">
+      <span className="why-eyebrow">Compared to</span>
+      <div className="why-marks">
+        <ProductMark id="voidbase" size={40} />
+        <span className="why-vs">vs</span>
+        <ProductMark id="appwrite" size={40} />
+      </div>
       <h1>voidbase compared to Appwrite</h1>
       <p className="docs-lead">
         Appwrite puts more in the box than voidbase does. voidbase asks less of the machine it runs on, because it
@@ -11,21 +19,23 @@ export default function VsAppwrite() {
 
       <Versus
         other="Appwrite"
+        logo={<ProductMark id="appwrite" size={18} />}
         rows={[
-          { question: "Source", voidbase: "Open, MIT.", other: "Open, BSD 3-clause." },
-          { question: "Self-host", voidbase: "One command into your Cloudflare account.", other: "Docker, running several containers together." },
-          { question: "What you operate", voidbase: "Nothing.", other: "The containers, their database, and the host they sit on." },
-          { question: "Database", voidbase: "SQLite, through D1.", other: "MariaDB, behind Appwrite's own document API." },
-          { question: "Server logic", voidbase: "Hooks and endpoints in JavaScript, inside the instance.", other: "Functions in many languages, each in its own container." },
-          { question: "In the box", voidbase: "Auth, database, files, realtime, jobs, admin panel.", other: "The same, plus messaging, and more auth methods." },
-          { question: "Where it runs", voidbase: "Every Cloudflare region.", other: "Wherever you put the host, or their cloud." },
-          { question: "Cost when idle", voidbase: "Nothing.", other: "The host runs whether or not anyone visits." },
+          { q: "Source", vb: ["yes", "Open, MIT."], them: ["yes", "Open, BSD 3-clause."] },
+          { q: "Self-host", vb: ["yes", "One command into your Cloudflare account."], them: ["depends", "Docker, running several containers together."] },
+          { q: "What you operate", vb: ["yes", "Nothing."], them: ["no", "The containers, their database, and the host they sit on."] },
+          { q: "Server logic", vb: ["no", "JavaScript hooks and endpoints. One language."], them: ["yes", "Functions in many languages, each in its own container."] },
+          { q: "Isolation of that code", vb: ["depends", "Hooks run inside the instance. Faster, less isolated."], them: ["yes", "Each function in its own container."] },
+          { q: "In the box", vb: ["depends", "Auth, database, files, realtime, jobs, admin panel."], them: ["yes", "The same, plus messaging and more sign-in methods."] },
+          { q: "Runs anywhere", vb: ["no", "Cloudflare, or a local process. Not an air-gapped host."], them: ["yes", "Any Linux host with Docker, including one with no internet."] },
+          { q: "Where it runs", vb: ["yes", "Every Cloudflare region."], them: ["depends", "Wherever you put the host, or their cloud."] },
+          { q: "Cost when idle", vb: ["yes", "Nothing."], them: ["no", "The host runs whether or not anyone visits."] },
         ]}
       />
 
       <h2>What Appwrite does better</h2>
       <p>
-        Breadth. Functions run in a long list of languages, not only JavaScript, so a team with Python or Go code can
+        Breadth. Functions run in a long list of languages, not only JavaScript, so a team with Python or Go can
         bring it. Messaging, more sign-in methods and a larger console come as part of the product rather than
         something you wire up.
       </p>
@@ -35,7 +45,7 @@ export default function VsAppwrite() {
       </p>
       <p>
         And it does not care where it runs. Any Linux host with Docker will do, including one with no internet, which
-        matters if your data is not allowed to leave the building.
+        matters when the data is not allowed to leave the building.
       </p>
 
       <h2>What voidbase does better</h2>
@@ -48,21 +58,26 @@ export default function VsAppwrite() {
         costs nothing.
       </p>
       <p>
-        Compatibility with something else. voidbase speaks PocketBase's API, so the client libraries, the admin
-        panel and the documentation already exist and are not ours. Appwrite's API is Appwrite's.
+        Compatibility with something else. voidbase speaks PocketBase's API, so the client libraries, the admin panel
+        and the documentation already exist and are not ours. Appwrite's API is Appwrite's.
       </p>
 
-      <h2>Pick Appwrite if</h2>
-      <p>
-        You need functions in a language other than JavaScript, or you want the extra services in one place, or the
-        deployment has to be a machine you can point at.
-      </p>
-
-      <h2>Pick voidbase if</h2>
-      <p>
-        You want the same category of product with nothing to operate, and JavaScript hooks are enough server logic
-        for what you are building.
-      </p>
-    </>
+      <div className="why-picks">
+        <div className="why-pick is-them">
+          <h3>Pick Appwrite if</h3>
+          <p>
+            You need functions in a language other than JavaScript, or you want the extra services in one place, or
+            the deployment has to be a machine you can point at.
+          </p>
+        </div>
+        <div className="why-pick is-us">
+          <h3>Pick voidbase if</h3>
+          <p>
+            You want the same category of product with nothing to operate, and JavaScript hooks are enough server
+            logic for what you are building.
+          </p>
+        </div>
+      </div>
+    </article>
   );
 }
