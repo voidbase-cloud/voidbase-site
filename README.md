@@ -50,6 +50,12 @@ and `public/_redirects` gives each one its role: `www` redirects to the apex, an
 the admin panel. Writing those host rules needs `Zone > Single Redirect > Edit` on the deploy token. Details:
 `voidbase/docs/deploy.md` and `voidbase/docs/adapter.md`.
 
+CI is Cloudflare Workers Builds, started from GitHub: every push runs `bun run check` and `bun run build` on the
+`voidbase-site-backend` project, and a push to master then runs `bun run deploy:ci`. The deploy's variables and
+secrets (the ones `bun run deploy` reads from `.env` and `.env.local`) live on that project's master trigger in the
+Cloudflare dashboard; `.github/workflows/cloudflare.yml` only starts the build and holds nothing but the account id,
+the two trigger ids and the Builds token.
+
 ## How the two halves meet
 
 `vite build` runs Void's build, which prerenders every page, and then voidbase's adapter

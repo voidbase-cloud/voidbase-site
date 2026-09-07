@@ -1,0 +1,50 @@
+# GitHub only starts builds; Cloudflare Workers Builds runs them. Every push builds the project (`bun run check`,
+# `bun run build`); a push to master also deploys the Worker (`bun run deploy:ci`: `voidbase deploy` from .voidbase/,
+# which serves the site at /, the API at /api and the admin panel at /_/). The deploy's settings and secrets live on
+# the master trigger of the Cloudflare project (dashboard: Workers > voidbase-site-backend > Settings > Builds), not
+# here. The variables and the secret below point at that project: CF_ACCOUNT_ID, CF_CI_TRIGGER_MASTER,
+# CF_CI_TRIGGER_BRANCHES (Settings > Secrets and variables > Actions > Variables) and CLOUDFLARE_BUILDS_TOKEN (a user
+# API token with Workers Builds Configuration: Edit). Until they exist the job is skipped, and a fork deploys from its
+# owner's machine with `bun run deploy`.
+name: cloudflare
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+jobs:
+  start:
+    if: vars.CF_ACCOUNT_ID != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      API: https://api.cloudflare.com/client/v4/accounts/${{ vars.CF_ACCOUNT_ID }}/builds
+      TOKEN: ${{ secrets.CLOUDFLARE_BUILDS_TOKEN }}
+      COMMIT: ${{ github.sha }}
+      BRANCH: ${{ github.ref_name }}
+      # master deploys; every other branch is checked and built on the branches trigger
+      TRIGGER: ${{ github.ref_name == 'master' && vars.CF_CI_TRIGGER_MASTER || vars.CF_CI_TRIGGER_BRANCHES }}
+      WAIT: ${{ vars.CF_BUILDS_WAIT }}
+    steps:
+      - name: Start the build
+        run: |
+          [ -n "$TRIGGER" ] || { echo "no trigger uuid in the repository variables"; exit 1; }
+          body=$(printf '{"commit_hash":"%s","branch":"%s"}' "$COMMIT" "$BRANCH")
+          res=$(curl -sS "$API/triggers/$TRIGGER/builds" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$body")
+          uuid=$(printf '%s' "$res" | jq -r '.result.build_uuid // empty')
+          [ -n "$uuid" ] || { echo "no build started: $res"; exit 1; }
+          echo "cloudflare: build $uuid ($(printf '%s' "$res" | jq -r '.result.status // "queued"')) of $COMMIT on $BRANCH"
+          echo "uuid=$uuid" >> "$GITHUB_ENV"
+      - name: Wait for the build (repository variable CF_BUILDS_WAIT=1)
+        if: env.WAIT == '1'
+        run: |
+          unknown=0
+          while :; do
+            # a finished build has status "stopped" and build_outcome "success" or "fail"
+            status=$(curl -sS "$API/builds/$uuid" -H "Authorization: Bearer $TOKEN" | jq -r 'if .result.status == "stopped" then (.result.build_outcome // "fail") else (.result.status // empty) end')
+            case "$status" in
+              success) echo "cloudflare: success"; exit 0 ;;
+              fail|failure|failed|canceled|cancelled|timed_out|error) echo "cloudflare: $status"; exit 1 ;;
+              "") unknown=$((unknown + 1)); [ "$unknown" -lt 10 ] || { echo "cannot read the status of build $uuid; see the dashboard"; exit 1; } ;;
+            esac
+            sleep 30
+          done
