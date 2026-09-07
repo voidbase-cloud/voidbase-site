@@ -29,8 +29,11 @@ bunx voidbase sync --name voidbase-demo --domain demo.voidbase.cloud
 ```
 
 The target is named on the command line because the site's build environment carries its own
-`VOIDBASE_DEPLOY_NAME`; without it the deploy refuses rather than putting the demo on the site's Worker. A push to
-master does the same through Cloudflare Workers Builds (`bun run deploy:ci`).
+`VOIDBASE_DEPLOY_NAME`; without it the deploy refuses rather than putting the demo on the site's Worker.
+
+A push to master deploys this too, from **its own** Cloudflare Workers Builds trigger on the `voidbase-demo` Worker
+(a build may only deploy the Worker its trigger belongs to, so the site's build cannot do it). `voidbase sync` from
+this directory creates that trigger; its deploy command steps in from the repository root.
 
 Sign in with `test@example.com` / `demo123456`. The password is a demo secret in name only: it is printed on the
 page, and every hour it goes back to this.

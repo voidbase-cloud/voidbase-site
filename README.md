@@ -88,7 +88,9 @@ shows the plan. Details: `voidbase/docs/deploy.md`.
 `demo/` is the instance behind [demo.voidbase.cloud](https://demo.voidbase.cloud): PocketBase's own layout
 (`pb_hooks/`, `pb_secrets/`, `pb_public/`), the unmodified admin panel, and a database restored every hour by a
 hook cron. The landing page's "Live demo" button and `/demo` both point at it. `demo/README.md` has the details;
-`bun run demo:deploy` deploys it from a machine, and a push to master deploys it alongside the site.
+`bun run demo:deploy` deploys it from a machine, and a push to master deploys it from its own Cloudflare Workers
+Builds trigger (a build may only deploy its own Worker, so the site's build deploys the site and the demo's deploys
+the demo).
 
 ## How the two halves meet
 
