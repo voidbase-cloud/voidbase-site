@@ -48,55 +48,6 @@
         }
     }
 
-    // the live cursors over the preview (src/components/PresenceCursors.tsx): who else is on this page right now
-    .presence-layer {
-        position: absolute;
-        inset: 0;
-        z-index: 2;
-        pointer-events: none;
-        overflow: hidden;
-        border-radius: var(--lgRadius);
-    }
-    .presence-avatars {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        display: flex;
-        gap: 4px;
-    }
-    .presence-avatar {
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 9px;
-        font-weight: 600;
-        color: var(--txtPrimaryColor);
-        background: var(--baseAlt2Color);
-    }
-    .presence-cursor {
-        position: absolute;
-        display: flex;
-        align-items: flex-start;
-        transform: translate(-2px, -2px);
-        transition: left 0.12s linear, top 0.12s linear;
-        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
-    }
-    .presence-name {
-        margin: 14px 0 0 -2px;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 10px;
-        line-height: 1.3;
-        font-weight: 600;
-        color: #fff;
-        white-space: nowrap;
-    }
-    @media (prefers-reduced-motion: reduce) {
-        .presence-cursor { transition: none; }
-    }
 
     .hero-preview {
         position: relative;
@@ -544,4 +495,96 @@
     @media only screen and (max-width: 450px) {
         flex-wrap: wrap;
     }
+}
+
+// The live cursors (src/components/PresenceCursors.tsx): who else is on this page right now, and you.
+//
+// The layer is fixed to the window and covers all of it, because a visitor points at anything on the page, not at
+// one panel. Every cursor is placed by a transform written from a single animation frame loop, never by the layout,
+// so three cursors moving cost one style write each and no reflow.
+.presence-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 100000; // above the site's own topmost layer (999999 is reserved for the toasts)
+    pointer-events: none;
+    overflow: hidden;
+    contain: layout paint;
+}
+
+.presence-cursor {
+    position: absolute;
+    top: 0;
+    left: 0;
+    // the arrow's tip sits a few pixels into its box: pull it back so the point is on the point
+    margin: -3px 0 0 -3px;
+    display: flex;
+    align-items: flex-start;
+    will-change: transform;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+
+    svg {
+        flex: none;
+        transition: transform 0.12s ease;
+    }
+}
+
+.presence-name {
+    margin: 14px 0 0 -2px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    line-height: 1.3;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+}
+
+// your own arrow: invisible until the pointer first moves, so it never starts in the corner
+.presence-cursor-own {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+
+    &.is-live { opacity: 1; }
+    // over a text field the system's own I-beam says something this arrow cannot, so it steps aside
+    &.is-hidden { opacity: 0; }
+    &.is-clickable svg { transform: scale(1.22); }
+    .presence-name { opacity: 0.85; }
+}
+
+// the roster: everyone holding a slot, and you
+.presence-avatars {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    display: flex;
+    gap: 6px;
+    padding: 6px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(6px);
+}
+
+.presence-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 600;
+    color: #fff;
+    background: #1c1c22;
+}
+
+// The real cursor is hidden while the drawn one stands in for it, on devices that have one to hide. The class is
+// lifted (not overridden) over text fields, so everything the page and the browser say about those still applies.
+html.presence-pointer:not(.presence-native-cursor),
+html.presence-pointer:not(.presence-native-cursor) * {
+    cursor: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .presence-cursor svg,
+    .presence-cursor-own { transition: none; }
 }

@@ -405,9 +405,6 @@ export default function Landing() {
               className="preview"
             />
 
-            {/* who else is on this page right now, over this site's own instance (src/components/PresenceCursors.tsx) */}
-            <PresenceCursors />
-
             <div className="content">
               <a
                 href="https://demo.voidbase.cloud/"
@@ -576,6 +573,10 @@ export default function Landing() {
       </div>
 
       <PageFooter />
+
+      {/* who else is on this page right now, and your own arrow (src/components/PresenceCursors.tsx). It covers the
+          whole page, so it is mounted here rather than inside any one section. */}
+      <PresenceCursors />
     </>
   );
 }
