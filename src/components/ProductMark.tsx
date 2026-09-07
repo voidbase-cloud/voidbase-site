@@ -6,9 +6,11 @@
 // ones so a row of them still lines up.
 export interface Product {
   name: string;
-  /** the file in public/images/logos, when devicon has one */
+  /** a full-colour logo, drawn as an image */
   logo?: string;
-  /** the colour the tile uses when it does not */
+  /** a single-colour logo, drawn through a mask so it can be tinted: the source files are black on white */
+  mask?: string;
+  /** the colour a masked mark or a lettered tile uses */
   tint?: string;
 }
 
@@ -18,8 +20,11 @@ export const PRODUCTS: Record<string, Product> = {
   supabase: { name: "Supabase", logo: "/images/logos/supabase.svg" },
   appwrite: { name: "Appwrite", logo: "/images/logos/appwrite.svg" },
   cloudflare: { name: "Cloudflare", logo: "/images/logos/cloudflare.svg" },
-  pocketbase: { name: "PocketBase", tint: "#b8dbd9" },
-  convex: { name: "Convex", tint: "#f3b64b" },
+  // thesvg.org carries these three. PocketBase's is a single-colour mark drawn for a light background, so it is
+  // masked and tinted rather than shown as an image. Encore publishes only a wordmark, which cannot sit in a square
+  // slot beside a round logo, so it keeps a lettered tile.
+  pocketbase: { name: "PocketBase", mask: "/images/logos/pocketbase.svg", tint: "#ededed" },
+  convex: { name: "Convex", logo: "/images/logos/convex.svg" },
   encore: { name: "Encore", tint: "#a78bfa" },
 };
 
@@ -28,6 +33,15 @@ export default function ProductMark({ id, size = 28 }: { id: keyof typeof PRODUC
   if (!p) return null;
   if (p.logo) {
     return <img className="product-mark" src={p.logo} alt="" width={size} height={size} loading="lazy" />;
+  }
+  if (p.mask) {
+    return (
+      <span
+        className="product-mark product-mark-masked"
+        style={{ width: size, height: size, backgroundColor: p.tint, maskImage: `url(${p.mask})`, WebkitMaskImage: `url(${p.mask})` }}
+        aria-hidden="true"
+      />
+    );
   }
   return (
     <span

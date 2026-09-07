@@ -1,4 +1,6 @@
 import ProductMark from "@/components/ProductMark";
+import CostSection from "@/components/CostSection";
+import SpeedSection from "@/components/SpeedSection";
 import Versus from "@/components/Versus";
 import "@/scss/why.scss";
 
@@ -78,6 +80,9 @@ export default function VsAppwrite() {
           </p>
         </div>
       </div>
+
+      <CostSection product="appwrite" />
+      <SpeedSection product="appwrite" />
     </article>
   );
 }

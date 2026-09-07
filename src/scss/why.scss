@@ -492,3 +492,212 @@
     .why-item-body { grid-template-columns: 1fr; gap: 2px; dt { padding-top: 8px; } }
     .cost-total { font-size: 34px; line-height: 40px; }
 }
+
+// a single-colour logo, tinted through a mask: the file is a black glyph, the colour comes from here
+.product-mark-masked {
+    display: inline-block;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+}
+
+// ---- speed ------------------------------------------------------------------------------------------------------
+// The warning is the loudest thing on the page on purpose: everything under it is arithmetic over beliefs.
+.perf-warning {
+    border: 1px solid var(--dangerColor);
+    border-left-width: 4px;
+    border-radius: var(--baseRadius);
+    background: var(--dangerAltColor);
+    padding: 18px 22px;
+    margin: 0 0 26px;
+    max-width: var(--measure);
+
+    p {
+        margin: 0 0 10px;
+        font-size: 15px;
+        line-height: 24px;
+        color: #f0d6d7;
+        max-width: none;
+        &:last-child { margin-bottom: 0; }
+    }
+    strong { color: #ffd9da; }
+}
+
+.perf-bars {
+    margin: 0 0 32px;
+}
+
+.perf-row {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--baseAlt1Color);
+    &:last-child { border-bottom: 0; }
+}
+
+.perf-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 8px;
+    font-size: 15px;
+    color: var(--txtHintColor);
+
+    b {
+        font-family: var(--monospaceFontFamily);
+        font-size: 17px;
+        color: var(--txtPrimaryColor);
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+// one bar, segmented by where the time goes
+.perf-bar {
+    display: flex;
+    height: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+    background: var(--baseAlt1Color);
+    margin-bottom: 10px;
+
+    i {
+        display: block;
+        height: 100%;
+        &:nth-child(1) { background: var(--successColor); }
+        &:nth-child(2) { background: var(--warningColor); }
+        &:nth-child(3) { background: #6da7ec; }
+        &:nth-child(4) { background: var(--baseAlt4Color); }
+    }
+}
+
+.perf-parts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 18px;
+    margin: 0 0 8px;
+    font-size: 13px;
+
+    > div { display: flex; gap: 6px; }
+    dt { color: var(--txtDisabledColor); }
+    dd {
+        margin: 0;
+        font-family: var(--monospaceFontFamily);
+        color: var(--txtHintColor);
+    }
+}
+
+.perf-note {
+    font-size: 14px;
+    line-height: 22px;
+    color: var(--txtDisabledColor);
+    margin: 0;
+    max-width: var(--measure);
+}
+
+.perf-cold {
+    display: flex;
+    align-items: center;
+
+    input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--successColor);
+        cursor: pointer;
+    }
+    .cost-slider-label { flex: 1; margin-bottom: 0; }
+}
+
+.perf-ask {
+    border: 1px dashed var(--baseAlt3Color);
+    border-radius: var(--baseRadius);
+    padding: 18px 22px;
+    margin: 28px 0 0;
+    max-width: var(--measure);
+
+    h3 { margin: 0 0 8px; }
+    p { margin: 0; }
+}
+
+// preset chips: three shapes of app, so nobody has to drag five sliders to see anything
+.cost-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 14px;
+}
+
+.cost-preset {
+    border: 1px solid var(--baseAlt2Color);
+    background: var(--baseColor);
+    color: var(--txtHintColor);
+    border-radius: var(--baseRadius);
+    padding: 7px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: border-color var(--baseAnimationSpeed), color var(--baseAnimationSpeed);
+
+    &:hover { border-color: var(--baseAlt4Color); color: var(--txtPrimaryColor); }
+    &.active {
+        border-color: var(--successColor);
+        color: var(--txtPrimaryColor);
+        background: var(--successAltColor);
+    }
+}
+
+// the stacked bar on our own card: where the money actually goes
+.cost-stack {
+    display: flex;
+    height: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+    gap: 2px;
+    margin: 0 0 14px;
+
+    i { display: block; height: 100%; }
+}
+
+.cost-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 7px;
+    vertical-align: middle;
+}
+
+.cost-card.is-unpriced {
+    border-style: dashed;
+    .cost-total { color: var(--txtDisabledColor); font-size: 30px; }
+}
+
+.cost-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cost-ratio.is-cheaper { color: var(--successColor); }
+
+// the assumptions, folded away but never absent
+.cost-assumptions {
+    border: 1px solid var(--baseAlt1Color);
+    border-radius: var(--baseRadius);
+    padding: 14px 18px;
+    margin: 0 0 8px;
+
+    summary {
+        cursor: pointer;
+        font-size: 15px;
+        color: var(--txtHintColor);
+        &:hover { color: var(--txtPrimaryColor); }
+    }
+    p {
+        font-size: 14px;
+        line-height: 23px;
+        color: var(--txtDisabledColor);
+        margin: 12px 0 0;
+        max-width: none;
+    }
+}

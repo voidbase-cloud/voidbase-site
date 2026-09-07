@@ -1,4 +1,6 @@
 import ProductMark from "@/components/ProductMark";
+import CostSection from "@/components/CostSection";
+import SpeedSection from "@/components/SpeedSection";
 import Versus from "@/components/Versus";
 import "@/scss/why.scss";
 
@@ -81,6 +83,9 @@ export default function VsFirebase() {
           </p>
         </div>
       </div>
+
+      <CostSection product="firebase" />
+      <SpeedSection product="firebase" />
     </article>
   );
 }

@@ -1,24 +1,21 @@
-// The cost model behind /docs/why/cost.
+// The cost models behind the "What it costs" section at the end of every comparison page.
 //
-// An estimate whose assumptions are hidden is an advertisement. Every rate here is a published list price with the
-// page it came from, every assumption that turns "an app" into "this many billable operations" is a named constant,
-// and the page prints both. If a number here is wrong, it is wrong in one visible place.
+// An estimate whose assumptions are hidden is an advertisement. Every rate here is a published list price read off
+// the vendor's own pricing page on 8 September 2026, every assumption that turns "an app" into "this many billable
+// operations" is a named constant, and the section prints both. If a number here is wrong, it is wrong in one
+// visible place and the source link is next to it.
 //
-// Firebase is deliberately absent. Firestore's per-operation rates live on a Google Cloud page that would not load
-// in full when this was written, and putting a competitor's prices on a public page from memory is not something
-// worth doing. The free-tier thresholds are documented; the paid rates are the ones that matter, and they are not
-// quoted here until they can be quoted from the source.
+// One rival has no numbers: Firestore's per-operation rates sit on a Google Cloud page that would not load in full,
+// and a competitor's prices recalled from memory are not something to publish. That model returns null and the page
+// says why rather than guessing.
 
 export interface Usage {
-  /** API reads a month */
   reads: number;
-  /** API writes a month */
   writes: number;
   /** stored files, GB */
   storage: number;
   /** peak concurrent realtime connections */
   realtime: number;
-  /** monthly active users */
   mau: number;
 }
 
@@ -31,46 +28,19 @@ export interface Line {
 export interface Estimate {
   total: number;
   lines: Line[];
-  /** what this model leaves out, in the other side's favour or ours */
+  /** what this model leaves out, whichever way it cuts */
   caveat: string;
 }
 
-// ---- rates -------------------------------------------------------------------------------------------------------
-// Cloudflare, from developers.cloudflare.com, Workers Paid.
-export const CF = {
-  base: 5, // the account minimum
-  requestsIncluded: 10_000_000,
-  perMillionRequests: 0.3,
-  cpuMsIncluded: 30_000_000,
-  perMillionCpuMs: 0.02,
-  d1RowsReadIncluded: 25_000_000_000,
-  perMillionRowsRead: 0.001,
-  d1RowsWrittenIncluded: 50_000_000,
-  perMillionRowsWritten: 1.0,
-  d1StorageIncludedGb: 5,
-  perGbD1: 0.75,
-  r2PerGb: 0.015,
-  doRequestsIncluded: 1_000_000,
-  perMillionDoRequests: 0.15,
-};
+export interface Source {
+  label: string;
+  href: string;
+}
 
-// Supabase, from supabase.com/pricing, Pro.
-export const SB = {
-  base: 25,
-  mauIncluded: 100_000,
-  perMau: 0.00325,
-  diskIncludedGb: 8,
-  perGbDisk: 0.125,
-  fileStorageIncludedGb: 100,
-  perGbFiles: 0.0213,
-  realtimeIncluded: 500,
-  per1000Realtime: 10,
-  messagesIncluded: 5_000_000,
-  perMillionMessages: 2.5,
-};
+const over = (used: number, included: number) => Math.max(0, used - included);
+const round = (n: number) => Math.round(n * 100) / 100;
 
-// ---- what an app does, per operation --------------------------------------------------------------------------
-// These are the assumptions. They are the difference between a model and a guess, so the page prints them.
+// ---- what an app does, per operation ------------------------------------------------------------------------
 export const ASSUME = {
   /** SQLite rows a typical read touches, with a relation expanded */
   rowsPerRead: 4,
@@ -80,23 +50,37 @@ export const ASSUME = {
   cpuMsPerRequest: 3,
   /** realtime updates pushed to each connected client a day */
   pushesPerConnectionPerDay: 50,
-  /** how full a stored file makes the database look: files live in R2, rows in D1 */
+  /** database a million written rows occupies, GB */
   dbGbPerMillionRows: 0.5,
+  /** average response size, for the plans that bill bandwidth */
+  kbPerResponse: 8,
 };
 
-const over = (used: number, included: number) => Math.max(0, used - included);
-const round = (n: number) => Math.round(n * 100) / 100;
+// ---- ours ----------------------------------------------------------------------------------------------------
+export const CF = {
+  base: 5,
+  requestsIncluded: 10_000_000,
+  perMillionRequests: 0.3,
+  cpuMsIncluded: 30_000_000,
+  perMillionCpuMs: 0.02,
+  rowsReadIncluded: 25_000_000_000,
+  perMillionRowsRead: 0.001,
+  rowsWrittenIncluded: 50_000_000,
+  perMillionRowsWritten: 1.0,
+  dbStorageIncludedGb: 5,
+  perGbDb: 0.75,
+  r2PerGb: 0.015,
+  doRequestsIncluded: 1_000_000,
+  perMillionDoRequests: 0.15,
+};
 
-/** voidbase on your own Cloudflare account */
-export function cloudflareCost(u: Usage): Estimate {
+export function voidbaseCost(u: Usage): Estimate {
   const apiRequests = u.reads + u.writes;
-  // a websocket connection is billed as one request; the messages over it are not
-  const requests = apiRequests + u.realtime;
+  const requests = apiRequests + u.realtime; // a websocket connection is one request; its messages are not
   const cpuMs = apiRequests * ASSUME.cpuMsPerRequest;
   const rowsRead = u.reads * ASSUME.rowsPerRead;
   const rowsWritten = u.writes * ASSUME.rowsPerWrite;
-  const dbGb = (rowsWritten / 1_000_000) * ASSUME.dbGbPerMillionRows; // rows written are what accumulate
-  // the hub fans out: one durable object request per push
+  const dbGb = (rowsWritten / 1_000_000) * ASSUME.dbGbPerMillionRows;
   const doRequests = u.realtime * ASSUME.pushesPerConnectionPerDay * 30;
 
   const lines: Line[] = [
@@ -108,21 +92,21 @@ export function cloudflareCost(u: Usage): Estimate {
     },
     {
       label: "CPU time",
-      detail: `${ASSUME.cpuMsPerRequest}ms per request, ${CF.cpuMsIncluded / 1_000_000}M ms included`,
+      detail: `${ASSUME.cpuMsPerRequest}ms a request`,
       amount: round((over(cpuMs, CF.cpuMsIncluded) / 1_000_000) * CF.perMillionCpuMs),
     },
     {
       label: "Database rows",
       detail: `${(rowsRead / 1_000_000).toFixed(0)}M read, ${(rowsWritten / 1_000_000).toFixed(1)}M written`,
       amount: round(
-        (over(rowsRead, CF.d1RowsReadIncluded) / 1_000_000) * CF.perMillionRowsRead +
-          (over(rowsWritten, CF.d1RowsWrittenIncluded) / 1_000_000) * CF.perMillionRowsWritten,
+        (over(rowsRead, CF.rowsReadIncluded) / 1_000_000) * CF.perMillionRowsRead +
+          (over(rowsWritten, CF.rowsWrittenIncluded) / 1_000_000) * CF.perMillionRowsWritten,
       ),
     },
     {
       label: "Database storage",
-      detail: `${dbGb.toFixed(1)} GB, ${CF.d1StorageIncludedGb} GB included`,
-      amount: round(over(dbGb, CF.d1StorageIncludedGb) * CF.perGbD1),
+      detail: `${dbGb.toFixed(1)} GB, ${CF.dbStorageIncludedGb} GB included`,
+      amount: round(over(dbGb, CF.dbStorageIncludedGb) * CF.perGbDb),
     },
     { label: "File storage", detail: `${u.storage} GB in R2, egress free`, amount: round(u.storage * CF.r2PerGb) },
     {
@@ -135,54 +119,165 @@ export function cloudflareCost(u: Usage): Estimate {
     total: round(lines.reduce((a, l) => a + l.amount, 0)),
     lines,
     caveat:
-      "No per-user charge: signing in is an ordinary request, so monthly active users do not appear. Durable object compute time is left out, because a hibernating connection bills none.",
+      "No per-user charge: signing in is an ordinary request, so monthly active users do not appear at all. Durable object compute is left out, because a hibernating connection bills none.",
   };
 }
 
-/** the same app on Supabase Pro */
-export function supabaseCost(u: Usage): Estimate {
-  const messages = u.realtime * ASSUME.pushesPerConnectionPerDay * 30;
-  const dbGb = (u.writes * ASSUME.rowsPerWrite) / 1_000_000 * ASSUME.dbGbPerMillionRows;
-  const lines: Line[] = [
-    { label: "Pro base", detail: "one project, one instance", amount: SB.base },
-    {
-      label: "Monthly active users",
-      detail: `${(u.mau / 1000).toFixed(0)}k, ${SB.mauIncluded / 1000}k included`,
-      amount: round(over(u.mau, SB.mauIncluded) * SB.perMau),
-    },
-    {
-      label: "Database disk",
-      detail: `${dbGb.toFixed(1)} GB, ${SB.diskIncludedGb} GB included`,
-      amount: round(over(dbGb, SB.diskIncludedGb) * SB.perGbDisk),
-    },
-    {
-      label: "File storage",
-      detail: `${u.storage} GB, ${SB.fileStorageIncludedGb} GB included`,
-      amount: round(over(u.storage, SB.fileStorageIncludedGb) * SB.perGbFiles),
-    },
-    {
-      label: "Realtime connections",
-      detail: `${u.realtime.toLocaleString()} peak, ${SB.realtimeIncluded} included`,
-      amount: round((over(u.realtime, SB.realtimeIncluded) / 1000) * SB.per1000Realtime),
-    },
-    {
-      label: "Realtime messages",
-      detail: `${(messages / 1_000_000).toFixed(0)}M, ${SB.messagesIncluded / 1_000_000}M included`,
-      amount: round((over(messages, SB.messagesIncluded) / 1_000_000) * SB.perMillionMessages),
-    },
-  ];
-  return {
-    total: round(lines.reduce((a, l) => a + l.amount, 0)),
-    lines,
-    caveat:
-      "In Supabase's favour: reads and writes are not billed per operation, so the API traffic above costs nothing here. What it does cost is compute, and sustained load means a larger instance than the one the Pro base includes. That upgrade is not modelled, so a busy app's real bill is higher than this.",
-  };
+// ---- the rivals ------------------------------------------------------------------------------------------------
+export interface Rival {
+  name: string;
+  plan: string;
+  /** null when we could not read the rates off the vendor's page, with `why` explaining */
+  estimate: ((u: Usage) => Estimate) | null;
+  why?: string;
+  source: Source;
+  /** which latency profile this product has, for the speed section */
+  shape: "region" | "machine" | "cloud";
+  shapeNote: string;
 }
 
-export const SOURCES = [
-  { label: "Workers pricing", href: "https://developers.cloudflare.com/workers/platform/pricing/" },
-  { label: "D1 pricing", href: "https://developers.cloudflare.com/d1/platform/pricing/" },
-  { label: "R2 pricing", href: "https://developers.cloudflare.com/r2/pricing/" },
-  { label: "Durable Objects pricing", href: "https://developers.cloudflare.com/durable-objects/platform/pricing/" },
-  { label: "Supabase pricing", href: "https://supabase.com/pricing" },
+const gbOut = (u: Usage) => ((u.reads + u.writes) * ASSUME.kbPerResponse) / 1_000_000; // KB to GB
+
+export const RIVALS: Record<string, Rival> = {
+  supabase: {
+    name: "Supabase",
+    plan: "Pro",
+    source: { label: "supabase.com/pricing", href: "https://supabase.com/pricing" },
+    shape: "region",
+    shapeNote: "One region per project, with the database next to the code.",
+    estimate: (u) => {
+      const messages = u.realtime * ASSUME.pushesPerConnectionPerDay * 30;
+      const dbGb = ((u.writes * ASSUME.rowsPerWrite) / 1_000_000) * ASSUME.dbGbPerMillionRows;
+      const lines: Line[] = [
+        { label: "Pro base", detail: "one project, one instance", amount: 25 },
+        { label: "Monthly active users", detail: `${(u.mau / 1000).toFixed(0)}k, 100k included`, amount: round(over(u.mau, 100_000) * 0.00325) },
+        { label: "Database disk", detail: `${dbGb.toFixed(1)} GB, 8 GB included`, amount: round(over(dbGb, 8) * 0.125) },
+        { label: "File storage", detail: `${u.storage} GB, 100 GB included`, amount: round(over(u.storage, 100) * 0.0213) },
+        { label: "Realtime connections", detail: `${u.realtime.toLocaleString()} peak, 500 included`, amount: round((over(u.realtime, 500) / 1000) * 10) },
+        { label: "Realtime messages", detail: `${(messages / 1_000_000).toFixed(0)}M, 5M included`, amount: round((over(messages, 5_000_000) / 1_000_000) * 2.5) },
+      ];
+      return {
+        total: round(lines.reduce((a, l) => a + l.amount, 0)),
+        lines,
+        caveat:
+          "In Supabase's favour: reads and writes are not billed per operation, so all the API traffic above costs nothing here. What it does cost is compute, and sustained load means a larger instance than the Pro base includes. That upgrade is not modelled, so a busy app's real bill is higher than this.",
+      };
+    },
+  },
+
+  convex: {
+    name: "Convex",
+    plan: "Professional",
+    source: { label: "convex.dev/pricing", href: "https://www.convex.dev/pricing" },
+    shape: "region",
+    shapeNote: "Their cloud, with the database beside the functions.",
+    estimate: (u) => {
+      const calls = u.reads + u.writes;
+      const dbGb = ((u.writes * ASSUME.rowsPerWrite) / 1_000_000) * ASSUME.dbGbPerMillionRows;
+      const egress = gbOut(u);
+      const lines: Line[] = [
+        { label: "Professional base", detail: "one developer", amount: 25 },
+        { label: "Function calls", detail: `${(calls / 1_000_000).toFixed(1)}M, 25M included`, amount: round((over(calls, 25_000_000) / 1_000_000) * 2) },
+        { label: "Database storage", detail: `${dbGb.toFixed(1)} GB, 50 GB included`, amount: round(over(dbGb, 50) * 0.2) },
+        { label: "File storage", detail: `${u.storage} GB, 100 GB included`, amount: round(over(u.storage, 100) * 0.03) },
+        { label: "Data egress", detail: `${egress.toFixed(0)} GB, 50 GB included`, amount: round(over(egress, 50) * 0.12) },
+      ];
+      return {
+        total: round(lines.reduce((a, l) => a + l.amount, 0)),
+        lines,
+        caveat:
+          "Query and mutation compute is free on this plan, and database bandwidth and action compute are not modelled here. Convex bills per developer on the team, so a team of five starts at five times the base.",
+      };
+    },
+  },
+
+  appwrite: {
+    name: "Appwrite Cloud",
+    plan: "Pro",
+    source: { label: "appwrite.io/pricing", href: "https://appwrite.io/pricing" },
+    shape: "region",
+    shapeNote: "Their cloud, or a host you run yourself, in one place either way.",
+    estimate: (u) => {
+      const bandwidth = gbOut(u);
+      const lines: Line[] = [
+        { label: "Pro base", detail: "one member, $10 of database credit", amount: 25 },
+        { label: "Monthly active users", detail: `${(u.mau / 1000).toFixed(0)}k, 200k included`, amount: round((over(u.mau, 200_000) / 1000) * 3) },
+        { label: "Reads", detail: `${(u.reads / 1_000_000).toFixed(1)}M`, amount: round((u.reads / 100_000) * 0.06) },
+        { label: "Writes", detail: `${(u.writes / 1_000_000).toFixed(1)}M`, amount: round((u.writes / 100_000) * 0.1) },
+        { label: "Storage", detail: `${u.storage} GB, 150 GB included`, amount: round((over(u.storage, 150) / 100) * 2.8) },
+        { label: "Bandwidth", detail: `${bandwidth.toFixed(0)} GB, 2 TB included`, amount: round((over(bandwidth, 2000) / 100) * 15) },
+      ];
+      const total = round(Math.max(25, lines.reduce((a, l) => a + l.amount, 0) - 10));
+      return {
+        total,
+        lines: [...lines, { label: "Database credit", detail: "included every month", amount: -10 }],
+        caveat:
+          "The $10 of monthly database credit is subtracted, and the bill floors at the $25 base. Reads and writes are charged from the first one here rather than after an allowance, which is what makes this column move quickly.",
+      };
+    },
+  },
+
+  encore: {
+    name: "Encore Cloud",
+    plan: "Pro",
+    source: { label: "encore.dev/pricing", href: "https://encore.dev/pricing" },
+    shape: "cloud",
+    shapeNote: "Your own AWS or GCP region, so the same single-region trade.",
+    estimate: (u) => {
+      const events = (u.reads + u.writes) / 1_000_000;
+      const lines: Line[] = [
+        { label: "Pro base", detail: "one member", amount: 49 },
+        { label: "Environment", detail: "one production environment", amount: 99 },
+        { label: "Resources", detail: "6 at $2.50: services, database, bucket, cron, queue, secrets", amount: 15 },
+        { label: "Tracing events", detail: `${events.toFixed(0)}M, 20M included`, amount: round(over(events, 20) * 1.2) },
+      ];
+      return {
+        total: round(lines.reduce((a, l) => a + l.amount, 0)),
+        lines,
+        caveat:
+          "This is Encore's platform fee only. The infrastructure runs in your own AWS or GCP account and that cloud bills you directly for compute, storage and data transfer, which is not modelled here and is usually the larger half. The voidbase column, by contrast, is the whole bill.",
+      };
+    },
+  },
+
+  pocketbase: {
+    name: "PocketBase",
+    plan: "on a server you rent",
+    source: { label: "no vendor pricing: it is a binary", href: "https://pocketbase.io/docs/going-to-production/" },
+    shape: "machine",
+    shapeNote: "One machine, wherever you put it, with SQLite on its own disk.",
+    estimate: (u) => {
+      // no vendor to quote, so the assumption is stated: a small VPS, sized up as the data grows
+      const vps = u.storage > 500 || u.reads > 100_000_000 ? 48 : u.storage > 100 || u.reads > 20_000_000 ? 24 : 12;
+      const backups = round(u.storage * 0.02);
+      const lines: Line[] = [
+        { label: "The server", detail: vps === 12 ? "a 2 GB VPS" : vps === 24 ? "a 4 GB VPS" : "an 8 GB VPS", amount: vps },
+        { label: "Backups off the box", detail: `${u.storage} GB of object storage`, amount: backups },
+      ];
+      return {
+        total: round(lines.reduce((a, l) => a + l.amount, 0)),
+        lines,
+        caveat:
+          "PocketBase costs nothing; the machine does. This assumes a VPS sized to the data and object storage for backups, and it is the honest cheap answer at small scale. It leaves out the thing that actually costs: somebody patching, restarting and restoring it, and the request that arrives while the one box is down.",
+      };
+    },
+  },
+
+  firebase: {
+    name: "Firebase",
+    plan: "Blaze",
+    estimate: null,
+    why:
+      "Firestore's per-operation rates live on a Google Cloud pricing page that would not load in full when this was built, and putting a competitor's prices on a public page from memory is not a thing worth doing. The free tier is documented and generous, 50,000 reads and 20,000 writes a day. The paid rates are the ones that decide a comparison, and they will appear here when they can be quoted from the source rather than recalled.",
+    source: { label: "firebase.google.com/pricing", href: "https://firebase.google.com/pricing" },
+    shape: "region",
+    shapeNote: "Google's, with multi-region options for Firestore.",
+  },
+};
+
+export const OUR_SOURCES: Source[] = [
+  { label: "Workers", href: "https://developers.cloudflare.com/workers/platform/pricing/" },
+  { label: "D1", href: "https://developers.cloudflare.com/d1/platform/pricing/" },
+  { label: "R2", href: "https://developers.cloudflare.com/r2/pricing/" },
+  { label: "Durable Objects", href: "https://developers.cloudflare.com/durable-objects/platform/pricing/" },
 ];

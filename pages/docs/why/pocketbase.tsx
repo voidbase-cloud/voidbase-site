@@ -1,4 +1,6 @@
 import ProductMark from "@/components/ProductMark";
+import CostSection from "@/components/CostSection";
+import SpeedSection from "@/components/SpeedSection";
 import Versus from "@/components/Versus";
 import "@/scss/why.scss";
 
@@ -86,6 +88,9 @@ export default function VsPocketBase() {
           <p>You like PocketBase and do not want the machine that comes with it.</p>
         </div>
       </div>
+
+      <CostSection product="pocketbase" />
+      <SpeedSection product="pocketbase" />
     </article>
   );
 }
