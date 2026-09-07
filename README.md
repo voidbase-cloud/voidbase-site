@@ -51,14 +51,18 @@ the admin panel. Writing those host rules needs `Zone > Single Redirect > Edit` 
 `voidbase/docs/deploy.md` and `voidbase/docs/adapter.md`.
 
 CI is Cloudflare Workers Builds, started from GitHub: every push runs `bun run build` and then `bun run check` on the
-`voidbase-site-backend` project (the build generates `.voidbase/`, which the typecheck extends), and a push to master then runs `bun run deploy:ci`. The app's configuration is
-declared in `vb_secrets/main.ts` with Void's validators, in three tiers: `.secret()` keys are the Worker's encrypted
-secrets, stored once from a maintainer's machine (`bun run deploy`, or `voidbase secrets push` from `.voidbase/`) and
-never replaced by a deploy; bare keys are Worker vars, set by every deploy from the declared defaults and the build's
-environment; `.public()` keys are also inlined into the static site as `import.meta.env.PB_*`. Local values live in
-the git-ignored `vb_secrets/secrets.json`; there is no `.env`. This machine's deploy token and target sit in
-`.env.local`. So the master trigger holds only `VOIDBASE_DEPLOY_CF_API_KEY`, the deploy target (`VOIDBASE_DEPLOY_NAME`,
-`VOIDBASE_DEPLOY_DOMAIN`) and `VB_ADMIN_EMAILS`; `.github/workflows/cloudflare.yml` only starts the build and holds
+`voidbase-site-backend` project (the build generates `.voidbase/`, which the typecheck extends; the build step is
+wrapped in a five-minute watchdog with one retry, because a cold build has hung on rare occasions), and a push to
+master then runs `bun run deploy:ci`. The app's configuration is
+declared in `vb_secrets/main.ts` with Void's validators, every key wrapped in who may read it: `secret()` keys are
+the Worker's encrypted secrets, stored once from a maintainer's machine (`bun run deploy`, or `voidbase secrets
+push` from `.voidbase/`) and never replaced by a deploy; `server()` keys are Worker vars, set by every deploy from
+the declared defaults and the build's environment; `browser()` keys are also inlined into the static site as
+`import.meta.env.PB_*`. Local values live in
+the git-ignored `vb_secrets/secrets.json`, and so do the `local()` keys, voidbase's own: the deploy token and the
+deploy target, read by the tooling here or from the build's environment in CI and never deployed. There is no `.env`
+file of any kind. So the master trigger holds only `VOIDBASE_DEPLOY_CF_API_KEY` and `VB_ADMIN_EMAILS` (the deploy
+target has defaults in the declaration); `.github/workflows/cloudflare.yml` only starts the build and holds
 nothing but the account id, the two trigger ids and the Builds token.
 
 ## How the two halves meet
