@@ -50,8 +50,8 @@ and `public/_redirects` gives each one its role: `www` redirects to the apex, an
 the admin panel. Writing those host rules needs `Zone > Single Redirect > Edit` on the deploy token. Details:
 `voidbase/docs/deploy.md` and `voidbase/docs/adapter.md`.
 
-CI is Cloudflare Workers Builds, started from GitHub: every push runs `bun run check` and `bun run build` on the
-`voidbase-site-backend` project, and a push to master then runs `bun run deploy:ci`. The app's configuration is
+CI is Cloudflare Workers Builds, started from GitHub: every push runs `bun run build` and then `bun run check` on the
+`voidbase-site-backend` project (the build generates `.voidbase/`, which the typecheck extends), and a push to master then runs `bun run deploy:ci`. The app's configuration is
 declared in `vb_secrets/main.ts` with Void's validators, in three tiers: `.secret()` keys are the Worker's encrypted
 secrets, stored once from a maintainer's machine (`bun run deploy`, or `voidbase secrets push` from `.voidbase/`) and
 never replaced by a deploy; bare keys are Worker vars, set by every deploy from the declared defaults and the build's

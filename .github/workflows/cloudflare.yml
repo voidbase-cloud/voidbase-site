@@ -1,5 +1,5 @@
-# GitHub only starts builds; Cloudflare Workers Builds runs them. Every push builds the project (`bun run check`,
-# `bun run build`); a push to master also deploys the Worker (`bun run deploy:ci`: `voidbase deploy` from .voidbase/,
+# GitHub only starts builds; Cloudflare Workers Builds runs them. Every push builds the project (`bun run build`,
+# then `bun run check`, which extends the generated .voidbase/tsconfig.json); a push to master also deploys the Worker (`bun run deploy:ci`: `voidbase deploy` from .voidbase/,
 # which serves the site at /, the API at /api and the admin panel at /_/). The app's configuration is declared in
 # vb_secrets/main.ts: its secrets are the Worker's own, stored once from a maintainer's machine (`bun run deploy`, or
 # `voidbase secrets push` from .voidbase/); its vars are set by every deploy from the declared defaults and the
