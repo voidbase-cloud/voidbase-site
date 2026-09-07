@@ -1,0 +1,163 @@
+// The decision tree on /docs.
+//
+// The connectors are drawn rather than typed, so the shape reads as a tree at a glance and still collapses to a
+// plain list on a phone, where a tree drawn sideways is just noise.
+
+.tree {
+    margin: 8px 0 40px;
+}
+
+.tree-aside {
+    color: var(--txtHintColor);
+    border-left: 2px solid var(--baseAlt2Color);
+    padding-left: 14px;
+    margin: 0 0 32px;
+}
+
+.tree-branch {
+    margin-bottom: 34px;
+}
+
+.tree .tree-question {
+    font-size: 22px;
+    line-height: 30px;
+    margin: 0 0 4px;
+    padding: 0;
+    border-bottom: 0;
+}
+
+.tree-detail {
+    color: var(--txtHintColor);
+    margin: 0 0 18px;
+    max-width: 62ch;
+}
+
+.tree-leaves {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 20px;
+    position: relative;
+
+    // the trunk, running down beside the options and stopping at the last one
+    &:before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 12px;
+        bottom: 0;
+        width: 1px;
+        background: var(--baseAlt2Color);
+    }
+    > li:last-child:after {
+        content: "";
+        position: absolute;
+        left: -20px;
+        bottom: 0;
+        top: 24px;
+        width: 1px;
+        background: var(--bodyColor);
+    }
+}
+
+.tree-leaf {
+    position: relative;
+    padding-left: 26px;
+    margin-bottom: 14px;
+
+    // the elbow into each option
+    &:before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 12px;
+        width: 18px;
+        height: 1px;
+        background: var(--baseAlt2Color);
+    }
+}
+
+.tree-when {
+    display: block;
+    font-size: 15px;
+    color: var(--txtHintColor);
+    margin-bottom: 8px;
+
+    &:before {
+        content: "if ";
+        color: var(--txtDisabledColor);
+    }
+}
+
+.tree-card {
+    display: block;
+    border: 1px solid var(--baseAlt1Color);
+    border-left: 3px solid var(--successColor);
+    border-radius: var(--baseRadius);
+    padding: 14px 18px;
+    color: inherit;
+    text-decoration: none;
+    transition: border-color var(--baseAnimationSpeed), background var(--baseAnimationSpeed);
+
+    &:hover {
+        background: var(--baseColor);
+        border-color: var(--baseAlt3Color);
+        border-left-color: var(--successColor);
+        text-decoration: none;
+    }
+}
+
+.tree-card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+
+    strong {
+        color: var(--txtPrimaryColor);
+        font-size: 17px;
+    }
+}
+
+.tree-soon {
+    font-style: normal;
+    font-family: var(--monospaceFontFamily);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--warningColor);
+    border: 1px solid var(--warningColor);
+    border-radius: 3px;
+    padding: 1px 6px;
+}
+
+.tree-because {
+    display: block;
+    color: var(--txtHintColor);
+    font-size: 15px;
+    line-height: 23px;
+}
+
+.tree-command {
+    display: inline-block;
+    margin-top: 10px;
+    font-family: var(--monospaceFontFamily);
+    font-size: 14px;
+    color: var(--successColor);
+    background: var(--baseAlt1Color);
+    border-radius: var(--baseRadius);
+    padding: 4px 10px;
+}
+
+@media only screen and (max-width: 700px) {
+    // a tree drawn sideways on a phone is noise: keep the cards, drop the lines
+    .tree-leaves {
+        padding-left: 0;
+        &:before { display: none; }
+        > li:last-child:after { display: none; }
+    }
+    .tree-leaf {
+        padding-left: 0;
+        &:before { display: none; }
+    }
+    .tree-question { font-size: 20px; }
+}
