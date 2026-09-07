@@ -65,6 +65,24 @@ file of any kind. So the master trigger holds only `VOIDBASE_DEPLOY_CF_API_KEY` 
 target has defaults in the declaration); `.github/workflows/cloudflare.yml` only starts the build and holds
 nothing but the account id, the two trigger ids and the Builds token.
 
+## Set up your own copy
+
+Four steps, and the instance then follows the repository:
+
+1. A Cloudflare account and a GitHub account.
+2. Fork or clone this repository and push it to GitHub. That push deploys nothing: the repository is not connected yet.
+3. Fill in `vb_secrets/secrets.json`: the secrets `vb_secrets/main.ts` declares, plus the deploy token
+   (`bunx voidbase token` prints the link that creates `VOIDBASE_DEPLOY_CF_API_KEY`) and `CLOUDFLARE_BUILDS_TOKEN`, a
+   user API token with "Workers Builds Configuration: Edit" and "Workers Scripts: Edit". Then `bunx voidbase sync`:
+   it builds, creates the instance (D1, R2, queue, the Worker) or updates it, stores the secrets on the Worker, and
+   connects the repository to Cloudflare Workers Builds. The first run stops at the one step the API cannot do and
+   prints the dashboard page where you connect the repository (installs the GitHub App, creates the build token);
+   run it again and the triggers exist.
+4. Push. The production branch builds and deploys on Cloudflare; every other branch builds and typechecks.
+
+`bunx voidbase secrets` shows every declared key, its tier and where its value is; `bunx voidbase sync --dry-run`
+shows the plan. Details: `voidbase/docs/deploy.md`.
+
 ## How the two halves meet
 
 `vite build` runs Void's build, which prerenders every page, and then voidbase's adapter

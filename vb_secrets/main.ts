@@ -16,6 +16,7 @@ export default defineSecrets({
   VOIDBASE_DEPLOY_NAME: local(string().default("voidbase-site-backend"), "the Worker this project deploys to"),
   VOIDBASE_DEPLOY_DOMAIN: local(string().default("voidbase.cloud,www.voidbase.cloud,api.voidbase.cloud"), "its hostnames"),
   VOIDBASE_DEPLOY_CRON: local(boolean().default(false), "whether the Worker gets a cron trigger (Workers Free allows five per account)"),
+  CLOUDFLARE_BUILDS_TOKEN: local(string().optional(), "a user API token with Workers Builds Configuration: Edit, for `voidbase sync` to connect this repository's pipeline"),
 
   // ---- secrets: hooks and routes only
   VOIDBASE_SUPERUSER_EMAIL: secret(string(), "the admin panel's superuser"),
