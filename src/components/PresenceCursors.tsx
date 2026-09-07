@@ -24,15 +24,18 @@
 //
 // Your own cursor is drawn here too, and the real one is hidden (POINTER_QUERY devices only). That is deliberate: it
 // is the same arrow everyone else sees, so the page shows you what you look like to them, whether or not you hold a
-// slot. It follows the pointer on the event itself rather than through the smoothing loop, so it never lags, and it
+// slot. It follows the pointer on the event itself rather than through the playback below, so it never lags, and it
 // steps aside over text fields, where the system's I-beam says something the arrow cannot.
+//
+// How someone else's cursor is drawn from positions that arrive unevenly is the whole difference between this
+// looking alive and looking broken, and it is its own thing: src/lib/cursorPlayback.ts.
 import { useEffect, useMemo, useRef, useState } from "react";
+import { advance, record, track, type Track } from "@/lib/cursorPlayback";
 import { vb, VB_URL } from "@/lib/vb";
 
 const JOIN_AFTER_MS = 2000; // on the page this long before taking a slot
 const BEAT_MS = 80; // ~12 a second while moving
 const HEARTBEAT_MS = 4000; // keeps a still cursor's slot alive
-const SMOOTHING = 0.24; // how much of the way to the target a remote cursor travels each frame
 const POINTER_QUERY = "(hover: hover) and (pointer: fine)"; // a mouse or trackpad, not a finger
 const TEXT_FIELDS = "input, textarea, select, [contenteditable=true], [contenteditable=plaintext-only]";
 const CLICKABLE = "a, button, summary, label, [role=button], [role=link], [role=tab], .btn, .clickable";
@@ -40,14 +43,22 @@ const NAMES = ["Alan", "Jonny", "Copple", "Terry", "Ada", "Grace", "Linus", "Ras
 const COLORS = ["#5b8def", "#3ecf8e", "#f06a50", "#f1a10d", "#c46bf0", "#22b8cf"];
 
 export interface PresenceMember { id: string; name: string; color: string; x: number; y: number }
-/** a cursor to draw: `viewport` marks the canned ones, which roam the window rather than the document */
-type Cursor = PresenceMember & { viewport?: boolean };
+/** a cursor on the page: the roster says who, the playback below says where */
+interface Who { id: string; name: string; color: string }
 interface PresenceState { enabled: boolean; members: PresenceMember[]; max?: number }
 
 const pick = <T,>(list: T[]): T => list[Math.floor(Math.random() * list.length)]!;
 const initials = (name: string) => name.slice(0, 2).toUpperCase();
 const url = (path: string) => `${VB_URL || ""}${path}`;
 const matches = (q: string) => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(q).matches;
+
+/** The canned fallback: a few cursors on gentle paths, so the page still shows the idea when nobody is here. */
+const CANNED = [
+  { id: "c1", name: "Alan", color: COLORS[1]!, ax: 26, ay: 18, sx: 0.00042, sy: 0.00061, px: 30, py: 44 },
+  { id: "c2", name: "Jonny", color: COLORS[0]!, ax: 22, ay: 15, sx: 0.00035, sy: 0.00048, px: 62, py: 32 },
+  { id: "c3", name: "Copple", color: COLORS[2]!, ax: 18, ay: 16, sx: 0.00051, sy: 0.00039, px: 44, py: 62 },
+];
+const CANNED_BY_ID = new Map(CANNED.map((c) => [c.id, c]));
 
 /** The element that actually scrolls this page: the nearest scrollable ancestor of `from`, else the document. */
 function scroller(from: Element | null): Element {
@@ -64,40 +75,17 @@ function metricsOf(el: Element): { el: Element; w: number; h: number; left: numb
   return { el, w: Math.max(el.scrollWidth, 1), h: Math.max(el.scrollHeight, 1), left: r.left, top: r.top };
 }
 
-/** The canned fallback: a few cursors on gentle Lissajous paths, so the page still shows the idea when nobody is here. */
-function useCannedMembers(active: boolean): Cursor[] {
-  const [members, setMembers] = useState<Cursor[]>([]);
-  useEffect(() => {
-    if (!active) return;
-    const cast = [
-      { id: "c1", name: "Alan", color: COLORS[1]!, ax: 26, ay: 18, sx: 0.00042, sy: 0.00061, px: 30, py: 44 },
-      { id: "c2", name: "Jonny", color: COLORS[0]!, ax: 22, ay: 15, sx: 0.00035, sy: 0.00048, px: 62, py: 32 },
-      { id: "c3", name: "Copple", color: COLORS[2]!, ax: 18, ay: 16, sx: 0.00051, sy: 0.00039, px: 44, py: 62 },
-    ];
-    let raf = 0;
-    const frame = (t: number) => {
-      setMembers(cast.map((c) => ({ id: c.id, name: c.name, color: c.color, viewport: true, x: c.px + c.ax * Math.sin(t * c.sx), y: c.py + c.ay * Math.sin(t * c.sy) })));
-      raf = requestAnimationFrame(frame);
-    };
-    raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
-  }, [active]);
-  return members;
-}
-
 export default function PresenceCursors() {
   const [live, setLive] = useState<PresenceState | null>(null);
   const [holdsSlot, setHoldsSlot] = useState<boolean | null>(null); // null until the server has answered once
   const [pointing, setPointing] = useState(false); // this device can point, so it gets an arrow of its own
   const identity = useMemo(() => ({ id: Math.random().toString(36).slice(2, 12), name: pick(NAMES), color: pick(COLORS) }), []);
-  const canned = useCannedMembers(live !== null && !live.enabled);
 
   const layer = useRef<HTMLDivElement | null>(null);
   const box = useRef<{ el: Element; w: number; h: number; left: number; top: number } | null>(null);
   const own = useRef<HTMLDivElement | null>(null);
   const nodes = useRef(new Map<string, HTMLDivElement>());
-  const targets = useRef(new Map<string, Cursor>());
-  const drawn = useRef(new Map<string, { x: number; y: number }>());
+  const tracks = useRef(new Map<string, Track>());
 
   // which box the percentages are of. It is measured rather than assumed, and measured again as the page settles:
   // images and fonts change its height after the first frame, and a window resize changes it again.
@@ -212,41 +200,61 @@ export default function PresenceCursors() {
     };
   }, [pointing, live?.enabled, identity]);
 
-  const others: Cursor[] = (live?.enabled ? live.members : canned).filter((m) => m.id !== identity.id);
+  const others: Who[] = live?.enabled
+    ? live.members.filter((m) => m.id !== identity.id)
+    : live
+      ? CANNED.map((c) => ({ id: c.id, name: c.name, color: c.color }))
+      : [];
 
-  // what each remote cursor is heading for; the loop below walks it there
+  // every reported position joins its cursor's queue; the loop below plays them back
   useEffect(() => {
-    const keep = new Set(others.map((m) => m.id));
-    for (const m of others) targets.current.set(m.id, m);
-    for (const id of [...targets.current.keys()]) if (!keep.has(id)) { targets.current.delete(id); drawn.current.delete(id); }
-  }, [others]);
+    if (!live?.enabled) { tracks.current.clear(); return; }
+    const now = performance.now();
+    const here = new Set<string>();
+    for (const m of live.members) {
+      if (m.id === identity.id) continue;
+      here.add(m.id);
+      const t = tracks.current.get(m.id);
+      if (!t) { tracks.current.set(m.id, track(m)); continue; } // the first position is where it appears
+      const last = t.queue.length ? t.queue[t.queue.length - 1]! : (t.to ?? t.at);
+      if (Math.abs(last.x - m.x) < 0.02 && Math.abs(last.y - m.y) < 0.02) continue; // still there: nothing to play
+      record(t, { x: m.x, y: m.y }, now);
+    }
+    for (const id of [...tracks.current.keys()]) if (!here.has(id)) tracks.current.delete(id);
+  }, [live?.enabled, live?.members, identity.id]);
 
-  // one loop places every remote cursor: document share -> this window, smoothed, so a 12-a-second beat still glides
+  // one loop places every remote cursor: its played-back position, as a share of the page, in this window
   useEffect(() => {
     const reduce = matches("(prefers-reduced-motion: reduce)");
-    let raf = 0;
-    const step = () => {
+    let raf = 0, last = performance.now();
+    const frame = (now: number) => {
+      const ms = Math.min(100, now - last); // a tab coming back is not five minutes of movement
+      last = now;
       const b = box.current;
       const sx = b ? b.el.scrollLeft : 0, sy = b ? b.el.scrollTop : 0;
       for (const [id, node] of nodes.current) {
-        const t = targets.current.get(id);
-        if (!t) continue;
-        const toX = t.viewport || !b ? (t.x / 100) * window.innerWidth : (t.x / 100) * b.w + b.left - sx;
-        const toY = t.viewport || !b ? (t.y / 100) * window.innerHeight : (t.y / 100) * b.h + b.top - sy;
-        const at = drawn.current.get(id) ?? { x: toX, y: toY };
-        const k = reduce ? 1 : SMOOTHING;
-        at.x += (toX - at.x) * k; at.y += (toY - at.y) * k;
-        drawn.current.set(id, at);
-        node.style.transform = `translate3d(${at.x}px, ${at.y}px, 0)`;
+        const canned = CANNED_BY_ID.get(id);
+        let x: number, y: number;
+        if (canned) { x = canned.px + canned.ax * Math.sin(now * canned.sx); y = canned.py + canned.ay * Math.sin(now * canned.sy); }
+        else {
+          const t = tracks.current.get(id);
+          if (!t) continue;
+          advance(t, ms, reduce);
+          x = t.at.x; y = t.at.y;
+        }
+        // a canned cursor roams the window; a real one is somewhere on the page, wherever that is on screen now
+        const px = canned || !b ? (x / 100) * window.innerWidth : (x / 100) * b.w + b.left - sx;
+        const py = canned || !b ? (y / 100) * window.innerHeight : (y / 100) * b.h + b.top - sy;
+        node.style.transform = `translate3d(${px}px, ${py}px, 0)`;
       }
-      raf = requestAnimationFrame(step);
+      raf = requestAnimationFrame(frame);
     };
-    raf = requestAnimationFrame(step);
+    raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  const setNode = (id: string) => (el: HTMLDivElement | null) => { if (el) nodes.current.set(id, el); else { nodes.current.delete(id); drawn.current.delete(id); } };
-  const roster = pointing ? [...others, { ...identity, x: 0, y: 0 }] : others;
+  const setNode = (id: string) => (el: HTMLDivElement | null) => { if (el) nodes.current.set(id, el); else nodes.current.delete(id); };
+  const roster: Who[] = pointing ? [...others, identity] : others;
 
   return (
     <div ref={layer} className="presence-layer" aria-hidden="true">
