@@ -9,3 +9,5 @@ dist
 !.env.example
 # the voidbase app this project builds into (bun run build regenerates it)
 .voidbase
+# the values of the secrets vb_secrets/main.ts declares (voidbase deploy stores them on the Worker)
+vb_secrets/secrets.json

@@ -51,10 +51,13 @@ the admin panel. Writing those host rules needs `Zone > Single Redirect > Edit` 
 `voidbase/docs/deploy.md` and `voidbase/docs/adapter.md`.
 
 CI is Cloudflare Workers Builds, started from GitHub: every push runs `bun run check` and `bun run build` on the
-`voidbase-site-backend` project, and a push to master then runs `bun run deploy:ci`. The deploy's variables and
-secrets (the ones `bun run deploy` reads from `.env` and `.env.local`) live on that project's master trigger in the
-Cloudflare dashboard; `.github/workflows/cloudflare.yml` only starts the build and holds nothing but the account id,
-the two trigger ids and the Builds token.
+`voidbase-site-backend` project, and a push to master then runs `bun run deploy:ci`. The app's secrets are declared
+in `vb_secrets/main.ts` and valued in the git-ignored `vb_secrets/secrets.json`; `bun run deploy` from a maintainer's
+machine stores them as the Worker's secrets (so does `voidbase secrets push` from `.voidbase/`), and a CI checkout,
+which has no `secrets.json`, deploys as long as every declared name is already on the Worker. So the master trigger
+holds only the deploy token (`VOIDBASE_DEPLOY_CF_API_KEY`) and the non-secret deploy variables (`VOIDBASE_DEPLOY_NAME`,
+`VOIDBASE_DEPLOY_DOMAIN`, `VB_ADMIN_EMAILS`); `.github/workflows/cloudflare.yml` only starts the build and holds
+nothing but the account id, the two trigger ids and the Builds token.
 
 ## How the two halves meet
 
