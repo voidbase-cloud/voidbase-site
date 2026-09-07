@@ -11,6 +11,7 @@ export default function PageFooter() {
       <div className="wrapper wrapper-lg">
         <div className="primary-bar">
           <nav className="footer-col links">
+            <Link href="/docs" className="link-item">Docs</Link>
             <Link href="/faq" className="link-item">FAQ</Link>
             <a href={SITE.discussionsUrl} className="link-item" target="_blank" rel="noopener noreferrer">Discussions</a>
           </nav>

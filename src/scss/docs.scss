@@ -1,0 +1,141 @@
+// The documentation's own styles. Almost everything is already here: the sidebar markup, the content column, the
+// breadcrumbs and the prose all come from _layout.scss, which the docs reuse unchanged. What is left is the few
+// things only these pages have.
+
+// The sidebar follows you down a long page, and scrolls on its own when it is taller than the window.
+.docs-sidebar {
+    .sidebar-content {
+        position: sticky;
+        top: 60px; // clear of the sticky header
+        max-height: calc(100vh - 70px);
+    }
+}
+
+.docs-content {
+    // a lead paragraph, one per page: what this page is for, before any of the detail
+    .docs-lead {
+        font-size: 17px;
+        line-height: 26px;
+        color: var(--txtHintColor);
+        margin-bottom: var(--baseSpacing);
+    }
+
+    // the tables in here are reference, read by scanning: keep them quiet and let the first column carry
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: var(--xsSpacing) 0 var(--baseSpacing);
+        font-size: var(--baseFontSize);
+        th,
+        td {
+            text-align: left;
+            vertical-align: top;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--baseAlt1Color);
+        }
+        th {
+            color: var(--txtHintColor);
+            font-weight: 600;
+            font-size: var(--smFontSize);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        td:first-child {
+            white-space: nowrap;
+            color: var(--txtPrimaryColor);
+        }
+    }
+
+    // numbered steps, where the order is the instruction
+    ol.docs-steps {
+        counter-reset: step;
+        list-style: none;
+        padding: 0;
+        margin: 0 0 var(--baseSpacing);
+        > li {
+            counter-increment: step;
+            position: relative;
+            padding: 0 0 0 42px;
+            margin-bottom: var(--xsSpacing);
+            &:before {
+                content: counter(step);
+                position: absolute;
+                left: 0;
+                top: -1px;
+                width: 26px;
+                height: 26px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 50%;
+                background: var(--baseAlt2Color);
+                color: var(--txtPrimaryColor);
+                font-size: var(--smFontSize);
+                font-weight: 600;
+            }
+        }
+    }
+}
+
+// The cards that open a section: a title, a line about it, and nothing else to read before choosing.
+.docs-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+    margin: var(--xsSpacing) 0 var(--baseSpacing);
+}
+
+.docs-card {
+    display: block;
+    padding: 16px 18px;
+    border: 1px solid var(--baseAlt1Color);
+    border-radius: var(--baseRadius);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color var(--baseAnimationSpeed), background var(--baseAnimationSpeed);
+    &:hover {
+        border-color: var(--baseAlt3Color);
+        background: var(--baseColor);
+        text-decoration: none;
+    }
+    strong {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--txtPrimaryColor);
+    }
+    span {
+        color: var(--txtHintColor);
+        font-size: var(--baseFontSize);
+        line-height: var(--baseLineHeight);
+    }
+}
+
+// Previous and next, so the whole thing can be read straight through.
+.docs-pager {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: var(--baseSpacing);
+    padding-top: var(--smSpacing);
+    border-top: 1px solid var(--baseAlt1Color);
+}
+
+.docs-pager-link {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 16px;
+    border: 1px solid var(--baseAlt1Color);
+    border-radius: var(--baseRadius);
+    color: inherit;
+    text-decoration: none;
+    max-width: 48%;
+    &:hover {
+        border-color: var(--baseAlt3Color);
+        text-decoration: none;
+    }
+    &.docs-pager-next {
+        margin-left: auto;
+        text-align: right;
+    }
+}

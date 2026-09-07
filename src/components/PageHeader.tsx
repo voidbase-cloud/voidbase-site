@@ -31,6 +31,7 @@ export default function PageHeader({ compact = false }: PageHeaderProps) {
               </button>
             )}
           >
+            <Link href="/docs" className="dropdown-item">Docs</Link>
             <Link href="/faq" className="dropdown-item">FAQ</Link>
             <Link href="/cloud" className="dropdown-item">Cloud</Link>
             <a href={SITE.discussionsUrl} className="dropdown-item" target="_blank" rel="noreferrer noopener">Discussions</a>
@@ -39,6 +40,7 @@ export default function PageHeader({ compact = false }: PageHeaderProps) {
           </Dropdown>
 
           <nav className="main-menu">
+            <Link href="/docs" className="btn btn-secondary">Docs</Link>
             <Link href="/faq" className="btn btn-secondary">FAQ</Link>
             <a href={SITE.repoUrl} className="btn btn-circle btn-secondary" target="_blank" rel="noreferrer noopener" title="GitHub Repo">
               <i className="ri-github-line" />
