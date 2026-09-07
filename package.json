@@ -19,14 +19,15 @@
   "name": "voidbase-site-refactor",
   "scripts": {
     "dev": "bunx --bun vite",
-    "build": "bunx --bun vite build",
+    "build": "bun scripts/pipeline.ts build",
     "preview": "bun .voidbase/main.ts --http 127.0.0.1:8090",
     "serve": "bun .voidbase/main.ts --http 0.0.0.0:8090",
     "check": "bunx tsc --noEmit -p tsconfig.json && bunx tsc --noEmit -p tsconfig.server.json",
-    "deploy": "bun run build && cd .voidbase && voidbase deploy",
-    "deploy:ci": "cd .voidbase && voidbase deploy",
+    "deploy": "bun scripts/pipeline.ts deploy",
     "test": "bun test/cloud.ts",
-    "demo:deploy": "cd demo && bunx voidbase sync --name voidbase-demo --domain demo.voidbase.cloud"
+    "demo:deploy": "cd demo && bunx voidbase sync --name voidbase-demo --domain demo.voidbase.cloud",
+    "version": "bun scripts/pipeline.ts version",
+    "build:site": "bunx --bun vite build"
   },
   "type": "module"
 }

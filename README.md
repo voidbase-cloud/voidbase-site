@@ -50,21 +50,22 @@ and `public/_redirects` gives each one its role: `www` redirects to the apex, an
 the admin panel. Writing those host rules needs `Zone > Single Redirect > Edit` on the deploy token. Details:
 `voidbase/docs/deploy.md` and `voidbase/docs/adapter.md`.
 
-CI is Cloudflare Workers Builds, started from GitHub: every push runs `bun run build` and then `bun run check` on the
-`voidbase-site-backend` project (the build generates `.voidbase/`, which the typecheck extends; the build step is
-wrapped in a two-and-a-half-minute watchdog with one retry, because a cold build has hung on rare occasions; a
-normal build takes about twenty seconds), and a push to
-master then runs `bun run deploy:ci`. The app's configuration is
-declared in `vb_secrets/main.ts` with Void's validators, every key wrapped in who may read it: `secret()` keys are
-the Worker's encrypted secrets, stored once from a maintainer's machine (`bun run deploy`, or `voidbase secrets
-push` from `.voidbase/`) and never replaced by a deploy; `server()` keys are Worker vars, set by every deploy from
-the declared defaults and the build's environment; `browser()` keys are also inlined into the static site as
-`import.meta.env.PB_*`. Local values live in
-the git-ignored `vb_secrets/secrets.json`, and so do the `local()` keys, voidbase's own: the deploy token and the
-deploy target, read by the tooling here or from the build's environment in CI and never deployed. There is no `.env`
-file of any kind. So the master trigger holds only `VOIDBASE_DEPLOY_CF_API_KEY` and `VB_ADMIN_EMAILS` (the deploy
-target has defaults in the declaration); `.github/workflows/cloudflare.yml` only starts the build and holds
-nothing but the account id, the two trigger ids and the Builds token.
+CI is Cloudflare Workers Builds. Both this project and voidbase's own answer the same three commands, with the
+root directory `/`:
+
+```
+Build command     bun run build      the site into .voidbase/, then the typecheck
+Deploy command    bun run deploy     this instance, from the generated app
+Version command   bun run version    a branch build: the configuration it would deploy with, read back, changing nothing
+```
+
+Nothing in the dashboard decides what those mean. `scripts/pipeline.ts` reads it from the environment
+(`scripts/environment.ts`) as granular controls rather than a named environment, which is what twelve-factor asks
+for: whether a Cloudflare build is running this, which branch it is for, which branch is production. A deploy off
+the production branch does nothing rather than taking production's place, and a person running `bun run deploy`
+gets a build first, because nothing else has done one. The app's secrets are declared in `vb_secrets/main.ts` and
+valued in the git-ignored `vb_secrets/secrets.json`; the master trigger holds only the deploy token and
+`VB_ADMIN_EMAILS`.
 
 ## Set up your own copy
 
