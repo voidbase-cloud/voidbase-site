@@ -52,7 +52,8 @@ the admin panel. Writing those host rules needs `Zone > Single Redirect > Edit` 
 
 CI is Cloudflare Workers Builds, started from GitHub: every push runs `bun run build` and then `bun run check` on the
 `voidbase-site-backend` project (the build generates `.voidbase/`, which the typecheck extends; the build step is
-wrapped in a five-minute watchdog with one retry, because a cold build has hung on rare occasions), and a push to
+wrapped in a two-and-a-half-minute watchdog with one retry, because a cold build has hung on rare occasions; a
+normal build takes about twenty seconds), and a push to
 master then runs `bun run deploy:ci`. The app's configuration is
 declared in `vb_secrets/main.ts` with Void's validators, every key wrapped in who may read it: `secret()` keys are
 the Worker's encrypted secrets, stored once from a maintainer's machine (`bun run deploy`, or `voidbase secrets
