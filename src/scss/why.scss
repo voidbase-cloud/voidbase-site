@@ -247,6 +247,7 @@
 }
 
 .why-yes { color: var(--successColor); }
+.why-planned { color: var(--warningColor); }
 .why-no { color: var(--dangerColor); }
 .why-depends { color: var(--txtDisabledColor); }
 
@@ -261,6 +262,8 @@
 
     span { display: inline-flex; align-items: center; gap: 6px; }
     i { font-size: 15px; }
+    a { color: inherit; text-decoration: underline; text-underline-offset: 2px; text-decoration-color: #4a4a4a; }
+    a:hover { color: var(--txtHintColor); }
 }
 
 // the verdict pair that closes a comparison
@@ -300,4 +303,192 @@
         .why-year { position: static; display: block; margin-bottom: 4px; }
         .why-year:after { display: none; }
     }
+}
+
+// ---- the cost model ---------------------------------------------------------------------------------------------
+// Sliders that change two bills at once. The panel is quiet; the numbers are the loud part.
+.cost-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px 32px;
+    padding: 22px 24px;
+    margin: 0 0 20px;
+    border: 1px solid var(--baseAlt1Color);
+    border-radius: var(--baseRadius);
+    background: var(--baseColor);
+}
+
+.cost-slider {
+    display: block;
+
+    .cost-slider-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 12px;
+        font-size: 14px;
+        color: var(--txtHintColor);
+        margin-bottom: 6px;
+
+        b {
+            font-family: var(--monospaceFontFamily);
+            font-size: 15px;
+            color: var(--txtPrimaryColor);
+        }
+    }
+
+    input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--baseAlt2Color);
+        outline: none;
+
+        &::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--successColor);
+            cursor: pointer;
+            border: 0;
+        }
+        &::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--successColor);
+            cursor: pointer;
+            border: 0;
+        }
+        &:focus-visible { outline: 2px solid var(--successColor); outline-offset: 4px; }
+    }
+}
+
+.cost-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 14px;
+    margin: 0 0 36px;
+}
+
+.cost-card {
+    border: 1px solid var(--baseAlt1Color);
+    border-radius: var(--baseRadius);
+    padding: 22px 24px;
+
+    &:first-child { border-color: var(--baseAlt3Color); }
+}
+
+.cost-card-title {
+    font-size: 15px;
+    color: var(--txtHintColor);
+    margin: 0 0 4px;
+}
+
+.cost-total {
+    font-size: 42px;
+    line-height: 48px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin: 0 0 2px;
+    font-variant-numeric: tabular-nums;
+
+    small {
+        font-size: 17px;
+        font-weight: 400;
+        color: var(--txtHintColor);
+        letter-spacing: 0;
+    }
+}
+
+.cost-card-sub {
+    font-family: var(--monospaceFontFamily);
+    font-size: 13px;
+    color: var(--txtDisabledColor);
+    margin: 0 0 16px;
+}
+
+.cost-ratio {
+    display: inline-block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--warningColor);
+    margin: 0 0 14px;
+}
+
+.cost-lines {
+    margin: 0;
+    font-size: 14px;
+
+    > div {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 16px;
+        padding: 7px 0;
+        border-bottom: 1px solid #131313;
+    }
+    dt {
+        color: var(--txtHintColor);
+        span {
+            display: block;
+            font-size: 12.5px;
+            color: var(--txtDisabledColor);
+        }
+    }
+    dd {
+        margin: 0;
+        font-family: var(--monospaceFontFamily);
+        font-variant-numeric: tabular-nums;
+        color: var(--txtPrimaryColor);
+        white-space: nowrap;
+    }
+}
+
+.cost-caveat {
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--txtDisabledColor);
+    margin: 14px 0 0;
+}
+
+// ---- the roadmap ------------------------------------------------------------------------------------------------
+.why-item {
+    border-left: 2px solid var(--warningColor);
+    padding: 2px 0 2px 18px;
+    margin: 0 0 28px;
+    max-width: var(--measure);
+
+    h3 { margin: 0 0 4px; }
+    .why-item-from {
+        color: var(--txtDisabledColor);
+        font-size: 15px;
+        margin: 0 0 12px;
+    }
+}
+
+.why-item-body {
+    margin: 0;
+    display: grid;
+    grid-template-columns: 68px 1fr;
+    gap: 6px 14px;
+    font-size: 15px;
+    line-height: 23px;
+
+    dt {
+        font-family: var(--monospaceFontFamily);
+        font-size: 13px;
+        color: var(--txtDisabledColor);
+        padding-top: 3px;
+    }
+    dd { margin: 0; color: #d6d6d6; }
+}
+
+@media only screen and (max-width: 700px) {
+    .why-item-body { grid-template-columns: 1fr; gap: 2px; dt { padding-top: 8px; } }
+    .cost-total { font-size: 34px; line-height: 40px; }
 }

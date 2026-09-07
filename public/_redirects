@@ -1,4 +1,4 @@
-# One Worker, three hostnames (VOIDBASE_DEPLOY_DOMAIN): the site on the apex, the API and the admin panel on api.
-# voidbase deploy turns these into Void edge rules (evaluated before the static assets and the Worker).
-https://www.voidbase.cloud/*  https://voidbase.cloud/:splat  301
-https://api.voidbase.cloud/   /_/                             302
+# The header and footer say "Why"; the pages live under the documentation. voidbase's deploy uploads path-only rules
+# here as Cloudflare's own _redirects, evaluated at the edge before the Worker runs.
+/why            /docs/why           301
+/why/*          /docs/why/:splat    301

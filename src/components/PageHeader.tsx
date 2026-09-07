@@ -41,7 +41,7 @@ export default function PageHeader({ compact = false }: PageHeaderProps) {
 
           <nav className="main-menu">
             <Link href="/docs" className="btn btn-secondary">Docs</Link>
-            <Link href="/why" className="btn btn-secondary">Why</Link>
+            <Link href="/docs/why" className="btn btn-secondary">Why</Link>
             <a href={SITE.repoUrl} className="btn btn-circle btn-secondary" target="_blank" rel="noreferrer noopener" title="GitHub Repo">
               <i className="ri-github-line" />
             </a>
