@@ -246,6 +246,9 @@ export default function PresenceCursors() {
         const px = canned || !b ? (x / 100) * window.innerWidth : (x / 100) * b.w + b.left - sx;
         const py = canned || !b ? (y / 100) * window.innerHeight : (y / 100) * b.h + b.top - sy;
         node.style.transform = `translate3d(${px}px, ${py}px, 0)`;
+        // a cursor is invisible until it has been placed: a node that has just mounted is still at the origin, and
+        // one frame of an arrow in the top corner is the only thing here anyone would call a glitch
+        if (!node.classList.contains("is-live")) node.classList.add("is-live");
       }
       raf = requestAnimationFrame(frame);
     };

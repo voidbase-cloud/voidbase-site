@@ -24,9 +24,11 @@ export interface Point { x: number; y: number }
 
 export const NOMINAL_MS = 80; // the rate positions are sent at while someone is moving, until measured
 const DEPTH_MIN = 1, DEPTH_MAX = 4; // positions held back before drawing, from a steady connection to a patchy one
-const SPEED_MIN = 0.55, SPEED_MAX = 2; // how far playback may stretch or hurry to get back to that depth
-const STEADY_MS = 400; // arrivals further apart than this are a pause, not the rate someone is moving at
-const LATE_MS = 800; // and further apart than this tells us nothing more about the connection than this does
+const SPEED_MIN = 0.7, SPEED_MAX = 1.5; // how far playback may stretch or hurry to get back to that depth
+const SPEED_GAIN = 0.15; // and how strongly one position too many or too few pulls on it
+const SPEED_EASE_MS = 220; // how long it takes to get there, so the rate drifts rather than steps
+const LATE_MS = 800; // an arrival later than this tells us nothing more about the connection than this does
+const RATE_WINDOW_MS = 2000, RATE_MIN = 50, RATE_MAX = 160; // how the rate positions are sent at is counted
 const JUMP = 40; // a change this big is a jump, not a movement: go straight there
 const KEEP = 16; // queued positions to hold at most, so a sleeping tab does not replay minutes of path
 
@@ -55,7 +57,10 @@ export interface Track {
   to: Point | null;   // this segment's end
   prev: Point | null; // the segment before, for the curve's tangent
   u: number;          // 0..1 along this segment
-  interval: number;   // smoothed ms between arrivals: how long a segment takes at normal speed
+  speed: number;      // how fast it is playing, eased: a rate that jumps is itself something the eye reads
+  interval: number;   // ms between the positions themselves: how long one segment is worth at normal speed
+  since: number;      // the counting window for that: when it opened
+  count: number;      // and how many have arrived in it
   jitter: number;     // smoothed ms that arrivals miss that interval by: how uneven this connection is
   depth: number;      // positions to keep waiting, which is what that unevenness costs to absorb
   seen: number;       // when the last position arrived
@@ -63,19 +68,29 @@ export interface Track {
 
 /** a cursor that has just appeared, drawn where it was first reported */
 export const track = (p: Point): Track =>
-  ({ queue: [], at: { ...p }, from: { ...p }, to: null, prev: null, u: 0, interval: NOMINAL_MS, jitter: 0, depth: DEPTH_MIN, seen: 0 });
+  ({ queue: [], at: { ...p }, from: { ...p }, to: null, prev: null, u: 0, speed: 1, interval: NOMINAL_MS, since: 0, count: 0, jitter: 0, depth: DEPTH_MIN, seen: 0 });
 
 /** a newly reported position joins the queue; the gap since the last one is the rate this person is being sent at */
 export function record(t: Track, p: Point, now: number): void {
   const gap = now - t.seen;
   if (t.seen && gap > 0) {
-    // a long gap is someone who stopped and started again, not the rate they move at, so it sets no rate
-    if (gap < STEADY_MS) t.interval = t.interval * 0.75 + gap * 0.25;
-    // but it is still the connection being late, which is exactly what the queue is held back to cover
+    // how unevenly this connection delivers, which is what the queue is held back to cover
     t.jitter = t.jitter * 0.8 + Math.abs(Math.min(gap, LATE_MS) - t.interval) * 0.2;
     t.depth = clamp(1 + t.jitter / Math.max(40, t.interval), DEPTH_MIN, DEPTH_MAX);
   }
   t.seen = now;
+
+  // How often positions are made, which is a property of whoever is sending them and not of the connection between.
+  // It has to be counted over a window: inside one, a stall and the burst that follows it say opposite things about
+  // the rate and only the two together are the truth. Taking the gap between arrivals instead, which is what this
+  // did first, reads the burst as the rate, plays the queue out about three times too fast, and leaves the cursor
+  // darting and stopping -- the very thing the queue is here to prevent.
+  t.count++;
+  if (!t.since) t.since = now;
+  else if (now - t.since >= RATE_WINDOW_MS && t.count >= 8) {
+    t.interval = clamp(t.interval * 0.4 + ((now - t.since) / t.count) * 0.6, RATE_MIN, RATE_MAX);
+    t.since = now; t.count = 0;
+  }
   t.queue.push(p);
   if (t.queue.length > KEEP) t.queue.splice(0, t.queue.length - KEEP);
 }
@@ -88,6 +103,13 @@ export function advance(t: Track, ms: number, reduce = false): void {
     t.queue.length = 0; t.to = null; t.u = 0; t.prev = null;
     return;
   }
+  // The queue being one deep or one shallow is a nudge on the rate, not a lurch. An earlier version pushed the rate
+  // straight to where the depth said, between half speed and double, and a bunched delivery then slammed it to
+  // double, drained the queue, and dropped it to half: the cursor sped up and slowed down several times a second,
+  // which reads as badly as the stutter it was meant to fix. The rate moves a little at a time now and stays inside
+  // a much narrower band, and the depth above is what covers a connection that needs more than that.
+  const want = clamp(1 + SPEED_GAIN * (t.queue.length - t.depth), SPEED_MIN, SPEED_MAX);
+  t.speed += (want - t.speed) * (1 - Math.exp(-ms / SPEED_EASE_MS));
   for (let guard = 0; guard < 8 && ms > 0; guard++) {
     if (!t.to) {
       const next = t.queue.shift();
@@ -95,9 +117,7 @@ export function advance(t: Track, ms: number, reduce = false): void {
       if (far(t.at, next)) { t.at = { ...next }; t.from = { ...next }; t.prev = null; continue; } // a jump, not a path
       t.prev = t.from; t.from = { ...t.at }; t.to = next; t.u = 0;
     }
-    // the further behind the queue falls the slower this plays, so it runs out of positions as late as it can
-    const speed = clamp(1 + 0.35 * (t.queue.length - t.depth), SPEED_MIN, SPEED_MAX);
-    const span = Math.max(40, t.interval) / speed;
+    const span = Math.max(40, t.interval) / t.speed;
     const step = Math.min(ms, (1 - t.u) * span);
     t.u += step / span;
     ms -= step;

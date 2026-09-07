@@ -515,6 +515,9 @@
     position: absolute;
     top: 0;
     left: 0;
+    // nothing is drawn before it has been placed, so a cursor fades in where its owner is rather than at the origin
+    opacity: 0;
+    transition: opacity 0.2s ease;
     // the arrow's tip sits a few pixels into its box: pull it back so the point is on the point
     margin: -3px 0 0 -3px;
     display: flex;
@@ -539,12 +542,12 @@
     white-space: nowrap;
 }
 
-// your own arrow: invisible until the pointer first moves, so it never starts in the corner
+.presence-cursor.is-live { opacity: 1; }
+
+// your own arrow: invisible until the pointer first moves, so it never starts in the corner either
 .presence-cursor-own {
-    opacity: 0;
     transition: opacity 0.15s ease;
 
-    &.is-live { opacity: 1; }
     // over a text field the system's own I-beam says something this arrow cannot, so it steps aside
     &.is-hidden { opacity: 0; }
     &.is-clickable svg { transform: scale(1.22); }

@@ -24,16 +24,20 @@ function handPath(samples: number): Point[] {
   return out;
 }
 
-/** when each of those positions actually turns up, given a connection of the named quality */
+/**
+ * When each of those positions turns up, given a connection of the named quality. They are made every 80 ms whatever
+ * the connection is like -- that is the sender's throttle, not the network's business -- so a bad connection delays
+ * them rather than slowing them down, and a delayed one does not hold up the next. Which is why a stall here is
+ * followed by a burst, and why the average stays 80 ms however bad it gets.
+ */
 function arrivals(n: number, kind: "steady" | "jittery" | "patchy"): number[] {
-  let t = 0; const out: number[] = [];
-  let seed = 12345;
+  const out: number[] = [];
+  let seed = 12345, last = -1;
   const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
   for (let i = 0; i < n; i++) {
-    if (kind === "steady") t += 80;
-    else if (kind === "jittery") t += 40 + rnd() * 120;                       // 40-160 ms, the usual wobble
-    else t += rnd() < 0.25 ? 260 + rnd() * 340 : 25 + rnd() * 40;             // stalls, then a bunch arrives at once
-    out.push(t);
+    const late = kind === "steady" ? 0 : kind === "jittery" ? rnd() * 60 : rnd() < 0.2 ? 200 + rnd() * 350 : rnd() * 30;
+    const t = Math.max(last + 2, i * 80 + late);
+    out.push(t); last = t;
   }
   return out;
 }
@@ -87,6 +91,24 @@ for (const kind of ["steady", "jittery", "patchy"] as const) {
   check(`${kind}: motion is more even than easing toward the newest position`, mine.spread < old.spread * 0.75, `${mine.spread.toFixed(3)} vs ${old.spread.toFixed(3)}`);
   check(`${kind}: no frame darts as far as the old code's worst`, mine.worst < old.worst * 0.75, `worst ${mine.worst.toFixed(2)}x vs ${old.worst.toFixed(2)}x`);
   check(`${kind}: the delay it buys is proportionate`, played.t.depth * played.t.interval < (kind === "steady" ? 140 : 400), `${(played.t.depth * played.t.interval).toFixed(0)} ms`);
+}
+
+// the sharpest test of all: someone moving at a steady speed must be drawn moving at a steady speed, however
+// unevenly their positions turn up. This is what a live measurement caught the first version failing -- the drawn
+// cursor sped up and slowed down several times a second while the hand that made it did neither.
+{
+  const straight: Point[] = [];
+  for (let i = 0; i < 60; i++) straight.push({ x: 10 + i, y: 50 }); // constant speed, constant direction
+  const when = arrivals(straight.length, "patchy");
+  const drawn = play(straight, when).drawn;
+  const speeds: number[] = [];
+  for (let i = 1; i < drawn.length; i++) { const d = dist(drawn[i - 1]!, drawn[i]!); if (d > 1e-9) speeds.push(d); }
+  const mean = speeds.reduce((a, b) => a + b, 0) / speeds.length;
+  const sorted = [...speeds].sort((a, b) => a - b);
+  const p99 = sorted[Math.floor(0.99 * (sorted.length - 1))]! / mean;
+  console.log(`\nsteady hand over a patchy connection: drawn speed p99 ${p99.toFixed(2)}x of its own mean, worst ${(Math.max(...speeds) / mean).toFixed(2)}x`);
+  check("a steady hand is drawn moving steadily, however its positions arrive", p99 < 1.6, `p99 ${p99.toFixed(2)}x`);
+  check("and never at more than half again its own speed", Math.max(...speeds) / mean < 1.9, `worst ${(Math.max(...speeds) / mean).toFixed(2)}x`);
 }
 
 // it must still be honest: playback goes where the reports said, not somewhere near it
