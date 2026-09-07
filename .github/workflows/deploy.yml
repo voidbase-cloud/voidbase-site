@@ -1,4 +1,4 @@
-# voidbase.cloud: the static site is prerendered into pb_public/ and deployed together with its backend as one
+# voidbase.cloud: the Void/React project builds into .voidbase/ (pb_public + the backend) and deploys as one
 # Cloudflare Worker (`voidbase deploy`), which serves the site at /, the API at /api and the admin panel at /_/.
 #
 # Secrets (Settings > Secrets and variables > Actions): VOIDBASE_DEPLOY_CF_API_KEY (`bun run token` prints the
@@ -35,18 +35,15 @@ jobs:
         with:
           bun-version: "1.3.14"
 
-      - name: Install (backend and site)
-        run: |
-          bun install --frozen-lockfile
-          cd static-site && bun install --frozen-lockfile
+      - name: Install
+        run: bun install --frozen-lockfile
 
-      # .env files are git-ignored: the public PB_* values come from the tracked examples
-      - name: Build the site into pb_public
+      # .env is git-ignored: the public PB_* values come from the tracked example
+      - name: Build the project into .voidbase/
         run: |
-          cd static-site
           cp -n .env.example .env
-          bun run build
-          test -f ../pb_public/index.html
+          bunx --bun vite build
+          test -f .voidbase/pb_public/index.html
 
       - name: Deploy the Worker (site + API)
         if: ${{ env.VOIDBASE_DEPLOY_CF_API_KEY != '' }}
@@ -61,7 +58,4 @@ jobs:
           VOIDBASE_DEPLOY_NAME: ${{ vars.VOIDBASE_DEPLOY_NAME || 'voidbase-site-backend' }}
           VOIDBASE_DEPLOY_DOMAIN: ${{ vars.VOIDBASE_DEPLOY_DOMAIN }}
           VB_ADMIN_EMAILS: ${{ vars.VB_ADMIN_EMAILS }}
-          VOIDBASE_APP_DIR: pb_public
-        run: |
-          cp -n .env.example .env
-          bunx voidbase deploy --public-dir pb_public
+        run: cd .voidbase && bunx voidbase deploy

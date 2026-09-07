@@ -1,0 +1,52 @@
+import { Link } from "@void/react";
+import CloudflareSignIn from "@/components/CloudflareSignIn";
+import Dropdown from "@/components/Dropdown";
+import { SITE } from "@/lib/env";
+
+export interface PageHeaderProps { compact?: boolean }
+
+// The search box sits in the centre section on the SvelteKit site; it is indexed from the docs, which have not been
+// migrated yet, so the section stays empty until they are (see docs/migration.md).
+export default function PageHeader({ compact = false }: PageHeaderProps) {
+  return (
+    <header className="page-header">
+      <div className="wrapper wrapper-lg">
+        <div className="header-section left">
+          <Link href="/" className={`logo${compact ? " logo-sm" : ""}`} title={`voidbase ${SITE.vbVersion}${SITE.pbVersion ? ` · PocketBase ${SITE.pbVersion} API` : ""}`}>
+            <img src="/images/logo.svg" alt="voidbase logo" width="40" height="40" />
+            <span className="txt">void<strong>base</strong></span>
+            <span className="version">{SITE.vbVersion}</span>
+          </Link>
+        </div>
+
+        <div className="header-section center" />
+
+        <div className="header-section right">
+          <Dropdown
+            className="dropdown dropdown-lg dropdown-right dropdown-nowrap responsive-menu-dropdown"
+            trigger={({ active, onClick, "aria-expanded": expanded }) => (
+              <button type="button" className={`btn btn-circle btn-secondary responsive-menu-btn${active ? " active" : ""}`} title="Menu" aria-expanded={expanded} onClick={onClick}>
+                <span />
+                <i className="ri-menu-3-fill" />
+              </button>
+            )}
+          >
+            <Link href="/faq" className="dropdown-item">FAQ</Link>
+            <Link href="/cloud" className="dropdown-item">Cloud</Link>
+            <a href={SITE.discussionsUrl} className="dropdown-item" target="_blank" rel="noreferrer noopener">Discussions</a>
+            <hr />
+            <CloudflareSignIn className="dropdown-item" />
+          </Dropdown>
+
+          <nav className="main-menu">
+            <Link href="/faq" className="btn btn-secondary">FAQ</Link>
+            <a href={SITE.repoUrl} className="btn btn-circle btn-secondary" target="_blank" rel="noreferrer noopener" title="GitHub Repo">
+              <i className="ri-github-line" />
+            </a>
+            <CloudflareSignIn className="btn btn-secondary cf-header" />
+          </nav>
+        </div>
+      </div>
+    </header>
+  );
+}

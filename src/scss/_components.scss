@@ -1,0 +1,61 @@
+// Styles that used to live in the Svelte components' scoped <style> blocks (ScrollToTop, CloudflareSignIn).
+// React has no scoped styles, and these selectors are specific enough to be global.
+
+.scroll-to-top {
+    position: fixed;
+    z-index: 99;
+    left: auto;
+    top: auto;
+    bottom: var(--smSpacing);
+    right: var(--smSpacing);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition:
+        opacity var(--baseAnimationSpeed),
+        visibility var(--baseAnimationSpeed),
+        transform var(--baseAnimationSpeed),
+        background var(--baseAnimationSpeed);
+
+    &.scroll-top-active {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+}
+
+// the Cloudflare mark keeps clear space around it: the button's own padding, and a gap to the label
+.cf-signin {
+    column-gap: 8px;
+
+    .cf-mark {
+        width: 1.45em;
+        height: 1.45em;
+        flex-shrink: 0;
+        vertical-align: middle;
+    }
+}
+
+// CodeBlock's scoped <style> block from the Svelte site, scoped under .code-wrapper so it stays global-safe
+.code-wrapper {
+    display: block;
+    width: 100%;
+
+    code {
+        display: block;
+        width: 100%;
+        padding: var(--xsSpacing);
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    &.prism-light code {
+        color: var(--txtPrimaryColor);
+        background: var(--baseAlt1Color);
+    }
+
+    &.prism-dark code {
+        background: var(--baseColor);
+        color: var(--txtPrimaryColor);
+    }
+}

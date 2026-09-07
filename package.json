@@ -1,27 +1,30 @@
 {
-  "name": "voidbase-site",
-  "private": true,
-  "type": "module",
-  "description": "voidbase.cloud: the static site (static-site/, prerendered into pb_public/) and its backend (PocketBase's API and admin panel plus the voidbase cloud control plane), one voidbase process locally and one Cloudflare Worker in production",
-  "scripts": {
-    "dev": "voidbase serve --dev --entry main.ts --http 0.0.0.0:8090",
-    "start": "bun main.ts --http 0.0.0.0:8090",
-    "site:dev": "cd static-site && bun run dev",
-    "site:build": "cd static-site && bun run build",
-    "build": "bun run site:build",
-    "check": "tsc -p tsconfig.json",
-    "superuser": "voidbase superuser upsert",
-    "token": "voidbase token",
-    "deploy": "bun run site:build && voidbase deploy",
-    "bundle": "voidbase bundle",
-    "release:push": "voidbase release push",
-    "test": "bun test/cloud.ts"
-  },
   "dependencies": {
-    "@voidbase-cloud/voidbase": "^0.2.1"
+    "@void/react": "^0.10.13",
+    "@voidbase-cloud/voidbase": "link:@voidbase-cloud/voidbase",
+    "pocketbase": "^0.28.1",
+    "prismjs": "^1.29.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "typescript": "^5.9.3"
-  }
+    "@types/bun": "^1.4.1",
+    "@types/prismjs": "^1.26.6",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "sass": "^1.104.0",
+    "vite": "^8.2.2",
+    "void": "^0.10.13"
+  },
+  "name": "voidbase-site-refactor",
+  "scripts": {
+    "dev": "bunx --bun vite",
+    "build": "bunx --bun vite build",
+    "preview": "bun .voidbase/main.ts --http 127.0.0.1:8090",
+    "serve": "bun .voidbase/main.ts --http 0.0.0.0:8090",
+    "check": "bunx tsc --noEmit -p tsconfig.json && bunx tsc --noEmit -p tsconfig.server.json",
+    "deploy": "bun run build && cd .voidbase && voidbase deploy",
+    "test": "bun test/cloud.ts"
+  },
+  "type": "module"
 }

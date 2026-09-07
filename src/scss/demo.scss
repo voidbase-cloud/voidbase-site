@@ -1,0 +1,23 @@
+// The demo page's own styles (the SvelteKit version kept them in a scoped <style> block).
+.iframe-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;
+    overflow: hidden;
+
+    .alert {
+        border-radius: 0;
+        margin: 0;
+        padding: 5px 15px;
+        border-bottom: 1px solid var(--baseAlt2Color);
+        font-size: 14px;
+        line-height: 18px;
+    }
+
+    iframe {
+        flex-grow: 1;
+        width: 100%;
+        display: block;
+    }
+}

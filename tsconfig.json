@@ -1,21 +1,29 @@
 {
+  "extends": "./.voidbase/tsconfig.json",
   "compilerOptions": {
-    "target": "esnext",
-    "module": "esnext",
+    "target": "ES2022",
+    "module": "ESNext",
     "moduleResolution": "bundler",
+    "jsx": "react-jsx",
     "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowJs": true,
     "noEmit": true,
     "types": [
-      "bun-types"
+      "void/env",
+      "vite/client"
     ],
-    "skipLibCheck": true
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    }
   },
   "include": [
-    "main.ts",
-    "auditlog",
-    "hooks",
-    "webauthn",
-    "cloud",
-    "test"
+    "src",
+    "pages",
+    "routes",
+    "vb_hooks"
   ]
 }

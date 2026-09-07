@@ -23,9 +23,11 @@ const env = {
   CLOUDFLARE_API_BASE: CF, VOIDBASE_WORKER_NAME: "voidbase-site-backend", VOIDBASE_ACCOUNT_ID: "acc123", VB_ADMIN_EMAILS: "owner@example.com", VB_INSTANCE_PREFIX: "vb-", VB_MAX_INSTANCES_PER_USER: "2",
   VOIDBASE_LOG_MIN_LEVEL: "8",
   VOIDBASE_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef", VB_ALLOW_SELF_DELETE: "1",
+  VOIDBASE_HOOKS_DIR: resolve(import.meta.dir, "../.voidbase/pb_hooks"), VOIDBASE_MIGRATIONS_DIR: resolve(import.meta.dir, "../.voidbase/pb_migrations"),
   GH_OAUTH_CLIENT_ID: "gh-test-client", GH_OAUTH_CLIENT_SECRET: "gh-s3cret", GITHUB_API_BASE: GH, GITHUB_OAUTH_BASE: GH, VB_SITE_URL: "http://site.test",
 };
-const server = Bun.spawn(["bun", resolve(import.meta.dir, "../main.ts"), "--http", `127.0.0.1:${VB_PORT}`, "--dir", `${data}/pb_data`], { cwd: resolve(import.meta.dir, ".."), env, stdout: "pipe", stderr: "pipe" });
+// the app under test is the generated one: `bun run build` (or `voidbase adapt`) writes .voidbase/main.ts
+const server = Bun.spawn(["bun", resolve(import.meta.dir, "../.voidbase/main.ts"), "--http", `127.0.0.1:${VB_PORT}`, "--dir", `${data}/pb_data`], { cwd: resolve(import.meta.dir, "../.voidbase"), env, stdout: "pipe", stderr: "pipe" });
 procs.push(server);
 const serverLog: string[] = []; for (const stream of [server.stdout, server.stderr]) (async () => { const r = (stream as ReadableStream<Uint8Array>).getReader(); const dec = new TextDecoder(); for (;;) { const { value, done } = await r.read(); if (done) break; serverLog.push(dec.decode(value)); } })();
 const api = async (method: string, path: string, body?: unknown, token?: string, raw?: BodyInit) => { const r = await fetch(`${VB}${path}`, { method, headers: { ...(body !== undefined ? { "content-type": "application/json" } : {}), ...(token ? { authorization: token } : {}) }, body: raw ?? (body !== undefined ? JSON.stringify(body) : undefined) }); const text = await r.text(); let json: Record<string, any> = {}; try { json = JSON.parse(text); } catch { json = { raw: text }; } return { status: r.status, json }; }; // eslint-disable-line @typescript-eslint/no-explicit-any
