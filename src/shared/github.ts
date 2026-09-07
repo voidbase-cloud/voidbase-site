@@ -35,7 +35,7 @@ export async function seedTemplate(): Promise<void> {
   if (existing.length) return;
   const t = new pb.Record(pb.$app.findCollectionByNameOrId("vb_templates"));
   t.set("name", "voidbase-site"); t.set("repo", "voidbase-cloud/voidbase-site"); t.set("title", "voidbase site"); t.set("kind", "site");
-  t.set("description", "This site: SvelteKit on GitHub Pages with docs, FAQ and the cloud control plane in vb/. The Pages workflow reads the backend URL and the custom domain from repository variables.");
+  t.set("description", "This site: SvelteKit on GitHub Pages with docs and the cloud control plane in vb/. The Pages workflow reads the backend URL and the custom domain from repository variables.");
   t.set("url", "https://github.com/voidbase-cloud/voidbase-site");
   t.set("variables", [{ name: "PB_VB_URL", source: "instance_url" }, { name: "PAGES_CNAME", source: "input:domain" }]);
   await pb.$app.save(t); console.log("vbcloud: template voidbase-site registered");
