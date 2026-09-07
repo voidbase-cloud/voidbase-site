@@ -1,6 +1,6 @@
 import { defineHead } from "void";
 
 export const head = defineHead(() => ({
-  title: "With npm, onto Cloudflare - Docs - voidbase",
-  description: "Install the CLI, run a project locally, and deploy it to your own Cloudflare account.",
+  title: "Instances on Cloudflare - Docs - voidbase",
+  description: "Create, list and delete voidbase instances from the command line, with no repository and no code.",
 }));

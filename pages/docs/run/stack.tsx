@@ -1,93 +1,118 @@
-// The whole-application path: a Void app that builds into a voidbase instance and deploys as one Worker.
+// The stack path: one application, site and backend, from an empty directory.
+import { Link } from "@void/react";
 import CodeBlock from "@/components/CodeBlock";
+import { DOCS_NAV } from "@/lib/docsNav";
 
-const SCAFFOLD = `mkdir my-app && cd my-app
-bun add void && bunx void init      # scaffolds a Void app: pages/, routes/, db/, vite.config.ts
+const SCAFFOLD = `bun add void
+bunx void init          # asks which framework and starter; React and a database-backed one here
 bun add @voidbase-cloud/voidbase`;
 
 const CONFIG = `// vite.config.ts
 import { defineConfig } from "vite";
 import { voidPlugin } from "void";
+import { voidReact } from "@void/react/plugin";
 import { voidbaseAdapter } from "@voidbase-cloud/voidbase/adapter/plugin";
 
-export default defineConfig({ plugins: [voidPlugin(), voidbaseAdapter()] });`;
+export default defineConfig({ plugins: [voidPlugin(), voidReact(), voidbaseAdapter()] });`;
 
-const BUILD = `bun run build                                  # writes the whole voidbase app into .voidbase/
-bun .voidbase/main.ts --http 127.0.0.1:8090    # site at /, API at /api, panel at /_/
+const TREE = `my-app/
+├─ pages/           the site, server-rendered
+├─ routes/          typed API endpoints
+├─ middleware/      what runs on every request
+├─ crons/           scheduled work
+├─ queues/          background jobs
+├─ db/              the app's own tables, in Drizzle
+├─ src/             library code the rest imports
+│
+├─ vb_hooks/        handlers that run around record writes
+├─ vb_migrations/   collections, for the schema the panel manages
+├─ vb_secrets/      configuration, for the server, the build and the browser
+│
+└─ .voidbase/       generated on build; the instance this becomes (git-ignored)`;
 
-cd .voidbase && voidbase deploy                # one Worker with all three`;
+const BUILD = `bun run build                                  # or: bunx --bun vite build
+bun .voidbase/main.ts --http 127.0.0.1:8090    # site at /, API at /api, panel at /_/`;
+
+const DEPLOY = `cd .voidbase && voidbase deploy`;
+
+const IGNORE = `.voidbase/
+vb_secrets/secrets.json`;
 
 export default function DocsStack() {
+  const section = DOCS_NAV.find((s) => s.href === "/docs/run/stack");
+  const folders = (section?.children ?? []).filter((c) => c.href !== "/docs/run/stack");
+
   return (
     <>
-      <h1>The voidbase stack</h1>
+      <h1>Start a stack app</h1>
       <p className="docs-lead">
-        The other pages give you a backend that a separate frontend talks to. This one gives you a single
-        application: pages, routes and a database in one project, which builds into a voidbase instance and deploys as
-        one Worker serving the site, the API and the admin panel from the same address.
+        One application: pages, typed endpoints, background jobs and a database, which builds into a voidbase
+        instance and deploys as a single Worker serving the site, the API and the admin panel from one address.
       </p>
 
       <p>
         It is a <a href="https://void.cloud" target="_blank" rel="noreferrer noopener">Void</a> app with an adapter
-        added. The project stays a plain Void app the whole time: the adapter generates the voidbase project from it
-        rather than asking you to write one.
+        added. The project stays a plain Void app the whole way through: the adapter generates the voidbase instance
+        from it rather than asking you to keep one.
       </p>
 
-      <h2>Set it up</h2>
+      <h2>From an empty directory</h2>
       <CodeBlock language="bash" content={SCAFFOLD} />
       <p>Then add the adapter to the Vite config, which is the only wiring there is:</p>
       <CodeBlock language="javascript" content={CONFIG} />
-
-      <h2>What is yours to add</h2>
       <p>
-        <code>routes/</code>, <code>middleware/</code>, <code>crons/</code>, <code>queues/</code>,{" "}
-        <code>pages/</code> and <code>db/</code> are Void's, and mean what Void means by them. Three directories are
-        yours to add when you want them, each named for the voidbase thing it is:
+        And ignore the two things that should never be committed: the generated instance, and the local values of
+        your configuration.
       </p>
-      <table>
-        <thead>
-          <tr>
-            <th>Directory</th>
-            <th>What goes in it</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>vb_hooks/</code></td>
-            <td>
-              Event hooks, one per file: <code>export default defineHook("onRecordCreate", handler, "posts")</code>.
-              Void has no equivalent, which is why they get a home of their own.
-            </td>
-          </tr>
-          <tr>
-            <td><code>vb_migrations/</code></td>
-            <td>Collection migrations, the counterpart of Void's <code>db/</code> for schema you design in the panel.</td>
-          </tr>
-          <tr>
-            <td><code>vb_secrets/</code></td>
-            <td>
-              The app's configuration, exactly as <a href="/docs/run/project">pb_secrets</a> works, with the same four
-              ways of saying who may read a key.
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <CodeBlock language="bash" content={IGNORE} />
 
-      <h2>Build and deploy</h2>
+      <h2>What the project looks like</h2>
+      <CodeBlock language="bash" content={TREE} />
+      <p>
+        Everything above the gap is Void's and means what Void means by it. The three directories below it are the
+        ones the adapter adds, each named for the voidbase thing it is, each optional, and each with its own page:
+      </p>
+      <div className="docs-cards">
+        {folders.map((f) => (
+          <Link key={f.href} href={f.href} className="docs-card">
+            <strong>{f.title}</strong>
+            <span>{f.summary}</span>
+          </Link>
+        ))}
+      </div>
+
+      <h2>Build and run it</h2>
       <CodeBlock language="bash" content={BUILD} />
       <p>
-        The build writes a complete voidbase project into a git-ignored <code>.voidbase/</code>, so what you deploy is
-        an ordinary instance and everything on <a href="/docs/run/npm">the npm page</a> applies to it: the same deploy
-        command, the same token, the same <code>voidbase sync</code> if you would rather push to a repository than run
-        a command.
+        The build writes a complete voidbase project into <code>.voidbase/</code>: your pages as its static files,
+        your routes and hooks compiled into its hook bundle, your collections as its migrations. It is git-ignored,
+        because it is output, and it is an ordinary instance in every other respect.
+      </p>
+
+      <h2>Deploy it</h2>
+      <CodeBlock language="bash" content={DEPLOY} />
+      <p>
+        Everything on <Link href="/docs/run/project">the project page</Link> applies from here: the same token, the
+        same deploy, and <code>voidbase sync</code> if you would rather push to a repository than run a command.
+      </p>
+
+      <h2>Two things that are different</h2>
+      <p>
+        <strong>Two databases, on purpose.</strong> Void's <code>db/</code> is your application's own tables, in
+        Drizzle, typed end to end, for the data your code owns. Collections are for the data the admin panel and the
+        SDK own, with API rules and a schema someone can change without a deploy. Most apps want both, and{" "}
+        <Link href="/docs/run/stack/migrations">vb_migrations</Link> is where the second kind is written down.
+      </p>
+      <p>
+        <strong>Routes and hooks are not the same thing.</strong> A route in <code>routes/</code> is an endpoint you
+        call. A hook in <Link href="/docs/run/stack/hooks">vb_hooks</Link> runs because a record changed, whoever
+        changed it, including someone clicking in the admin panel. Reach for the first when you are writing an API,
+        the second when a rule has to hold no matter who is writing.
       </p>
 
       <div className="alert alert-info">
         <div className="content">
-          <p className="m-0">
-            This site is built this way. The page you are reading, the API behind it and the admin panel are one
-            Worker.
-          </p>
+          <p className="m-0">This site is built this way: the page you are reading, its API and the admin panel are one Worker.</p>
         </div>
       </div>
     </>

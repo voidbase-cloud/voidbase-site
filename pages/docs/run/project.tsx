@@ -1,121 +1,126 @@
-// The reference page for the layout: what each directory is for, and which ones matter on day one.
+// The project path: a backend you keep in a repository and extend. This page is the shape and the loop; the
+// directories get a page each.
+import { Link } from "@void/react";
 import CodeBlock from "@/components/CodeBlock";
+import { DOCS_NAV } from "@/lib/docsNav";
 
-const TREE = `my-backend/
-├─ pb_hooks/        server-side JavaScript: endpoints, event handlers, scheduled work
-├─ pb_migrations/   schema changes, applied in order, each one recorded so it runs once
-├─ pb_public/       static files served at /
-├─ pb_secrets/      what the project is configured with, and who may read each key
-└─ pb_data/         the database, the uploaded files, the generated typings (git-ignored)`;
+const START = `bun i -g @voidbase-cloud/voidbase
 
-const HOOK = `/// <reference path="../pb_data/types.d.ts" />
+mkdir blog-api && cd blog-api
+voidbase init
+voidbase superuser upsert you@example.com your-password
+voidbase serve`;
 
-routerAdd("GET", "/api/hello", (e) => e.json(200, { hello: "voidbase" }));
+const TREE = `blog-api/
+├─ pb_hooks/        endpoints, event handlers, scheduled work
+├─ pb_migrations/   the schema, as code
+├─ pb_public/       static files served at /   (optional)
+├─ pb_secrets/      configuration, and who may read each key
+├─ pb_data/         the database and the uploaded files (git-ignored)
+└─ .gitignore`;
 
-onRecordAfterCreateSuccess((e) => {
-  console.log("new post:", e.record.get("title"));
-  e.next();
-}, "posts");
+const DEV = `voidbase serve --dev`;
 
-cronAdd("digest", "0 8 * * *", () => { /* every morning at eight */ });`;
+const DEPLOY = `voidbase deploy`;
+
+const SYNC = `voidbase sync`;
 
 export default function DocsProject() {
+  const section = DOCS_NAV.find((s) => s.href === "/docs/run/project");
+  const folders = (section?.children ?? []).filter((c) => c.href !== "/docs/run/project");
+
   return (
     <>
-      <h1>What is in a project</h1>
+      <h1>Create a project</h1>
       <p className="docs-lead">
-        A voidbase project is a handful of directories, each named for what it holds. This is PocketBase's layout, and
-        every directory means what it means there.
+        A backend you extend and keep: your own endpoints, handlers that run when records change, a schema in version
+        control. It runs as one process on your machine and as one Worker on Cloudflare, from the same directory.
       </p>
 
+      <h2>Start one</h2>
+      <CodeBlock language="bash" content={START} />
+      <p>
+        That is a working instance on <code>http://127.0.0.1:8090</code>, with the admin panel at <code>/_/</code> and
+        a sample endpoint answering <code>GET /api/hello</code>. <code>init</code> wrote this:
+      </p>
       <CodeBlock language="bash" content={TREE} />
+      <p>
+        Only <code>pb_hooks/</code> and <code>pb_migrations/</code> matter on day one. Each directory has its own page:
+      </p>
+      <div className="docs-cards">
+        {folders.map((f) => (
+          <Link key={f.href} href={f.href} className="docs-card">
+            <strong>{f.title}</strong>
+            <span>{f.summary}</span>
+          </Link>
+        ))}
+      </div>
 
-      <p>
-        Only <code>pb_hooks/</code> and <code>pb_migrations/</code> are worth putting in version control on day one.
-        The rest appear when you need them.
-      </p>
+      <h2>The loop</h2>
+      <ol className="docs-steps">
+        <li>
+          <p>
+            <strong>Design the schema in the panel.</strong> Collections, fields, and the API rules that decide who
+            may read and write what. It is the fastest way to get the shape right, and it is immediately live.
+          </p>
+        </li>
+        <li>
+          <p>
+            <strong>Write it down</strong> as a file in <Link href="/docs/run/project/migrations">pb_migrations</Link>,
+            so the same schema reaches production and the next person who clones this.
+          </p>
+        </li>
+        <li>
+          <p>
+            <strong>Add behaviour</strong> in <Link href="/docs/run/project/hooks">pb_hooks</Link>: an endpoint the
+            API does not have, a handler that fires when a record is written, a nightly job.
+          </p>
+        </li>
+        <li>
+          <p>
+            <strong>Run it while you work.</strong> <code>--dev</code> restarts when a hook or migration changes.
+          </p>
+          <CodeBlock language="bash" content={DEV} />
+        </li>
+      </ol>
 
-      <h2>pb_hooks/</h2>
+      <h2>Put it on Cloudflare</h2>
       <p>
-        Server-side JavaScript, run inside the instance. <code>routerAdd</code> adds an endpoint,{" "}
-        <code>onRecordCreate</code> and the other <code>on*</code> functions run around writes, and{" "}
-        <code>cronAdd</code> schedules work. One file or many, any name ending <code>.pb.js</code>, loaded in
-        filename order.
+        One API token, which <code>voidbase token</code> prints the link for, declared as a <code>local()</code> key
+        in <Link href="/docs/run/project/secrets">pb_secrets</Link>. Then, from the project:
       </p>
-      <CodeBlock language="javascript" content={HOOK} />
+      <CodeBlock language="bash" content={DEPLOY} />
       <p>
-        The reference comment on the first line is what makes an editor autocomplete the whole API; the file it points
-        at is generated into <code>pb_data/</code> on the first run. The hook API is PocketBase's, documented under{" "}
-        <a href="https://pocketbase.io/docs/js-overview/" target="_blank" rel="noreferrer noopener">
-          Extend with JavaScript
-        </a>
-        .
-      </p>
-
-      <h2>pb_migrations/</h2>
-      <p>
-        Schema as code. Each file is applied once, in filename order, and recorded so it never runs twice. This is how
-        a collection you designed in the panel on your machine reaches production: write the migration, commit it, and
-        the next deploy applies it. The format is PocketBase's{" "}
-        <a href="https://pocketbase.io/docs/js-migrations/" target="_blank" rel="noreferrer noopener">
-          JS migrations
-        </a>
-        .
-      </p>
-      <p className="txt-hint txt-sm">
-        The other way is the panel's own export: it gives you a collections file, and{" "}
-        <code>voidbase import collections.json --url &lt;instance&gt;</code> applies it to another instance.
-      </p>
-
-      <h2>pb_public/</h2>
-      <p>
-        Static files served at <code>/</code>, so a built frontend can ship inside the same instance and share its
-        address. An <code>index.html</code> here is the site; unknown paths get its <code>404.html</code>, while{" "}
-        <code>/api</code> and <code>/_/</code> are never touched.
-      </p>
-
-      <h2>pb_secrets/</h2>
-      <p>
-        The project's configuration, in two files. <code>main.ts</code> declares every key and, importantly, who may
-        read it. <code>secrets.json</code> holds the values on your machine and is git-ignored, so a project needs no{" "}
-        <code>.env</code> at all.
-      </p>
-      <table>
-        <thead>
-          <tr>
-            <th>Declared as</th>
-            <th>Who can read it</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>secret()</code></td>
-            <td>The deployed instance only, as an encrypted secret. Never listed, never in a build.</td>
-          </tr>
-          <tr>
-            <td><code>server()</code></td>
-            <td>Server code: your hooks and routes. A plain variable on the instance.</td>
-          </tr>
-          <tr>
-            <td><code>browser()</code></td>
-            <td>The browser too. A client build inlines the value, so treat it as public.</td>
-          </tr>
-          <tr>
-            <td><code>local()</code></td>
-            <td>Your own tooling, like the deploy token. Read on your machine and in CI, deployed nowhere.</td>
-          </tr>
-        </tbody>
-      </table>
-      <p>
-        Every key must say which one it is, and a deploy refuses a value that fails its own validation, so a typo is
-        caught before it reaches production rather than after.
+        It creates the Worker, its database, its file storage, its queue and its realtime object on the first run,
+        stores the declared secrets on it, applies any pending migrations on the first request, and prints the
+        address. Deploy again whenever anything changes; the data is untouched.
       </p>
 
-      <h2>pb_data/</h2>
+      <h3>Or let a push do it</h3>
       <p>
-        Everything a running instance owns: the database, the uploaded files, and the generated typings. It is
-        git-ignored, and once deployed it is not used at all, because Cloudflare's database and object storage hold
-        the same things.
+        <code>sync</code> is that deploy plus the wiring, so every later push to the repository deploys by itself.
+      </p>
+      <CodeBlock language="bash" content={SYNC} />
+      <p>
+        It needs a second token, a user API token with permission to configure builds, and the first run points at
+        the single dashboard step an API cannot do for you: connecting the repository. Run it again and the triggers
+        are in place. From then on the whole loop above is: edit, commit, push.
+      </p>
+
+      <div className="alert alert-info">
+        <div className="content">
+          <p className="m-0">
+            Listing and deleting instances works the same from a project as without one:{" "}
+            <Link href="/docs/run/npm">voidbase instances and voidbase destroy</Link>.
+          </p>
+        </div>
+      </div>
+
+      <h2>When this stops being enough</h2>
+      <p>
+        A project is a backend. When the site is yours too and you would rather write pages, typed routes and a
+        database schema in one application than keep a frontend and a backend in step,{" "}
+        <Link href="/docs/run/stack">the voidbase stack</Link> is the next page.
       </p>
     </>
   );

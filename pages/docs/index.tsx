@@ -1,5 +1,5 @@
-// The first page of the documentation: what voidbase is, in as few words as that takes, and then the one choice
-// that decides which page you read next.
+// The first page of the documentation: what voidbase is, in as few words as that takes, and then the choice that
+// decides which page you read next.
 import { Link } from "@void/react";
 import { DOCS_NAV, type DocsLink } from "@/lib/docsNav";
 
@@ -17,7 +17,7 @@ function Cards({ links }: { links: DocsLink[] }) {
 }
 
 export default function DocsIndex() {
-  const [, connect, run] = DOCS_NAV;
+  const [, connect, run, project, stack] = DOCS_NAV;
 
   return (
     <>
@@ -35,19 +35,54 @@ export default function DocsIndex() {
         documentation is linked rather than copied, because a copy goes stale and a link does not.
       </p>
 
-      <h2>Start here</h2>
-      <p>Two questions bring people to this page, and the answer to one of them is a lot shorter than the other.</p>
-
-      <h3>{connect!.title}</h3>
+      <h2>Connect to one that exists</h2>
       <p>{connect!.summary} You need the address and an account, and nothing installed but your own project.</p>
       <Cards links={connect!.children ?? []} />
 
-      <h3>{run!.title}</h3>
+      <h2>Or run one</h2>
       <p>
-        {run!.summary} Every one of them puts the instance somewhere you control, and the data with it. Start with the
-        standalone executable if you are only looking; it takes about a minute and needs neither npm nor bun.
+        Four ways, aimed at four different people. They are not steps: pick the one that describes you, and ignore
+        the others until it stops describing you.
       </p>
       <Cards links={run!.children ?? []} />
+      <div className="docs-cards">
+        <Link href={project!.href} className="docs-card">
+          <strong>{project!.title}</strong>
+          <span>{project!.summary}</span>
+        </Link>
+        <Link href={stack!.href} className="docs-card">
+          <strong>{stack!.title}</strong>
+          <span>{stack!.summary}</span>
+        </Link>
+      </div>
+
+      <h2>Which one</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>If you</th>
+            <th>Read</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>want to see it working, now</td>
+            <td><Link href="/docs/run/standalone">Standalone executable</Link></td>
+          </tr>
+          <tr>
+            <td>want instances on Cloudflare and no code at all</td>
+            <td><Link href="/docs/run/npm">Instances on Cloudflare</Link></td>
+          </tr>
+          <tr>
+            <td>are building a backend: endpoints, hooks, a schema you keep</td>
+            <td><Link href="/docs/run/project">A voidbase project</Link></td>
+          </tr>
+          <tr>
+            <td>are building the whole thing, site included</td>
+            <td><Link href="/docs/run/stack">The voidbase stack</Link></td>
+          </tr>
+        </tbody>
+      </table>
 
       <h2>What you can assume</h2>
       <p>
