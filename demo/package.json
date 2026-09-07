@@ -8,6 +8,6 @@
     "deploy": "voidbase sync"
   },
   "dependencies": {
-    "@voidbase-cloud/voidbase": "^0.6.0"
+    "@voidbase-cloud/voidbase": "^0.6.1"
   }
 }
