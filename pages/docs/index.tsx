@@ -17,7 +17,14 @@ function Cards({ links }: { links: DocsLink[] }) {
 }
 
 export default function DocsIndex() {
-  const [, connect, run, project, pipeline, stack] = DOCS_NAV;
+  // by href, not by position: adding a section should not silently renumber this page
+  const at = (href: string) => DOCS_NAV.find((s) => s.href === href)!;
+  const why = at("/docs/why");
+  const connect = at("/docs/connect/sdk");
+  const run = at("/docs/run/standalone");
+  const project = at("/docs/run/project");
+  const pipeline = at("/docs/deploy/pipeline");
+  const stack = at("/docs/run/stack");
 
   return (
     <>
@@ -33,6 +40,12 @@ export default function DocsIndex() {
         client libraries, the filter syntax, the admin panel itself. That is deliberate, and it is why these pages
         are short. Where something genuinely differs, it is said here; where it does not, PocketBase's own
         documentation is linked rather than copied, because a copy goes stale and a link does not.
+      </p>
+
+      <p>
+        If you are still deciding whether to use it at all,{" "}
+        <Link href={why.href}>{why.children![0]!.title}</Link> is the short history of how these backends got here
+        and where this one sits, with a page for each of the ones you are probably comparing it to.
       </p>
 
       <h2>Connect to one that exists</h2>
@@ -87,6 +100,10 @@ export default function DocsIndex() {
           <tr>
             <td>are building the whole thing, site included</td>
             <td><Link href="/docs/run/stack">The voidbase stack</Link></td>
+          </tr>
+          <tr>
+            <td>are deciding between this and Firebase, Supabase, PocketBase or another</td>
+            <td><Link href="/docs/why">Why another BaaS??!?!?</Link></td>
           </tr>
           <tr>
             <td>want every change tracked, and a push to be the deploy</td>

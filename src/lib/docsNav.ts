@@ -24,6 +24,21 @@ export const DOCS_NAV: DocsLink[] = [
     summary: "What voidbase is, and which page to read next.",
   },
   {
+    href: "/docs/why",
+    title: "Why voidbase",
+    icon: "ri-question-line",
+    summary: "Where this came from, and how it compares to the backends you already know.",
+    children: [
+      { href: "/docs/why", title: "Why another BaaS??!?!?", summary: "Fourteen years of backends, and the one question each of them answered better." },
+      { href: "/docs/why/firebase", title: "Compared to Firebase", summary: "The one that started it, and the account the data lives in." },
+      { href: "/docs/why/supabase", title: "Compared to Supabase", summary: "Postgres and an open licence, against a self-host that is one command." },
+      { href: "/docs/why/pocketbase", title: "Compared to PocketBase", summary: "The same API. One machine, or no machine." },
+      { href: "/docs/why/appwrite", title: "Compared to Appwrite", summary: "More services in the box, against less to operate." },
+      { href: "/docs/why/convex", title: "Compared to Convex", summary: "Functions you write, against an API you get." },
+      { href: "/docs/why/encore", title: "Compared to Encore", summary: "A framework for building a backend, against a backend." },
+    ],
+  },
+  {
     href: "/docs/connect/sdk",
     title: "Connect to an instance",
     icon: "ri-plug-line",
