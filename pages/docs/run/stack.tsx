@@ -92,8 +92,9 @@ export default function DocsStack() {
       <h2>Deploy it</h2>
       <CodeBlock language="bash" content={DEPLOY} />
       <p>
-        Everything on <Link href="/docs/run/project">the project page</Link> applies from here: the same token, the
-        same deploy, and <code>voidbase sync</code> if you would rather push to a repository than run a command.
+        Everything on <Link href="/docs/run/project">the project page</Link> applies from here: the same token and
+        the same deploy. To have a push do it instead, so the site and its backend ship together on every commit,{" "}
+        <Link href="/docs/deploy/pipeline">Deploy on every push</Link> is two commands and one dashboard step.
       </p>
 
       <h2>Two things that are different</h2>

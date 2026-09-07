@@ -17,7 +17,7 @@ function Cards({ links }: { links: DocsLink[] }) {
 }
 
 export default function DocsIndex() {
-  const [, connect, run, project, stack] = DOCS_NAV;
+  const [, connect, run, project, pipeline, stack] = DOCS_NAV;
 
   return (
     <>
@@ -56,6 +56,13 @@ export default function DocsIndex() {
         </Link>
       </div>
 
+      <h2>And keep it that way</h2>
+      <p>
+        Once an instance is yours, the next thing worth doing is making every change to it a commit: connect the
+        repository once and a push is the deploy, with nothing done by hand and nothing to remember.
+      </p>
+      <Cards links={pipeline!.children ?? []} />
+
       <h2>Which one</h2>
       <table>
         <thead>
@@ -80,6 +87,10 @@ export default function DocsIndex() {
           <tr>
             <td>are building the whole thing, site included</td>
             <td><Link href="/docs/run/stack">The voidbase stack</Link></td>
+          </tr>
+          <tr>
+            <td>want every change tracked, and a push to be the deploy</td>
+            <td><Link href="/docs/deploy/pipeline">Deploy from your repository</Link></td>
           </tr>
         </tbody>
       </table>

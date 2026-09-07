@@ -98,13 +98,15 @@ export default function DocsProject() {
 
       <h3>Or let a push do it</h3>
       <p>
-        <code>sync</code> is that deploy plus the wiring, so every later push to the repository deploys by itself.
+        <code>sync</code> is that deploy plus the wiring, so every later push to the repository deploys by itself and
+        every change to the instance is a commit somebody can read and revert.
       </p>
       <CodeBlock language="bash" content={SYNC} />
       <p>
-        It needs a second token, a user API token with permission to configure builds, and the first run points at
-        the single dashboard step an API cannot do for you: connecting the repository. Run it again and the triggers
-        are in place. From then on the whole loop above is: edit, commit, push.
+        It needs a second token and one dashboard step the first run points at. From then on the whole loop above is:
+        edit, commit, push. <Link href="/docs/deploy/pipeline">Deploy on every push</Link> is the guide, and{" "}
+        <Link href="/docs/deploy/tracked">What git tracks</Link> is the list of what belongs in the repository and
+        what must not.
       </p>
 
       <div className="alert alert-info">

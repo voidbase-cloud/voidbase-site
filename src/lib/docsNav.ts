@@ -59,6 +59,16 @@ export const DOCS_NAV: DocsLink[] = [
     ],
   },
   {
+    href: "/docs/deploy/pipeline",
+    title: "Deploy from your repository",
+    icon: "ri-git-branch-line",
+    summary: "Every change in version control, and a push is what ships it.",
+    children: [
+      { href: "/docs/deploy/pipeline", title: "Deploy on every push", summary: "Connect the repository once, and pushing to it is the deploy." },
+      { href: "/docs/deploy/tracked", title: "What git tracks", summary: "Everything except the values of your secrets, and how those get there instead." },
+    ],
+  },
+  {
     href: "/docs/run/stack",
     title: "The voidbase stack",
     icon: "ri-stack-line",
