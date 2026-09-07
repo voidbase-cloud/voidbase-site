@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@void/react";
 import CodeBlock from "@/components/CodeBlock";
+import PresenceCursors from "@/components/PresenceCursors";
 import PageFooter from "@/components/PageFooter";
 import PageHeader from "@/components/PageHeader";
 import { SITE } from "@/lib/env";
@@ -403,6 +404,9 @@ export default function Landing() {
               height="636"
               className="preview"
             />
+
+            {/* who else is on this page right now, over this site's own instance (src/components/PresenceCursors.tsx) */}
+            <PresenceCursors />
 
             <div className="content">
               <a

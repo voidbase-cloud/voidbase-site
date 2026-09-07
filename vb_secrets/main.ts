@@ -36,6 +36,12 @@ export default defineSecrets({
   GH_OAUTH_SCOPES: server(string().optional(), "overrides the GitHub OAuth scopes"),
   VB_SITE_URL: server(url().optional(), "where the GitHub callback sends the browser back (defaults per runtime)"),
   VB_SITE_REPO: server(string().optional(), "this site's own repository, owner/name"),
+  // the landing page's live cursors (voidbase/docs/deploy.md): the newest three visitors hold a slot and may send
+  // their cursor, everyone else watches over the connection they already have. Nothing is written to the database.
+  // Set VOIDBASE_PRESENCE to 0 and the page falls back to a canned animation at no cost.
+  VOIDBASE_PRESENCE: server(boolean().default(true), "the landing page's live cursors"),
+  VOIDBASE_PRESENCE_MAX: server(number().default(3), "how many visitors hold a cursor slot at once"),
+  VOIDBASE_PRESENCE_TTL: server(number().default(12), "seconds a slot survives without a beat"),
 
   // ---- browser: inlined into the static site as import.meta.env.PB_* (src/lib/env.ts)
   PB_VB_URL: browser(url().optional(), "where the browser reaches the API (same origin when unset)"),
