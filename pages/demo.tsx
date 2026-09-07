@@ -1,4 +1,5 @@
-// Ported from the SvelteKit site's (blank)/demo page: PocketBase's public demo dashboard in a full-height frame.
+// The public demo in a full-height frame: demo.voidbase.cloud is a voidbase instance of its own (demo/ in this
+// repository), running the unmodified PocketBase admin panel. Its database is restored every hour.
 // It carries no site chrome, so it takes the blank layout instead of the root one.
 import { useState } from "react";
 import "@/scss/demo.scss";
@@ -31,8 +32,8 @@ export default function Demo() {
     <div className="iframe-wrapper">
       <div className="alert">
         <div className="content txt-center">
-          This is a demo of <a href="/">PocketBase</a> admin dashboard. The database resets every hour. Realtime data
-          and file upload are disabled.
+          This is a live demo of <a href="/">voidbase</a> running the unmodified PocketBase admin dashboard. The
+          database is restored every hour and file upload is disabled; everything else, realtime included, works.
           <br />
           To login, use
           <div className="inline-flex flex-gap-0">
@@ -41,14 +42,14 @@ export default function Demo() {
           </div>
           and
           <div className="inline-flex flex-gap-0">
-            Password: <strong>123456</strong>
-            {copyButton("123456")}
+            Password: <strong>demo123456</strong>
+            {copyButton("demo123456")}
           </div>
         </div>
       </div>
 
       <iframe
-        src="https://pocketbase.io/_/#/login?demoEmail=test@example.com&demoPassword=123456"
+        src="https://demo.voidbase.cloud/_/#/login"
         title="Demo dashboard"
         frameBorder="0"
       />

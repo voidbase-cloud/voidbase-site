@@ -1,0 +1,13 @@
+{
+  "name": "voidbase-demo",
+  "private": true,
+  "type": "module",
+  "description": "demo.voidbase.cloud: a public voidbase instance, restored every hour",
+  "scripts": {
+    "dev": "voidbase serve --dev --http 127.0.0.1:8095",
+    "deploy": "voidbase sync"
+  },
+  "dependencies": {
+    "@voidbase-cloud/voidbase": "^0.5.1"
+  }
+}

@@ -398,7 +398,7 @@ export default function Landing() {
 
             <img
               src={PREVIEW_IMG_SRC}
-              alt="PocketBase dashboard preview"
+              alt="voidbase dashboard preview"
               width="1140"
               height="636"
               className="preview"
@@ -406,7 +406,7 @@ export default function Landing() {
 
             <div className="content">
               <a
-                href="https://pocketbase.io/_/"
+                href="https://demo.voidbase.cloud/"
                 className="btn btn-lg btn-primary btn-expanded"
                 target="_blank"
                 rel="noreferrer noopener"

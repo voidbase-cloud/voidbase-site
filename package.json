@@ -24,8 +24,9 @@
     "serve": "bun .voidbase/main.ts --http 0.0.0.0:8090",
     "check": "bunx tsc --noEmit -p tsconfig.json && bunx tsc --noEmit -p tsconfig.server.json",
     "deploy": "bun run build && cd .voidbase && voidbase deploy",
-    "deploy:ci": "cd .voidbase && voidbase deploy",
-    "test": "bun test/cloud.ts"
+    "deploy:ci": "cd .voidbase && voidbase deploy && cd ../demo && voidbase sync",
+    "test": "bun test/cloud.ts",
+    "demo:deploy": "cd demo && bunx voidbase sync"
   },
   "type": "module"
 }

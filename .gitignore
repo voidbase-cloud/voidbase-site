@@ -11,3 +11,7 @@ dist
 .voidbase
 # the values of the secrets vb_secrets/main.ts declares (voidbase deploy stores them on the Worker)
 vb_secrets/secrets.json
+# the demo instance (demo/): its runtime data, its generated deploy project, its local values
+demo/pb_data/
+demo/.cloud/
+demo/pb_secrets/secrets.json

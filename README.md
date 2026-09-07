@@ -83,6 +83,13 @@ Four steps, and the instance then follows the repository:
 `bunx voidbase secrets` shows every declared key, its tier and where its value is; `bunx voidbase sync --dry-run`
 shows the plan. Details: `voidbase/docs/deploy.md`.
 
+## The demo
+
+`demo/` is the instance behind [demo.voidbase.cloud](https://demo.voidbase.cloud): PocketBase's own layout
+(`pb_hooks/`, `pb_secrets/`, `pb_public/`), the unmodified admin panel, and a database restored every hour by a
+hook cron. The landing page's "Live demo" button and `/demo` both point at it. `demo/README.md` has the details;
+`bun run demo:deploy` deploys it from a machine, and a push to master deploys it alongside the site.
+
 ## How the two halves meet
 
 `vite build` runs Void's build, which prerenders every page, and then voidbase's adapter
