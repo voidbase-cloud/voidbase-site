@@ -599,6 +599,7 @@
 .perf-cold {
     display: flex;
     align-items: center;
+    gap: 12px;
 
     input[type="checkbox"] {
         width: 16px;
@@ -700,4 +701,27 @@
         margin: 12px 0 0;
         max-width: none;
     }
+}
+
+// what a shape does as it grows, under each bar
+.perf-scale {
+    margin: 12px 0 0;
+    padding: 12px 0 0;
+    border-top: 1px solid #131313;
+    display: grid;
+    gap: 8px 16px;
+    font-size: 14px;
+    line-height: 22px;
+
+    > div {
+        display: grid;
+        grid-template-columns: 210px 1fr;
+        gap: 14px;
+    }
+    dt { color: var(--txtDisabledColor); }
+    dd { margin: 0; color: #c9c9c9; }
+}
+
+@media only screen and (max-width: 700px) {
+    .perf-scale > div { grid-template-columns: 1fr; gap: 2px; }
 }

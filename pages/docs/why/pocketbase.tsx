@@ -28,6 +28,7 @@ export default function VsPocketBase() {
           { q: "You operate", vb: ["yes", "Nothing."], them: ["no", "The machine: TLS, restarts, backups, disk, upgrades."] },
           { q: "Where it runs", vb: ["yes", "Every Cloudflare region, wherever the request lands."], them: ["depends", "One machine in one place. Everyone else pays the round trip."] },
           { q: "Scaling", vb: ["yes", "Per request, automatically."], them: ["no", "A bigger machine, and a restart."] },
+          { q: "Realtime", vb: ["depends", "A durable object holds the sockets and pushes changes. One hop more, and it is not bounded by one machine."], them: ["yes", "Pushed straight from memory in the same process. Nothing is faster than that."] },
           { q: "Transactions", vb: ["planned", "None today. Writes validate, then run as one atomic batch. A durable object per instance makes them real."], them: ["yes", "Real and interactive."] },
           { q: "Database limits", vb: ["planned", "100 bound parameters per statement, 100 columns per table. The same move drops both."], them: ["yes", "SQLite's own, which you will not reach."] },
           { q: "Maturity", vb: ["no", "A reimplementation of the wire protocol. A reimplementation is where bugs live."], them: ["yes", "The original, maintained for years."] },

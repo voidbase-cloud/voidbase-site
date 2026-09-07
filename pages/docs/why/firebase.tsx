@@ -27,6 +27,7 @@ export default function VsFirebase() {
           { q: "Source", vb: ["yes", "Open, MIT."], them: ["no", "Closed. The client SDKs are open, the backend is not."] },
           { q: "Self-host", vb: ["yes", "It is the only mode. There is no hosted product to depend on."], them: ["no", "No. The emulator is for local development, not production."] },
           { q: "Database", vb: ["yes", "SQLite through D1. A schema, relations, and SQL underneath."], them: ["depends", "Documents, no joins, no SQL. Simpler until you need a join."] },
+          { q: "Realtime", vb: ["yes", "Subscribe to a collection over one connection. Pushes are not billed per message."], them: ["depends", "Mature listeners, wired into the offline cache. Every document a listener receives is billed as a read, so fan-out multiplies the bill by subscriber count."] },
           { q: "Offline on the device", vb: ["planned", "Nothing built in today. A service worker that queues writes is the next piece."], them: ["yes", "Writes queue on the device and reconcile. A decade of work behind it."] },
           { q: "Client platforms", vb: ["depends", "Good JavaScript and Dart clients. Others are community built."], them: ["yes", "iOS, Android, Unity, Flutter and C++, maintained by Google."] },
           { q: "The rest of the box", vb: ["no", "A backend. No crash reporting, push or analytics."], them: ["yes", "Crashlytics, messaging, analytics and remote config, wired together."] },

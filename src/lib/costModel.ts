@@ -134,6 +134,8 @@ export interface Rival {
   /** which latency profile this product has, for the speed section */
   shape: "region" | "machine" | "cloud";
   shapeNote: string;
+  /** how its realtime reaches a browser, for the speed table */
+  realtime?: string;
 }
 
 const gbOut = (u: Usage) => ((u.reads + u.writes) * ASSUME.kbPerResponse) / 1_000_000; // KB to GB
@@ -145,6 +147,7 @@ export const RIVALS: Record<string, Rival> = {
     source: { label: "supabase.com/pricing", href: "https://supabase.com/pricing" },
     shape: "region",
     shapeNote: "One region per project, with the database next to the code.",
+    realtime: "Postgres replication broadcast over websockets, billed by peak connection and by message",
     estimate: (u) => {
       const messages = u.realtime * ASSUME.pushesPerConnectionPerDay * 30;
       const dbGb = ((u.writes * ASSUME.rowsPerWrite) / 1_000_000) * ASSUME.dbGbPerMillionRows;
@@ -171,13 +174,16 @@ export const RIVALS: Record<string, Rival> = {
     source: { label: "convex.dev/pricing", href: "https://www.convex.dev/pricing" },
     shape: "region",
     shapeNote: "Their cloud, with the database beside the functions.",
+    realtime: "Reactive queries: the server recomputes and pushes, which is more than a subscription",
     estimate: (u) => {
-      const calls = u.reads + u.writes;
+      // reactivity is the product: a subscribed query recomputes when its inputs change, and a recompute is a call
+      const pushes = u.realtime * ASSUME.pushesPerConnectionPerDay * 30;
+      const calls = u.reads + u.writes + pushes;
       const dbGb = ((u.writes * ASSUME.rowsPerWrite) / 1_000_000) * ASSUME.dbGbPerMillionRows;
       const egress = gbOut(u);
       const lines: Line[] = [
         { label: "Professional base", detail: "one developer", amount: 25 },
-        { label: "Function calls", detail: `${(calls / 1_000_000).toFixed(1)}M, 25M included`, amount: round((over(calls, 25_000_000) / 1_000_000) * 2) },
+        { label: "Function calls", detail: `${(calls / 1_000_000).toFixed(1)}M including ${(pushes / 1_000_000).toFixed(1)}M reactive re-runs, 25M included`, amount: round((over(calls, 25_000_000) / 1_000_000) * 2) },
         { label: "Database storage", detail: `${dbGb.toFixed(1)} GB, 50 GB included`, amount: round(over(dbGb, 50) * 0.2) },
         { label: "File storage", detail: `${u.storage} GB, 100 GB included`, amount: round(over(u.storage, 100) * 0.03) },
         { label: "Data egress", detail: `${egress.toFixed(0)} GB, 50 GB included`, amount: round(over(egress, 50) * 0.12) },
@@ -186,7 +192,7 @@ export const RIVALS: Record<string, Rival> = {
         total: round(lines.reduce((a, l) => a + l.amount, 0)),
         lines,
         caveat:
-          "Query and mutation compute is free on this plan, and database bandwidth and action compute are not modelled here. Convex bills per developer on the team, so a team of five starts at five times the base.",
+          "Reactive re-runs are counted as function calls, which is the assumption most likely to be wrong here and the one that decides this column: Convex may well batch or dedupe them. Query and mutation compute is free on this plan, and database bandwidth and action compute are not modelled. Convex bills per developer, so a team of five starts at five times the base.",
       };
     },
   },
@@ -197,22 +203,25 @@ export const RIVALS: Record<string, Rival> = {
     source: { label: "appwrite.io/pricing", href: "https://appwrite.io/pricing" },
     shape: "region",
     shapeNote: "Their cloud, or a host you run yourself, in one place either way.",
+    realtime: "Websocket channels, included in the plan and bounded by the host",
     estimate: (u) => {
-      const bandwidth = gbOut(u);
+      // realtime is not metered separately on the plan, but what it pushes is bandwidth like anything else
+      const pushes = u.realtime * ASSUME.pushesPerConnectionPerDay * 30;
+      const bandwidth = gbOut(u) + (pushes * 1) / 1_000_000; // ~1KB a push
       const lines: Line[] = [
         { label: "Pro base", detail: "one member, $10 of database credit", amount: 25 },
         { label: "Monthly active users", detail: `${(u.mau / 1000).toFixed(0)}k, 200k included`, amount: round((over(u.mau, 200_000) / 1000) * 3) },
         { label: "Reads", detail: `${(u.reads / 1_000_000).toFixed(1)}M`, amount: round((u.reads / 100_000) * 0.06) },
         { label: "Writes", detail: `${(u.writes / 1_000_000).toFixed(1)}M`, amount: round((u.writes / 100_000) * 0.1) },
         { label: "Storage", detail: `${u.storage} GB, 150 GB included`, amount: round((over(u.storage, 150) / 100) * 2.8) },
-        { label: "Bandwidth", detail: `${bandwidth.toFixed(0)} GB, 2 TB included`, amount: round((over(bandwidth, 2000) / 100) * 15) },
+        { label: "Bandwidth", detail: `${bandwidth.toFixed(0)} GB including realtime pushes, 2 TB included`, amount: round((over(bandwidth, 2000) / 100) * 15) },
       ];
       const total = round(Math.max(25, lines.reduce((a, l) => a + l.amount, 0) - 10));
       return {
         total,
         lines: [...lines, { label: "Database credit", detail: "included every month", amount: -10 }],
         caveat:
-          "The $10 of monthly database credit is subtracted, and the bill floors at the $25 base. Reads and writes are charged from the first one here rather than after an allowance, which is what makes this column move quickly.",
+          "Realtime connections are included in the plan rather than billed per connection, so only what they push shows up, as bandwidth. The $10 of monthly database credit is subtracted and the bill floors at the $25 base. Reads and writes are charged from the first one rather than after an allowance, which is what makes this column move quickly.",
       };
     },
   },
@@ -223,6 +232,7 @@ export const RIVALS: Record<string, Rival> = {
     source: { label: "encore.dev/pricing", href: "https://encore.dev/pricing" },
     shape: "cloud",
     shapeNote: "Your own AWS or GCP region, so the same single-region trade.",
+    realtime: "None to a browser. Pub/sub is between services; this is yours to build",
     estimate: (u) => {
       const events = (u.reads + u.writes) / 1_000_000;
       const lines: Line[] = [
@@ -235,7 +245,7 @@ export const RIVALS: Record<string, Rival> = {
         total: round(lines.reduce((a, l) => a + l.amount, 0)),
         lines,
         caveat:
-          "This is Encore's platform fee only. The infrastructure runs in your own AWS or GCP account and that cloud bills you directly for compute, storage and data transfer, which is not modelled here and is usually the larger half. The voidbase column, by contrast, is the whole bill.",
+          "There is no realtime line because there is no realtime product: pushing to a browser is something you would build and run on your own infrastructure. This is Encore's platform fee only. The infrastructure runs in your own AWS or GCP account and that cloud bills you directly for compute, storage and data transfer, which is not modelled here and is usually the larger half. The voidbase column, by contrast, is the whole bill.",
       };
     },
   },
@@ -246,6 +256,7 @@ export const RIVALS: Record<string, Rival> = {
     source: { label: "no vendor pricing: it is a binary", href: "https://pocketbase.io/docs/going-to-production/" },
     shape: "machine",
     shapeNote: "One machine, wherever you put it, with SQLite on its own disk.",
+    realtime: "Server-sent events from the process itself, pushed straight from memory",
     estimate: (u) => {
       // no vendor to quote, so the assumption is stated: a small VPS, sized up as the data grows
       const vps = u.storage > 500 || u.reads > 100_000_000 ? 48 : u.storage > 100 || u.reads > 20_000_000 ? 24 : 12;
@@ -258,7 +269,7 @@ export const RIVALS: Record<string, Rival> = {
         total: round(lines.reduce((a, l) => a + l.amount, 0)),
         lines,
         caveat:
-          "PocketBase costs nothing; the machine does. This assumes a VPS sized to the data and object storage for backups, and it is the honest cheap answer at small scale. It leaves out the thing that actually costs: somebody patching, restarting and restoring it, and the request that arrives while the one box is down.",
+          "Realtime costs nothing either, but the sockets are held by that one machine, which is what sizes it. PocketBase costs nothing; the machine does. This assumes a VPS sized to the data and object storage for backups, and it is the honest cheap answer at small scale. It leaves out the thing that actually costs: somebody patching, restarting and restoring it, and the request that arrives while the one box is down.",
       };
     },
   },
@@ -272,6 +283,7 @@ export const RIVALS: Record<string, Rival> = {
     source: { label: "firebase.google.com/pricing", href: "https://firebase.google.com/pricing" },
     shape: "region",
     shapeNote: "Google's, with multi-region options for Firestore.",
+    realtime: "Listeners wired into the offline cache, with every delivered document billed as a read",
   },
 };
 

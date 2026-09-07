@@ -26,6 +26,7 @@ export default function VsAppwrite() {
           { q: "Source", vb: ["yes", "Open, MIT."], them: ["yes", "Open, BSD 3-clause."] },
           { q: "Self-host", vb: ["yes", "One command into your Cloudflare account."], them: ["depends", "Docker, running several containers together."] },
           { q: "What you operate", vb: ["yes", "Nothing."], them: ["no", "The containers, their database, and the host they sit on."] },
+          { q: "Realtime", vb: ["yes", "Durable object fanout. Connections are ordinary requests and messages are not billed."], them: ["depends", "Websocket channels, included in the plan and bounded by the host you run them on."] },
           { q: "Server logic", vb: ["no", "JavaScript hooks and endpoints. One language."], them: ["yes", "Functions in many languages, each in its own container."] },
           { q: "Isolation of that code", vb: ["depends", "Hooks run inside the instance. Faster, less isolated."], them: ["yes", "Each function in its own container."] },
           { q: "In the box", vb: ["depends", "Auth, database, files, realtime, jobs, admin panel."], them: ["yes", "The same, plus messaging and more sign-in methods."] },

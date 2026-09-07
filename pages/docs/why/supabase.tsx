@@ -32,6 +32,7 @@ export default function VsSupabase() {
           { q: "Scaling", vb: ["yes", "Per request, automatically. No instance size to choose."], them: ["depends", "A bigger instance, plus read replicas and connection pooling."] },
           { q: "Where it runs", vb: ["yes", "Every Cloudflare region."], them: ["depends", "The region you picked for the project."] },
           { q: "Cost when idle", vb: ["yes", "Nothing."], them: ["no", "A hosted project bills for its instance whether or not anyone visits."] },
+          { q: "Realtime", vb: ["yes", "One connection per client, fanned out by a durable object. No charge per message or per connection."], them: ["depends", "Postgres changes broadcast over websockets, which is more capable. Billed by peak concurrent connections and by message."] },
           { q: "Seeing what it is doing", vb: ["planned", "Cloudflare's logs and request data are there. Nothing is set up for you or shown in the panel."], them: ["yes", "Logs, query performance and reports in the dashboard."] },
           { q: "Ecosystem", vb: ["no", "Young, and small. You may be the first to hit a given bug."], them: ["yes", "A company, support, and a large body of people who hit it before you."] },
         ]}

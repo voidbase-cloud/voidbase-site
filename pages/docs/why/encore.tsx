@@ -29,6 +29,7 @@ export default function VsEncore() {
           { q: "Where it deploys", vb: ["no", "Cloudflare, and only Cloudflare."], them: ["yes", "Their cloud, or your own AWS or GCP account."] },
           { q: "Languages", vb: ["no", "JavaScript hooks."], them: ["yes", "Go and TypeScript."] },
           { q: "Several services together", vb: ["no", "One instance. No typed calls between services, no tracing across them."], them: ["yes", "Typed calls, tracing, and generated API documentation."] },
+          { q: "Realtime to a browser", vb: ["yes", "Built in: subscribe to a collection over one connection."], them: ["no", "Not a feature. Pub/sub is between your services; pushing to a browser is yours to build."] },
           { q: "Admin panel for content", vb: ["yes", "PocketBase's panel, for editing data."], them: ["no", "A development dashboard. Not for content."] },
           { q: "Non-developers", vb: ["yes", "Can edit content in the panel."], them: ["no", "Everything is code."] },
           { q: "Changing the schema", vb: ["yes", "In the panel, live, or as a migration file."], them: ["no", "A code change and a deploy."] },
