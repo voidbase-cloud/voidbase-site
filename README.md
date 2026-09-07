@@ -42,7 +42,7 @@ backend), and `bun test` runs the control-plane suite.
 
 ```bash
 bun run token                 # the dashboard link that creates VOIDBASE_DEPLOY_CF_API_KEY
-bun run deploy                # build, then voidbase deploy from .voidbase/: D1, R2, queue, hub, the Worker
+bun run deploy                # build, then voidbase deploy from .voidbase/: D1, R2, queue, hub, the Worker 
 ```
 
 One Worker serves everything. `VOIDBASE_DEPLOY_DOMAIN` lists its hostnames (`voidbase.cloud,www.voidbase.cloud,api.voidbase.cloud`),
