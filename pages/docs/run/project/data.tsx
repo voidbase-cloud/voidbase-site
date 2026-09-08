@@ -1,16 +1,20 @@
 // pb_data: everything a running instance owns.
 import CodeBlock from "@/components/CodeBlock";
+import { hl } from "@/lib/hl";
 
-const TREE = `pb_data/
+const TYPES = hl.javascript`/// <reference path="../pb_data/types.d.ts" />`;
+
+
+const TREE = hl.bash`pb_data/
 ├─ data.db                    the database: your collections and their records
 ├─ storage/                   uploaded files, by collection and record
 ├─ types.d.ts                 generated: what makes hook editing autocomplete
 └─ .superuser-credentials     only when a password was generated for you`;
 
-const BACKUP = `# locally: stop the server, copy the directory
+const BACKUP = hl.bash`# locally: stop the server, copy the directory
 cp -r pb_data pb_data.backup-$(date +%F)`;
 
-const EXPORT = `voidbase export ./snapshot --url https://blog-api.example.workers.dev --admin you@example.com:your-password`;
+const EXPORT = hl.bash`voidbase export ./snapshot --url https://blog-api.example.workers.dev --admin you@example.com:your-password`;
 
 export default function DocsProjectData() {
   return (
@@ -21,14 +25,14 @@ export default function DocsProjectData() {
         it is the thing to copy when you want to copy an instance.
       </p>
 
-      <CodeBlock language="bash" content={TREE} />
+      <CodeBlock {...TREE} />
 
       <h2>The generated typings</h2>
       <p>
         <code>types.d.ts</code> is written on startup and describes every global a hook can use. The reference
         comment at the top of a hook file points at it:
       </p>
-      <CodeBlock language="javascript" content={'/// <reference path="../pb_data/types.d.ts" />'} />
+      <CodeBlock {...TYPES} />
       <p>
         That single line is what turns <a href="/docs/run/project/hooks">pb_hooks</a> from untyped scripting into
         something an editor can complete and check. Run the server once before writing hooks so the file exists.
@@ -36,13 +40,13 @@ export default function DocsProjectData() {
 
       <h2>Backing it up</h2>
       <p>Locally, it is a directory:</p>
-      <CodeBlock language="bash" content={BACKUP} />
+      <CodeBlock {...BACKUP} />
       <p>
         The admin panel's Backups screen does the same thing properly, on demand or on a schedule, and can restore
         one. That is the one to use for an instance anyone depends on.
       </p>
       <p>To take a copy of a deployed instance onto your machine, database, collections and files together:</p>
-      <CodeBlock language="bash" content={EXPORT} />
+      <CodeBlock {...EXPORT} />
 
       <h2>On Cloudflare it is not used</h2>
       <p>

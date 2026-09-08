@@ -1,45 +1,46 @@
 // The CLI path: instances as things you name, make and throw away, locally or on Cloudflare. "Local" is kept
 // deliberately loose, because the same commands are what a laptop, a container and a bundled desktop app all use.
 import CodeBlock from "@/components/CodeBlock";
+import { hl } from "@/lib/hl";
 import Updating from "@/components/Updating";
 import "@/scss/updating.scss";
 
-const INSTALL = `bun i -g @voidbase-cloud/voidbase      # or: npm i -g @voidbase-cloud/voidbase
+const INSTALL = hl.bash`bun i -g @voidbase-cloud/voidbase      # or: npm i -g @voidbase-cloud/voidbase
 voidbase version`;
 
-const LOCAL_NEW = `voidbase local new blog`;
+const LOCAL_NEW = hl.bash`voidbase local new blog`;
 
-const LOCAL_NEW_OUT = `created "blog" in ~/.voidbase/instances/blog (pb_hooks/main.pb.js, .gitignore, pb_secrets/main.ts)
+const LOCAL_NEW_OUT = hl.bash`created "blog" in ~/.voidbase/instances/blog (pb_hooks/main.pb.js, .gitignore, pb_secrets/main.ts)
 superuser admin@example.com / k3f8s2m1qzA1
 
 next: voidbase local start blog   (the API on 8090, the panel at http://127.0.0.1:8090/_/)`;
 
-const LOCAL_LS = `voidbase local ls`;
+const LOCAL_LS = hl.bash`voidbase local ls`;
 
-const LOCAL_LS_OUT = `3 local instance(s), from ~/.voidbase/instances.json:
+const LOCAL_LS_OUT = hl.bash`3 local instance(s), from ~/.voidbase/instances.json:
   blog                 :8090   running      2 MB  ~/.voidbase/instances/blog
   shop                 :8091   stopped    941 kB  ~/.voidbase/instances/shop
   workshop             :8092   stopped     14 MB  ~/.voidbase/instances/workshop`;
 
-const LOCAL_RM = `voidbase local rm workshop            # forget it, keep the data
+const LOCAL_RM = hl.bash`voidbase local rm workshop            # forget it, keep the data
 voidbase local rm workshop --purge    # and delete the directory, after typing the name back`;
 
-const TOKEN = `voidbase token                        # prints the link that creates the token
+const TOKEN = hl.bash`voidbase token                        # prints the link that creates the token
 export VOIDBASE_DEPLOY_CF_API_KEY=...   # paste it here`;
 
-const CLOUD = `voidbase deploy --name blog-api
+const CLOUD = hl.bash`voidbase deploy --name blog-api
 voidbase deploy --name blog-api --domain api.example.com`;
 
-const CLOUD_LS = `voidbase instances`;
+const CLOUD_LS = hl.bash`voidbase instances`;
 
-const CLOUD_LS_OUT = `3 instance(s) on Example Ltd:
+const CLOUD_LS_OUT = hl.bash`3 instance(s) on Example Ltd:
   blog-api                         release 0.7.0  updated 2026-09-08
   staging-api                      release 0.7.0  updated 2026-09-04
   workshop-demo                    release 0.6.2  updated 2026-08-30`;
 
-const DESTROY = `voidbase destroy workshop-demo`;
+const DESTROY = hl.bash`voidbase destroy workshop-demo`;
 
-const UPDATE = `voidbase update`;
+const UPDATE = hl.bash`voidbase update`;
 
 export default function DocsNpm() {
   return (
@@ -50,7 +51,7 @@ export default function DocsNpm() {
         do not, locally or in your own Cloudflare account, with the same commands for each.
       </p>
 
-      <CodeBlock language="bash" content={INSTALL} />
+      <CodeBlock {...INSTALL} />
 
       <h2>Local instances</h2>
       <p>
@@ -63,8 +64,8 @@ export default function DocsNpm() {
         compose file, a CI job that needs a real backend for its tests, or a desktop app that ships voidbase inside
         it. Nothing here talks to Cloudflare and none of it needs an account.
       </p>
-      <CodeBlock language="bash" content={LOCAL_NEW} />
-      <CodeBlock language="bash" content={LOCAL_NEW_OUT} />
+      <CodeBlock {...LOCAL_NEW} />
+      <CodeBlock {...LOCAL_NEW_OUT} />
       <p>
         The instance is a directory holding its own database, hooks and configuration, and a row in{" "}
         <code>~/.voidbase/instances.json</code> recording its name and port. Nothing is sent anywhere. Set{" "}
@@ -74,14 +75,14 @@ export default function DocsNpm() {
         <code>--email</code> with <code>--password</code> to choose the superuser rather than have one generated.
       </p>
 
-      <CodeBlock language="bash" content={LOCAL_LS} />
-      <CodeBlock language="bash" content={LOCAL_LS_OUT} />
+      <CodeBlock {...LOCAL_LS} />
+      <CodeBlock {...LOCAL_LS_OUT} />
       <p>
         Each instance keeps the port it was given, so they never collide and the address stays the same between runs.{" "}
         <code>voidbase local start blog</code> runs one, and with no name it starts the first.
       </p>
 
-      <CodeBlock language="bash" content={LOCAL_RM} />
+      <CodeBlock {...LOCAL_RM} />
       <p>
         Removing an instance forgets it. The directory stays where it is until <code>--purge</code> says otherwise,
         and that asks you to type the name back before deleting a database.
@@ -102,11 +103,11 @@ export default function DocsNpm() {
         The same idea, one command further. Everything below needs one API token, and one command prints the link
         that creates it with the right permissions already selected.
       </p>
-      <CodeBlock language="bash" content={TOKEN} />
+      <CodeBlock {...TOKEN} />
 
       <h3>Create one</h3>
       <p>Run this in an empty directory. It is not a project and it does not become one.</p>
-      <CodeBlock language="bash" content={CLOUD} />
+      <CodeBlock {...CLOUD} />
       <p>
         That creates the Worker, its database, its file storage, its job queue and its realtime object, deploys the
         server into it, and prints the address. With a hostname you own on the same account, name it and the instance
@@ -123,8 +124,8 @@ export default function DocsNpm() {
       </div>
 
       <h3>See what you have</h3>
-      <CodeBlock language="bash" content={CLOUD_LS} />
-      <CodeBlock language="bash" content={CLOUD_LS_OUT} />
+      <CodeBlock {...CLOUD_LS} />
+      <CodeBlock {...CLOUD_LS_OUT} />
 
       <h3>Delete one</h3>
       <p>
@@ -132,7 +133,7 @@ export default function DocsNpm() {
         queue, and any custom domain pointing at it. It prints that list and waits for the name to be typed back, and
         in a script it refuses unless <code>--yes</code> says you already decided.
       </p>
-      <CodeBlock language="bash" content={DESTROY} />
+      <CodeBlock {...DESTROY} />
       <div className="alert alert-warning">
         <div className="content">
           <p className="m-0">

@@ -1,8 +1,9 @@
 // What belongs in the repository, what must not, and how the excluded half reaches production anyway.
 import { Link } from "@void/react";
 import CodeBlock from "@/components/CodeBlock";
+import { hl } from "@/lib/hl";
 
-const IGNORE = `# a project
+const IGNORE = hl.bash`# a project
 pb_data/                    the database and the uploaded files
 pb_secrets/secrets.json     the values of your configuration
 .cloud/                     the generated Cloudflare project
@@ -11,11 +12,11 @@ pb_secrets/secrets.json     the values of your configuration
 .voidbase/                  the generated instance
 vb_secrets/secrets.json     the values of your configuration`;
 
-const PUSH = `voidbase secrets push`;
+const PUSH = hl.bash`voidbase secrets push`;
 
-const STATE = `voidbase secrets`;
+const STATE = hl.bash`voidbase secrets`;
 
-const ROTATE = `# change it where the value lives, then send it
+const ROTATE = hl.bash`# change it where the value lives, then send it
 $EDITOR pb_secrets/secrets.json
 voidbase secrets push`;
 
@@ -67,7 +68,7 @@ export default function DocsTracked() {
       </table>
 
       <h2>Not in the repository</h2>
-      <CodeBlock language="bash" content={IGNORE} />
+      <CodeBlock {...IGNORE} />
       <p>
         <code>voidbase init</code> writes those ignore lines for you. If your repository did not come from it, check
         them before the first commit, and check them again before making the repository public.
@@ -90,7 +91,7 @@ export default function DocsTracked() {
         The pipeline never sees it: a build has no <code>secrets.json</code>, and it does not need one, because the
         Worker already has the value.
       </p>
-      <CodeBlock language="bash" content={PUSH} />
+      <CodeBlock {...PUSH} />
       <p>
         A deploy stores a secret the Worker does not have yet, and deliberately will not overwrite one it does.{" "}
         <code>secrets push</code> is the command that replaces, which is what you want when rotating and never what
@@ -112,7 +113,7 @@ export default function DocsTracked() {
       </p>
 
       <h2>Checking what production actually has</h2>
-      <CodeBlock language="bash" content={STATE} />
+      <CodeBlock {...STATE} />
       <p>
         One row per declared key: its tier, whether it has a value here or a default, and whether the Worker has it.
         This is the command to run when something behaves differently in production, because nine times out of ten
@@ -120,7 +121,7 @@ export default function DocsTracked() {
       </p>
 
       <h2>Rotating one</h2>
-      <CodeBlock language="bash" content={ROTATE} />
+      <CodeBlock {...ROTATE} />
       <p>
         Nothing to commit, nothing to redeploy: the Worker picks up the new value on its next request. Removing a key
         is the reverse, and is two changes rather than one: take it out of the declaration and commit that, so the

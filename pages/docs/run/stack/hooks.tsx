@@ -1,7 +1,8 @@
 // vb_hooks: the stack's event handlers, one per file, in TypeScript.
 import CodeBlock from "@/components/CodeBlock";
+import { hl } from "@/lib/hl";
 
-const FILE = `// vb_hooks/slug.ts
+const FILE = hl.javascript`// vb_hooks/slug.ts
 import { defineHook } from "@voidbase-cloud/voidbase/adapter";
 
 export default defineHook("onRecordCreateRequest", (e) => {
@@ -9,7 +10,7 @@ export default defineHook("onRecordCreateRequest", (e) => {
   e.next();
 }, "posts");`;
 
-const SHARED = `// vb_hooks/notify.ts
+const SHARED = hl.javascript`// vb_hooks/notify.ts
 import { defineHook } from "@voidbase-cloud/voidbase/adapter";
 import { sendDigest } from "@/shared/mail";     // the same module routes/ imports
 
@@ -18,7 +19,7 @@ export default defineHook("onRecordAfterCreateSuccess", async (e) => {
   e.next();
 }, "posts");`;
 
-const GUARD = `export default defineHook("onRecordUpdateRequest", (e) => {
+const GUARD = hl.javascript`export default defineHook("onRecordUpdateRequest", (e) => {
   if (e.record.get("locked") && !e.auth?.isSuperuser()) throw new ForbiddenError("locked");
   e.next();
 }, "posts");`;
@@ -39,13 +40,13 @@ export default function DocsStackHooks() {
         the app mounts, in filename order. The first argument is the event, the last are the collections it applies
         to.
       </p>
-      <CodeBlock language="javascript" content={FILE} />
+      <CodeBlock {...FILE} />
 
       <p>
         It is TypeScript in the project, so it imports what everything else imports: the modules your routes use, the
         helpers in <code>src/</code>, your own types.
       </p>
-      <CodeBlock language="javascript" content={SHARED} />
+      <CodeBlock {...SHARED} />
 
       <h2>How a handler behaves</h2>
       <p>
@@ -53,7 +54,7 @@ export default function DocsStackHooks() {
         happens first and work after it happens once the write has gone through. Throwing instead refuses the request
         with that error:
       </p>
-      <CodeBlock language="javascript" content={GUARD} />
+      <CodeBlock {...GUARD} />
       <p>
         The events are the ones a project's <a href="/docs/run/project/hooks">pb_hooks</a> has, with the same names
         and the same event objects: records as models and as requests, collections, auth, files, realtime, settings,

@@ -5,10 +5,11 @@
 // its exit code, and that a new release announces itself. Those are one component so that six pages cannot drift.
 import { Link } from "@void/react";
 import CodeBlock from "@/components/CodeBlock";
+import type { Block } from "@/lib/hl";
 
 export interface UpdatingProps {
   /** the command as this page's reader would type it */
-  command: string;
+  command: Block;
   /** what running it does here, as a sentence continuing "voidbase update ..." */
   children: React.ReactNode;
   /** what has to happen before the update reaches the people using the instance, where that is not the same thing */
@@ -21,7 +22,7 @@ export default function Updating({ command, children, live, title = "Updating" }
   return (
     <section className="updating">
       <h2>{title}</h2>
-      <CodeBlock language="bash" content={command} />
+      <CodeBlock {...command} />
       {children}
       {live && <div className="alert alert-warning"><div className="content"><p className="m-0">{live}</p></div></div>}
       <p>

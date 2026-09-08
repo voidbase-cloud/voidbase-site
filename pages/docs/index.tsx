@@ -4,8 +4,9 @@
 // page, because a front page that tries to introduce and route at the same time does neither well.
 import { Link } from "@void/react";
 import CodeBlock from "@/components/CodeBlock";
+import { hl } from "@/lib/hl";
 
-const TASTE = `# one file, nothing installed
+const TASTE = hl.bash`# one file, nothing installed
 ./voidbase serve
 
 # or from npm, with instances you name
@@ -54,7 +55,7 @@ export default function DocsIndex() {
         on your laptop, from one downloaded file, with the same API and the same panel.
       </p>
 
-      <CodeBlock language="bash" content={TASTE} />
+      <CodeBlock {...TASTE} />
 
       <h2>What these pages assume</h2>
       <p>

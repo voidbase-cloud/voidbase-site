@@ -1,7 +1,8 @@
 // pb_migrations: the schema, written down.
 import CodeBlock from "@/components/CodeBlock";
+import { hl } from "@/lib/hl";
 
-const FILE = `/// <reference path="../pb_data/types.d.ts" />
+const FILE = hl.javascript`/// <reference path="../pb_data/types.d.ts" />
 
 migrate((app) => {
   const posts = new Collection({
@@ -26,7 +27,7 @@ migrate((app) => {
   app.delete(app.findCollectionByNameOrId("posts"));   // the way back, for parity
 });`;
 
-const FIELD = `migrate((app) => {
+const FIELD = hl.javascript`migrate((app) => {
   const posts = app.findCollectionByNameOrId("posts");
   posts.fields.addAt(3, new BoolField({ name: "featured" }));
   app.save(posts);
@@ -36,7 +37,7 @@ const FIELD = `migrate((app) => {
   app.save(posts);
 });`;
 
-const IMPORT = `voidbase import collections.json --url https://blog-api.example.workers.dev --admin you@example.com:your-password`;
+const IMPORT = hl.bash`voidbase import collections.json --url https://blog-api.example.workers.dev --admin you@example.com:your-password`;
 
 export default function DocsProjectMigrations() {
   return (
@@ -54,10 +55,10 @@ export default function DocsProjectMigrations() {
         sort in the order they should run, which is why the convention is a timestamp prefix:{" "}
         <code>1725712800_posts.js</code>.
       </p>
-      <CodeBlock language="javascript" content={FILE} />
+      <CodeBlock {...FILE} />
 
       <p>Changing an existing collection is the same shape:</p>
-      <CodeBlock language="javascript" content={FIELD} />
+      <CodeBlock {...FIELD} />
 
       <h2>When they run</h2>
       <p>
@@ -80,7 +81,7 @@ export default function DocsProjectMigrations() {
         the panel, then export it. The panel's Collections screen has an export, and the JSON it produces can be
         applied to another instance directly:
       </p>
-      <CodeBlock language="bash" content={IMPORT} />
+      <CodeBlock {...IMPORT} />
       <p>
         That is the right tool for copying a schema between instances you already have. For a schema that travels
         with the repository and applies itself on deploy, write the migration file: it is the version-controlled

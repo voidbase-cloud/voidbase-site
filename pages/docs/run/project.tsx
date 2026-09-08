@@ -4,16 +4,17 @@ import { Link } from "@void/react";
 import Updating from "@/components/Updating";
 import "@/scss/updating.scss";
 import CodeBlock from "@/components/CodeBlock";
+import { hl } from "@/lib/hl";
 import { DOCS_NAV } from "@/lib/docsNav";
 
-const START = `bun i -g @voidbase-cloud/voidbase
+const START = hl.bash`bun i -g @voidbase-cloud/voidbase
 
 mkdir blog-api && cd blog-api
 voidbase init
 voidbase superuser upsert you@example.com your-password
 voidbase serve`;
 
-const TREE = `blog-api/
+const TREE = hl.bash`blog-api/
 ├─ pb_hooks/        endpoints, event handlers, scheduled work
 ├─ pb_migrations/   the schema, as code
 ├─ pb_public/       static files served at /   (optional)
@@ -21,13 +22,13 @@ const TREE = `blog-api/
 ├─ pb_data/         the database and the uploaded files (git-ignored)
 └─ .gitignore`;
 
-const DEV = `voidbase serve --dev`;
+const DEV = hl.bash`voidbase serve --dev`;
 
-const DEPLOY = `voidbase deploy`;
+const DEPLOY = hl.bash`voidbase deploy`;
 
-const SYNC = `voidbase sync`;
+const SYNC = hl.bash`voidbase sync`;
 
-const UPDATE = `voidbase update`;
+const UPDATE = hl.bash`voidbase update`;
 
 export default function DocsProject() {
   const section = DOCS_NAV.find((s) => s.href === "/docs/run/project");
@@ -42,12 +43,12 @@ export default function DocsProject() {
       </p>
 
       <h2>Start one</h2>
-      <CodeBlock language="bash" content={START} />
+      <CodeBlock {...START} />
       <p>
         That is a working instance on <code>http://127.0.0.1:8090</code>, with the admin panel at <code>/_/</code> and
         a sample endpoint answering <code>GET /api/hello</code>. <code>init</code> wrote this:
       </p>
-      <CodeBlock language="bash" content={TREE} />
+      <CodeBlock {...TREE} />
       <p>
         Only <code>pb_hooks/</code> and <code>pb_migrations/</code> matter on day one. Each directory has its own page:
       </p>
@@ -84,7 +85,7 @@ export default function DocsProject() {
           <p>
             <strong>Run it while you work.</strong> <code>--dev</code> restarts when a hook or migration changes.
           </p>
-          <CodeBlock language="bash" content={DEV} />
+          <CodeBlock {...DEV} />
         </li>
       </ol>
 
@@ -93,7 +94,7 @@ export default function DocsProject() {
         One API token, which <code>voidbase token</code> prints the link for, declared as a <code>local()</code> key
         in <Link href="/docs/run/project/secrets">pb_secrets</Link>. Then, from the project:
       </p>
-      <CodeBlock language="bash" content={DEPLOY} />
+      <CodeBlock {...DEPLOY} />
       <p>
         It creates the Worker, its database, its file storage, its queue and its realtime object on the first run,
         stores the declared secrets on it, applies any pending migrations on the first request, and prints the
@@ -105,7 +106,7 @@ export default function DocsProject() {
         <code>sync</code> is that deploy plus the wiring, so every later push to the repository deploys by itself and
         every change to the instance is a commit somebody can read and revert.
       </p>
-      <CodeBlock language="bash" content={SYNC} />
+      <CodeBlock {...SYNC} />
       <p>
         It needs a second token and one dashboard step the first run points at. From then on the whole loop above is:
         edit, commit, push. <Link href="/docs/deploy/pipeline">Deploy on every push</Link> is the guide, and{" "}

@@ -1,7 +1,8 @@
 // vb_secrets: one declaration serving three audiences.
 import CodeBlock from "@/components/CodeBlock";
+import { hl } from "@/lib/hl";
 
-const DECLARE = `// vb_secrets/main.ts
+const DECLARE = hl.javascript`// vb_secrets/main.ts
 import { defineSecrets, secret, server, browser, local, string, number, boolean } from "@voidbase-cloud/voidbase/secrets";
 
 export default defineSecrets({
@@ -17,10 +18,10 @@ export default defineSecrets({
   VOIDBASE_DEPLOY_NAME:       local(string().default("my-app"), "the Worker this deploys to"),
 });`;
 
-const BROWSER = `// in a page or a component: the value is inlined at build time
+const BROWSER = hl.javascript`// in a page or a component: the value is inlined at build time
 const name = import.meta.env.PUBLIC_SITE_NAME;`;
 
-const SERVER = `// in a route or a hook
+const SERVER = hl.javascript`// in a route or a hook
 const limit = Number($os.getenv("MAX_UPLOAD_MB"));`;
 
 export default function DocsStackSecrets() {
@@ -37,7 +38,7 @@ export default function DocsStackSecrets() {
         <code>main.ts</code> belongs in the repository. <code>secrets.json</code> beside it holds the values on your
         machine and must be git-ignored.
       </p>
-      <CodeBlock language="javascript" content={DECLARE} />
+      <CodeBlock {...DECLARE} />
 
       <h2>The four audiences</h2>
       <table>
@@ -74,9 +75,9 @@ export default function DocsStackSecrets() {
 
       <h2>Reading them</h2>
       <p>In the client, a browser key is inlined by the build, so it is a constant by the time the page runs:</p>
-      <CodeBlock language="javascript" content={BROWSER} />
+      <CodeBlock {...BROWSER} />
       <p>On the server, in a route or a hook, it is the environment:</p>
-      <CodeBlock language="javascript" content={SERVER} />
+      <CodeBlock {...SERVER} />
 
       <div className="alert alert-warning">
         <div className="content">

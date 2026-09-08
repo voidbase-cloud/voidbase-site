@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@void/react";
 import CodeBlock from "@/components/CodeBlock";
+import { hl, type Block } from "@/lib/hl";
 import PresenceCursors from "@/components/PresenceCursors";
 import PageFooter from "@/components/PageFooter";
 import PageHeader from "@/components/PageHeader";
@@ -27,9 +28,9 @@ const sdkBtns: Record<SdkLanguage, string> = {
   dart: "Dart",
 };
 
-const codePreviews: Record<PreviewKey, Partial<Record<SdkLanguage, string>>> = {
+const codePreviews: Record<PreviewKey, Partial<Record<SdkLanguage, Block>>> = {
   database: {
-    javascript: `
+    javascript: hl.javascript`
                 // JavaScript SDK
                 import PocketBase from 'pocketbase';
 
@@ -62,7 +63,7 @@ const codePreviews: Record<PreviewKey, Partial<Record<SdkLanguage, string>>> = {
                 // stop listening for changes in the 'example' collection
                 pb.collection('example').unsubscribe();
             `,
-    dart: `
+    dart: hl.dart`
                 // Dart SDK
                 import 'package:pocketbase/pocketbase.dart';
 
@@ -97,7 +98,7 @@ const codePreviews: Record<PreviewKey, Partial<Record<SdkLanguage, string>>> = {
             `,
   },
   authentication: {
-    javascript: `
+    javascript: hl.javascript`
                 // JavaScript SDK
                 import PocketBase from 'pocketbase';
 
@@ -130,7 +131,7 @@ const codePreviews: Record<PreviewKey, Partial<Record<SdkLanguage, string>>> = {
                 // send request email change email
                 await pb.collection('users').requestEmailChange('new@example.com');
             `,
-    dart: `
+    dart: hl.dart`
                 // Dart SDK
                 import 'package:pocketbase/pocketbase.dart';
 
@@ -165,7 +166,7 @@ const codePreviews: Record<PreviewKey, Partial<Record<SdkLanguage, string>>> = {
             `,
   },
   storage: {
-    javascript: `
+    javascript: hl.javascript`
                 // JavaScript SDK
                 import PocketBase from 'pocketbase';
 
@@ -188,7 +189,7 @@ const codePreviews: Record<PreviewKey, Partial<Record<SdkLanguage, string>>> = {
                     yourFileField: null,
                 });
             `,
-    dart: `
+    dart: hl.dart`
                 // Dart SDK
                 import 'package:pocketbase/pocketbase.dart';
                 import 'package:http/http.dart' as http;
@@ -223,7 +224,7 @@ const codePreviews: Record<PreviewKey, Partial<Record<SdkLanguage, string>>> = {
             `,
   },
   extend: {
-    javascript: `
+    javascript: hl.javascript`
                 // pb_hooks/main.pb.js
 
                 // intercept requests
@@ -255,7 +256,7 @@ const codePreviews: Record<PreviewKey, Partial<Record<SdkLanguage, string>>> = {
                     console.log("Hello!")
                 })
             `,
-    go: `
+    go: hl.go`
                 // main.go
 
                 // intercept requests
@@ -520,23 +521,7 @@ export default function Landing() {
                     ),
                 )}
               </div>
-              {/*
-                Every snippet is rendered once and all but one is hidden, rather than one block whose language
-                changes. The highlighting is done at build time and never ships to the browser, so a block that
-                re-renders here would lose its colours; giving each snippet its own block means none of them ever
-                has to.
-              */}
-              {(Object.entries(codePreviews) as [PreviewKey, Partial<Record<SdkLanguage, string>>][]).map(
-                ([key, group]) =>
-                  (Object.entries(group) as [SdkLanguage, string][]).map(([snippetLanguage, snippet]) => (
-                    <div
-                      key={`${key}-${snippetLanguage}`}
-                      hidden={key !== activePreview || snippetLanguage !== previewLanguage}
-                    >
-                      <CodeBlock language={snippetLanguage} content={snippet} />
-                    </div>
-                  )),
-              )}
+              <CodeBlock {...preview[previewLanguage]!} />
             </div>
           </div>
         </section>

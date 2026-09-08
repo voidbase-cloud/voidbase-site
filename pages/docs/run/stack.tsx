@@ -3,13 +3,14 @@ import { Link } from "@void/react";
 import Updating from "@/components/Updating";
 import "@/scss/updating.scss";
 import CodeBlock from "@/components/CodeBlock";
+import { hl } from "@/lib/hl";
 import { DOCS_NAV } from "@/lib/docsNav";
 
-const SCAFFOLD = `bun add void
+const SCAFFOLD = hl.bash`bun add void
 bunx void init          # asks which framework and starter; React and a database-backed one here
 bun add @voidbase-cloud/voidbase`;
 
-const CONFIG = `// vite.config.ts
+const CONFIG = hl.javascript`// vite.config.ts
 import { defineConfig } from "vite";
 import { voidPlugin } from "void";
 import { voidReact } from "@void/react/plugin";
@@ -17,7 +18,7 @@ import { voidbaseAdapter } from "@voidbase-cloud/voidbase/adapter/plugin";
 
 export default defineConfig({ plugins: [voidPlugin(), voidReact(), voidbaseAdapter()] });`;
 
-const TREE = `my-app/
+const TREE = hl.bash`my-app/
 ├─ pages/           the site, server-rendered
 ├─ routes/          typed API endpoints
 ├─ middleware/      what runs on every request
@@ -32,14 +33,14 @@ const TREE = `my-app/
 │
 └─ .voidbase/       generated on build; the instance this becomes (git-ignored)`;
 
-const BUILD = `bun run build                                  # or: bunx --bun vite build
+const BUILD = hl.bash`bun run build                                  # or: bunx --bun vite build
 bun .voidbase/main.ts --http 127.0.0.1:8090    # site at /, API at /api, panel at /_/`;
 
-const DEPLOY = `cd .voidbase && voidbase deploy`;
+const DEPLOY = hl.bash`cd .voidbase && voidbase deploy`;
 
-const UPDATE = `voidbase update`;
+const UPDATE = hl.bash`voidbase update`;
 
-const IGNORE = `.voidbase/
+const IGNORE = hl.bash`.voidbase/
 vb_secrets/secrets.json`;
 
 export default function DocsStack() {
@@ -61,17 +62,17 @@ export default function DocsStack() {
       </p>
 
       <h2>From an empty directory</h2>
-      <CodeBlock language="bash" content={SCAFFOLD} />
+      <CodeBlock {...SCAFFOLD} />
       <p>Then add the adapter to the Vite config, which is the only wiring there is:</p>
-      <CodeBlock language="javascript" content={CONFIG} />
+      <CodeBlock {...CONFIG} />
       <p>
         And ignore the two things that should never be committed: the generated instance, and the local values of
         your configuration.
       </p>
-      <CodeBlock language="bash" content={IGNORE} />
+      <CodeBlock {...IGNORE} />
 
       <h2>What the project looks like</h2>
-      <CodeBlock language="bash" content={TREE} />
+      <CodeBlock {...TREE} />
       <p>
         Everything above the gap is Void's and means what Void means by it. The three directories below it are the
         ones the adapter adds, each named for the voidbase thing it is, each optional, and each with its own page:
@@ -86,7 +87,7 @@ export default function DocsStack() {
       </div>
 
       <h2>Build and run it</h2>
-      <CodeBlock language="bash" content={BUILD} />
+      <CodeBlock {...BUILD} />
       <p>
         The build writes a complete voidbase project into <code>.voidbase/</code>: your pages as its static files,
         your routes and hooks compiled into its hook bundle, your collections as its migrations. It is git-ignored,
@@ -94,7 +95,7 @@ export default function DocsStack() {
       </p>
 
       <h2>Deploy it</h2>
-      <CodeBlock language="bash" content={DEPLOY} />
+      <CodeBlock {...DEPLOY} />
       <p>
         Everything on <Link href="/docs/run/project">the project page</Link> applies from here: the same token and
         the same deploy. To have a push do it instead, so the site and its backend ship together on every commit,{" "}

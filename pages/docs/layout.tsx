@@ -17,6 +17,9 @@ import "@/scss/edit-page.scss";
  * goes. A group is highlighted when you are anywhere inside it; a page only when you are on it. A group's own href
  * is its first child, so highlighting it as a page too would mark the same row twice.
  */
+// Every link in this nav prefetches on hover. The pages are prerendered and small, the reader's pointer reaches a
+// link well before the click, and the highlighted code now travels with the page's own chunk, so by the time the
+// click lands there is usually nothing left to fetch.
 function Item({ link, path, depth = 0, last = false }: { link: DocsLink; path: string; depth?: number; last?: boolean }) {
   const kids = link.children ?? [];
   const open = contains(link, path);
@@ -28,7 +31,7 @@ function Item({ link, path, depth = 0, last = false }: { link: DocsLink; path: s
   if (depth === 0) {
     return (
       <>
-        <Link href={link.href} className={`list-item${active ? " active" : ""}`}>
+        <Link href={link.href} prefetch="hover" className={`list-item${active ? " active" : ""}`}>
           {link.icon && <span className="icon"><i className={link.icon} /></span>}
           <span className="txt">{link.title}</span>
         </Link>
@@ -41,6 +44,7 @@ function Item({ link, path, depth = 0, last = false }: { link: DocsLink; path: s
     <>
       <Link
         href={link.href}
+        prefetch="hover"
         className={`sub-list-item docs-depth-${depth}${kids.length ? " docs-group" : ""}${active ? " active" : ""}`}
       >
         <span className="tree-node">{last ? "\u2514" : "\u251c"}</span>
@@ -78,13 +82,13 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
         {(prev || next) && (
           <nav className="docs-pager">
             {prev ? (
-              <Link href={prev.href} className="docs-pager-link">
+              <Link href={prev.href} prefetch="hover" className="docs-pager-link">
                 <span className="txt-hint txt-sm">Previous</span>
                 <strong>{prev.title}</strong>
               </Link>
             ) : <span />}
             {next && (
-              <Link href={next.href} className="docs-pager-link docs-pager-next">
+              <Link href={next.href} prefetch="hover" className="docs-pager-link docs-pager-next">
                 <span className="txt-hint txt-sm">Next</span>
                 <strong>{next.title}</strong>
               </Link>

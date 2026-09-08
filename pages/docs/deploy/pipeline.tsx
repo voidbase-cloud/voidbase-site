@@ -1,8 +1,9 @@
 // Connecting a repository to Cloudflare Workers Builds, so a push is the deploy.
 import { Link } from "@void/react";
 import CodeBlock from "@/components/CodeBlock";
+import { hl } from "@/lib/hl";
 
-const TOKENS = `// pb_secrets/main.ts   (vb_secrets/main.ts in a stack app)
+const TOKENS = hl.javascript`// pb_secrets/main.ts   (vb_secrets/main.ts in a stack app)
 import { defineSecrets, local, string } from "@voidbase-cloud/voidbase/secrets";
 
 export default defineSecrets({
@@ -11,31 +12,31 @@ export default defineSecrets({
   VOIDBASE_DEPLOY_NAME:       local(string().default("blog-api"), "the Worker this repository deploys to"),
 });`;
 
-const VALUES = `{
+const VALUES = hl.json`{
   "VOIDBASE_DEPLOY_CF_API_KEY": "...",
   "CLOUDFLARE_BUILDS_TOKEN": "..."
 }`;
 
-const SYNC = `voidbase sync`;
+const SYNC = hl.bash`voidbase sync`;
 
-const FIRST = `ci: the GitHub App is not installed for you/blog-api. One dashboard step:
+const FIRST = hl.bash`ci: the GitHub App is not installed for you/blog-api. One dashboard step:
   open https://dash.cloudflare.com/?to=/:account/workers/services/view/blog-api/production/builds
   Under Builds, connect you/blog-api: that installs the "Cloudflare Workers and Pages"
   GitHub App for it and creates the build token. Then run voidbase sync again.`;
 
-const SECOND = `ci: you/blog-api -> Worker blog-api (account Example Ltd)
+const SECOND = hl.bash`ci: you/blog-api -> Worker blog-api (account Example Ltd)
   created trigger "blog-api (main)": a push to main runs \`true\`, then \`bun run deploy\`
   created trigger "blog-api (branches)": every other branch runs \`true\`, then \`bun run version\`; nothing live is touched
   build environment: BUN_VERSION, VOIDBASE_DEPLOY_CF_API_KEY (secret), MAX_UPLOAD_MB
   the pipeline: push to main and watch it at https://dash.cloudflare.com/...`;
 
-const PUSH = `git add -A
+const PUSH = hl.bash`git add -A
 git commit -m "posts: add a featured flag"
 git push`;
 
-const DRY = `voidbase sync --dry-run`;
+const DRY = hl.bash`voidbase sync --dry-run`;
 
-const CHECK = `name: voidbase update
+const CHECK = hl.yaml`name: voidbase update
 on:
   schedule: [{ cron: "0 9 * * 1" }]   # Monday morning
   workflow_dispatch:
@@ -78,7 +79,7 @@ export default function DocsPipeline() {
         One deploys the instance, one connects the repository. Both are yours, both are declared as{" "}
         <code>local()</code> keys, which is the tier that means read here and never deployed.
       </p>
-      <CodeBlock language="javascript" content={TOKENS} />
+      <CodeBlock {...TOKENS} />
       <p>
         <code>voidbase token</code> prints the link that creates the first. The second is a{" "}
         <strong>user</strong> API token from your Cloudflare profile with{" "}
@@ -86,17 +87,17 @@ export default function DocsPipeline() {
         the Builds API refuses it.
       </p>
       <p>Their values go in the git-ignored file beside the declaration, and stay on your machine:</p>
-      <CodeBlock language="json" content={VALUES} />
+      <CodeBlock {...VALUES} />
 
       <h2>Connect it</h2>
-      <CodeBlock language="bash" content={SYNC} />
+      <CodeBlock {...SYNC} />
       <p>
         <code>sync</code> deploys the instance and then wires the repository to it. There is one step an API cannot
         do for you, installing Cloudflare's GitHub App on the repository, so the first run stops and points at it:
       </p>
-      <CodeBlock language="bash" content={FIRST} />
+      <CodeBlock {...FIRST} />
       <p>Do that, run the same command again, and the triggers are in place:</p>
-      <CodeBlock language="bash" content={SECOND} />
+      <CodeBlock {...SECOND} />
 
       <h2>What it built</h2>
       <p>Two triggers, because the two cases want different things:</p>
@@ -129,7 +130,7 @@ export default function DocsPipeline() {
       </p>
 
       <h2>Then just push</h2>
-      <CodeBlock language="bash" content={PUSH} />
+      <CodeBlock {...PUSH} />
       <p>
         That is the loop from here. Watch it at the link sync printed, or in the Cloudflare dashboard under the
         Worker's Builds tab.
@@ -151,7 +152,7 @@ export default function DocsPipeline() {
       </p>
 
       <h2>Checking without changing anything</h2>
-      <CodeBlock language="bash" content={DRY} />
+      <CodeBlock {...DRY} />
       <p>
         Prints the plan and stops: which repository, which Worker, which branch, and the exact commands it would
         write. <code>--no-ci</code> deploys without touching the pipeline, and <code>--repo</code> and{" "}
@@ -185,7 +186,7 @@ export default function DocsPipeline() {
         exits <code>1</code> when you are behind, so a scheduled job fails and notifies you exactly when a release is
         out.
       </p>
-      <CodeBlock language="yaml" title=".github/workflows/voidbase-update.yml" content={CHECK} />
+      <CodeBlock {...CHECK} title=".github/workflows/voidbase-update.yml" />
       <p>
         Nothing in the check needs a token or an account: it reads your lockfile and the public registry. It exits{" "}
         <code>2</code> if it could not reach the registry, so a network problem is distinguishable from being out of

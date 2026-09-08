@@ -1,10 +1,11 @@
 // Connecting from an application. The SDK is PocketBase's own, so this page shows enough to get a request working
 // and then points at the documentation that already covers the rest properly.
 import CodeBlock from "@/components/CodeBlock";
+import { hl } from "@/lib/hl";
 
-const INSTALL = `bun add pocketbase        # or: npm install pocketbase`;
+const INSTALL = hl.bash`bun add pocketbase        # or: npm install pocketbase`;
 
-const USAGE = `import PocketBase from "pocketbase";
+const USAGE = hl.javascript`import PocketBase from "pocketbase";
 
 const pb = new PocketBase("https://your-instance.example.com");
 
@@ -34,14 +35,14 @@ export default function DocsSdk() {
       </p>
 
       <h2>Install it</h2>
-      <CodeBlock language="bash" content={INSTALL} />
+      <CodeBlock {...INSTALL} />
 
       <h2>Use it</h2>
       <p>
         The only thing you supply is the address of your instance. Everything after that is the SDK's own API, and
         works exactly as its documentation says.
       </p>
-      <CodeBlock language="javascript" content={USAGE} />
+      <CodeBlock {...USAGE} />
 
       <p>
         The auth token lives in <code>pb.authStore</code>, so signing in once covers the rest of the session, and in a

@@ -1,33 +1,34 @@
 // The shortest path to a running instance: one file, no toolchain. Real commands, copy-paste-able.
 import CodeBlock from "@/components/CodeBlock";
+import { hl } from "@/lib/hl";
 import Updating from "@/components/Updating";
 import "@/scss/updating.scss";
 
-const LINUX = `# pick the build for this machine: linux_amd64, linux_arm64, or linux_amd64_musl on Alpine
+const LINUX = hl.bash`# pick the build for this machine: linux_amd64, linux_arm64, or linux_amd64_musl on Alpine
 VERSION=0.7.0
 curl -LO https://github.com/voidbase-cloud/voidbase/releases/download/v\${VERSION}/voidbase_\${VERSION}_linux_amd64.zip
 
 unzip voidbase_\${VERSION}_linux_amd64.zip
 chmod +x voidbase`;
 
-const MAC = `VERSION=0.7.0
+const MAC = hl.bash`VERSION=0.7.0
 curl -LO https://github.com/voidbase-cloud/voidbase/releases/download/v\${VERSION}/voidbase_\${VERSION}_darwin_arm64.zip
 unzip voidbase_\${VERSION}_darwin_arm64.zip
 chmod +x voidbase
 xattr -d com.apple.quarantine voidbase   # macOS blocks downloaded binaries until you say otherwise`;
 
-const UPDATE = `./voidbase update --backup`;
+const UPDATE = hl.bash`./voidbase update --backup`;
 
-const START = `./voidbase superuser upsert you@example.com your-password
+const START = hl.bash`./voidbase superuser upsert you@example.com your-password
 ./voidbase serve`;
 
-const OUTPUT = `Server started at http://127.0.0.1:8090
+const OUTPUT = hl.bash`Server started at http://127.0.0.1:8090
 ├─ REST API:  http://127.0.0.1:8090/api/
 └─ Dashboard: http://127.0.0.1:8090/_/`;
 
-const PUBLIC = `./voidbase serve --http 0.0.0.0:8090`;
+const PUBLIC = hl.bash`./voidbase serve --http 0.0.0.0:8090`;
 
-const SERVICE = `# /etc/systemd/system/voidbase.service
+const SERVICE = hl.bash`# /etc/systemd/system/voidbase.service
 [Unit]
 Description=voidbase
 After=network.target
@@ -43,7 +44,7 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target`;
 
-const ENABLE = `sudo systemctl daemon-reload
+const ENABLE = hl.bash`sudo systemctl daemon-reload
 sudo systemctl enable --now voidbase
 sudo systemctl status voidbase`;
 
@@ -65,16 +66,16 @@ export default function DocsStandalone() {
         </a>
         . On Linux:
       </p>
-      <CodeBlock language="bash" content={LINUX} />
+      <CodeBlock {...LINUX} />
 
       <p>On macOS, with the Apple Silicon build and the quarantine flag cleared:</p>
-      <CodeBlock language="bash" content={MAC} />
+      <CodeBlock {...MAC} />
 
       <h2>Start it</h2>
       <p>Make the first account, then run the server. The password wants eight characters or more.</p>
-      <CodeBlock language="bash" content={START} />
+      <CodeBlock {...START} />
       <p>It prints where it is:</p>
-      <CodeBlock language="bash" content={OUTPUT} />
+      <CodeBlock {...OUTPUT} />
 
       <p>
         Open the dashboard, sign in with the account you just made, and you have an instance. Design a collection
@@ -92,7 +93,7 @@ export default function DocsStandalone() {
 
       <h2>On a server</h2>
       <p>By default it listens on the loopback address only. To take connections from other machines:</p>
-      <CodeBlock language="bash" content={PUBLIC} />
+      <CodeBlock {...PUBLIC} />
       <div className="alert alert-warning">
         <div className="content">
           <p className="m-0">
@@ -104,8 +105,8 @@ export default function DocsStandalone() {
       </div>
 
       <p>To keep it running, a systemd unit is enough:</p>
-      <CodeBlock language="bash" content={SERVICE} />
-      <CodeBlock language="bash" content={ENABLE} />
+      <CodeBlock {...SERVICE} />
+      <CodeBlock {...ENABLE} />
 
       <Updating command={UPDATE}>
         <p>

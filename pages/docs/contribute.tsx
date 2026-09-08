@@ -3,15 +3,16 @@
 // the things we cannot do ourselves would help most, which is why the benchmarking section comes before the code.
 import { Link } from "@void/react";
 import CodeBlock from "@/components/CodeBlock";
+import { hl } from "@/lib/hl";
 import { SITE } from "@/lib/env";
 
-const SETUP = `git clone https://github.com/voidbase-cloud/voidbase.git
+const SETUP = hl.bash`git clone https://github.com/voidbase-cloud/voidbase.git
 cd voidbase
 bun install          # also installs the git hooks
 bun run check        # codegen and three typecheck passes
 bun test             # the unit tests, about a second`;
 
-const SITE_SETUP = `git clone https://github.com/voidbase-cloud/voidbase-site.git
+const SITE_SETUP = hl.bash`git clone https://github.com/voidbase-cloud/voidbase-site.git
 cd voidbase-site
 bun install
 bun run dev          # the site at http://127.0.0.1:5173`;
@@ -72,7 +73,7 @@ export default function DocsContribute() {
       </p>
 
       <h2>Working on voidbase</h2>
-      <CodeBlock language="bash" content={SETUP} />
+      <CodeBlock {...SETUP} />
       <p>
         <code>bun run dev</code> starts the dev server, and <code>bun run ci</code> runs the suite the way CI does,
         working out which parts your change affects rather than running all of it. Commits follow{" "}
@@ -86,7 +87,7 @@ export default function DocsContribute() {
       </p>
 
       <h2>Working on this site</h2>
-      <CodeBlock language="bash" content={SITE_SETUP} />
+      <CodeBlock {...SITE_SETUP} />
       <p>
         The site and these documentation pages are a separate repository,{" "}
         <a href="https://github.com/voidbase-cloud/voidbase-site" target="_blank" rel="noreferrer noopener">

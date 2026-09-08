@@ -1,17 +1,18 @@
 // pb_public: the static half of an instance.
 import CodeBlock from "@/components/CodeBlock";
+import { hl } from "@/lib/hl";
 
-const TREE = `pb_public/
+const TREE = hl.bash`pb_public/
 ├─ index.html
 ├─ 404.html          optional; a copy of index.html is used when there is none
 ├─ assets/
 └─ favicon.ico`;
 
-const BUILD = `# build your frontend wherever it lives, then put the output here
+const BUILD = hl.bash`# build your frontend wherever it lives, then put the output here
 cd ../web && bun run build
 rm -rf ../blog-api/pb_public && cp -r dist ../blog-api/pb_public`;
 
-const REDIRECTS = `/old-post/:slug   /posts/:slug        301
+const REDIRECTS = hl.bash`/old-post/:slug   /posts/:slug        301
 /download         https://example.com/dl  302`;
 
 export default function DocsProjectPublic() {
@@ -25,7 +26,7 @@ export default function DocsProjectPublic() {
       </p>
 
       <h2>What goes in it</h2>
-      <CodeBlock language="bash" content={TREE} />
+      <CodeBlock {...TREE} />
       <p>
         An <code>index.html</code> here is the site. Requests that match a file get that file; requests that match
         nothing get <code>404.html</code>, or a copy of <code>index.html</code> when the build did not make one,
@@ -38,7 +39,7 @@ export default function DocsProjectPublic() {
         There is no bundler here on purpose: build your frontend with whatever it already uses, and copy the output
         in. A line in your deploy script is usually the whole integration.
       </p>
-      <CodeBlock language="bash" content={BUILD} />
+      <CodeBlock {...BUILD} />
       <p>
         A frontend served this way is same-origin with its API, which means the SDK needs no address at all:{" "}
         <code>new PocketBase("/")</code> and no CORS to think about.
@@ -49,7 +50,7 @@ export default function DocsProjectPublic() {
         A <code>_redirects</code> file in the directory is read on deploy, in the syntax Netlify and Cloudflare Pages
         use: source, destination, optional status.
       </p>
-      <CodeBlock language="bash" content={REDIRECTS} />
+      <CodeBlock {...REDIRECTS} />
       <p>
         Path-only rules are served at the edge, before the Worker runs. A rule whose source names a host becomes a
         redirect rule on the zone instead, which is how one instance behind several domains can answer differently

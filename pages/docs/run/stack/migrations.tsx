@@ -1,7 +1,8 @@
 // vb_migrations: collections for a stack app, beside the app's own tables.
 import CodeBlock from "@/components/CodeBlock";
+import { hl } from "@/lib/hl";
 
-const FILE = `/// <reference path="../.voidbase/pb_data/types.d.ts" />
+const FILE = hl.javascript`/// <reference path="../.voidbase/pb_data/types.d.ts" />
 
 migrate((app) => {
   const posts = new Collection({
@@ -68,7 +69,7 @@ export default function DocsStackMigrations() {
         The format is the same as a project's <a href="/docs/run/project/migrations">pb_migrations</a>, and the
         reference path points into the generated instance rather than a local <code>pb_data</code>:
       </p>
-      <CodeBlock language="javascript" content={FILE} />
+      <CodeBlock {...FILE} />
       <p>
         Name files so they sort in the order they should run. They are copied into the generated instance on build,
         beside the ones generated from your Drizzle migrations, and applied in that order on the first request after

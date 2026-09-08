@@ -1,7 +1,8 @@
 // pb_hooks: the directory where a project's own behaviour lives.
 import CodeBlock from "@/components/CodeBlock";
+import { hl } from "@/lib/hl";
 
-const FILE = `/// <reference path="../pb_data/types.d.ts" />
+const FILE = hl.javascript`/// <reference path="../pb_data/types.d.ts" />
 
 // a new endpoint, for anything the records API does not already do
 routerAdd("GET", "/api/me/summary", (e) => {
@@ -21,14 +22,14 @@ cronAdd("digest", "0 8 * * *", () => {
   $app.logger().info("digest", "count", users.length);
 });`;
 
-const REFUSE = `onRecordUpdateRequest((e) => {
+const REFUSE = hl.javascript`onRecordUpdateRequest((e) => {
   if (e.record.get("locked") && !e.auth?.isSuperuser()) {
     throw new ForbiddenError("this post is locked");
   }
   e.next();
 }, "posts");`;
 
-const SHARED = `// pb_hooks/lib/slug.js
+const SHARED = hl.javascript`// pb_hooks/lib/slug.js
 module.exports = { slugify: (s) => s.toLowerCase().trim().replaceAll(/[^a-z0-9]+/g, "-") };
 
 // pb_hooks/posts.pb.js
@@ -49,7 +50,7 @@ export default function DocsProjectHooks() {
         Any file ending <code>.pb.js</code> in the directory is loaded, in filename order. There is no build step and
         no imports to set up: the functions below are globals.
       </p>
-      <CodeBlock language="javascript" content={FILE} />
+      <CodeBlock {...FILE} />
       <p>
         The reference comment on the first line is what makes an editor autocomplete all of it. The file it points at
         is generated into <a href="/docs/run/project/data">pb_data</a> on the first run, so run the server once
@@ -73,7 +74,7 @@ export default function DocsProjectHooks() {
         call happens first and anything after it happens once the write has gone through. Throwing instead of calling
         it refuses the request:
       </p>
-      <CodeBlock language="javascript" content={REFUSE} />
+      <CodeBlock {...REFUSE} />
       <p>
         The families are the ones PocketBase has: records both as models and as requests, collections, auth, files,
         realtime, settings, mail and batches, each with <code>Validate</code>, the action itself, and{" "}
@@ -132,7 +133,7 @@ export default function DocsProjectHooks() {
         <code>require</code> resolves against the hooks directory, and <code>__hooks</code> is its path, so helpers
         live wherever you like inside it:
       </p>
-      <CodeBlock language="javascript" content={SHARED} />
+      <CodeBlock {...SHARED} />
 
       <div className="alert alert-info">
         <div className="content">

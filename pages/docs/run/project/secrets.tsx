@@ -1,7 +1,8 @@
 // pb_secrets: configuration, and the question every key has to answer.
 import CodeBlock from "@/components/CodeBlock";
+import { hl } from "@/lib/hl";
 
-const DECLARE = `// pb_secrets/main.ts
+const DECLARE = hl.javascript`// pb_secrets/main.ts
 import { defineSecrets, secret, server, browser, local, string, number, boolean } from "@voidbase-cloud/voidbase/secrets";
 
 export default defineSecrets({
@@ -17,18 +18,18 @@ export default defineSecrets({
   VOIDBASE_DEPLOY_NAME:       local(string().default("blog-api"), "the Worker this project deploys to"),
 });`;
 
-const VALUES = `{
+const VALUES = hl.json`{
   "SMTP_PASSWORD": "...",
   "STRIPE_KEY": "...",
   "VOIDBASE_DEPLOY_CF_API_KEY": "..."
 }`;
 
-const READ = `// in a hook, the way PocketBase reads configuration
+const READ = hl.javascript`// in a hook, the way PocketBase reads configuration
 const limit = Number($os.getenv("MAX_UPLOAD_MB"));`;
 
-const LIST = `voidbase secrets`;
+const LIST = hl.bash`voidbase secrets`;
 
-const LIST_OUT = `pb_secrets: 7 declared (2 secret, 2 server, 1 public, 2 local, never deployed), 3 valued in secrets.json,
+const LIST_OUT = hl.bash`pb_secrets: 7 declared (2 secret, 2 server, 1 public, 2 local, never deployed), 3 valued in secrets.json,
 worker "blog-api" has 2 of the secrets
   SMTP_PASSWORD       secret   local value    on the worker      the mail provider's password
   STRIPE_KEY          secret   local value    on the worker
@@ -52,8 +53,8 @@ export default function DocsProjectSecrets() {
         <code>main.ts</code> is the declaration and belongs in the repository. <code>secrets.json</code> holds the
         values on your machine and is git-ignored, which <code>voidbase init</code> has already arranged.
       </p>
-      <CodeBlock language="javascript" content={DECLARE} />
-      <CodeBlock language="json" content={VALUES} />
+      <CodeBlock {...DECLARE} />
+      <CodeBlock {...VALUES} />
 
       <h2>Who may read it</h2>
       <p>
@@ -104,7 +105,7 @@ export default function DocsProjectSecrets() {
       </p>
 
       <h2>Reading them</h2>
-      <CodeBlock language="javascript" content={READ} />
+      <CodeBlock {...READ} />
       <p>
         Locally the declared values, defaults included, are put into the environment when the server starts. On
         Cloudflare the secrets are the Worker's secrets and the rest are its variables, so the same call works in
@@ -112,8 +113,8 @@ export default function DocsProjectSecrets() {
       </p>
 
       <h2>Seeing the state of it</h2>
-      <CodeBlock language="bash" content={LIST} />
-      <CodeBlock language="bash" content={LIST_OUT} />
+      <CodeBlock {...LIST} />
+      <CodeBlock {...LIST_OUT} />
       <p>
         One row per declared key: its tier, whether it has a value here or a default, and, when the deploy token is
         available, whether the instance already has it. <code>voidbase secrets push</code> stores local secret values
