@@ -107,6 +107,12 @@ export const DOCS_NAV: DocsLink[] = [
     summary: "Free. What that means, and how a free backend pays for itself.",
   },
   {
+    href: "/docs/sponsor",
+    title: "Support voidbase",
+    icon: "ri-hand-coin-line",
+    summary: "Sponsorship, what it pays for, and what it will never buy.",
+  },
+  {
     href: "/docs/acknowledgments",
     title: "Acknowledgments",
     icon: "ri-heart-3-line",

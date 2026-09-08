@@ -59,7 +59,8 @@ export default function DocsPricing() {
       <ol className="pricing-plan">
         <li>
           <strong>Sponsors.</strong> This is the main one. We would rather be paid by people who want the ecosystem
-          to exist than take a cut of everyone inside it.
+          to exist than take a cut of everyone inside it. <Link href="/docs/sponsor">Support voidbase</Link> is what
+          that looks like, including the part where it is not open yet.
         </li>
         <li>
           <strong>Official plugins and themes, free.</strong> As many as we can write. An ecosystem does not start

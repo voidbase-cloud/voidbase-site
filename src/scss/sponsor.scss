@@ -1,0 +1,78 @@
+// The sponsorship page.
+//
+// It asks for money for something that is free, so it stays plain: the same measure and typography as the rest of
+// the documentation, one panel that says the thing is not open yet, and a list of what to do instead. Nothing here
+// competes with that panel, because the panel is the only news on the page.
+
+.sponsor {
+    --measure: 660px;
+    padding-bottom: 20px;
+
+    p, ul, ol { max-width: var(--measure); }
+}
+
+// The banner. It is not an error and not a warning, so it does not borrow either colour: it is the shape of the
+// button that will replace it, holding the reason it is not there yet.
+.sponsor-soon {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    max-width: var(--measure);
+    margin: 24px 0 34px;
+    padding: 18px 20px;
+    border: 1px solid var(--baseAlt2Color);
+    border-left: 3px solid var(--successColor);
+    border-radius: var(--baseRadius);
+    background: var(--baseColor);
+
+    h2 {
+        margin: 0 0 6px;
+        padding: 0;
+        border: 0;
+        font-size: 17px;
+    }
+    p {
+        margin: 0;
+        color: var(--txtHintColor);
+    }
+}
+
+.sponsor-soon-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--successAltColor);
+    color: var(--successColor);
+
+    i { font-size: 20px; }
+}
+
+.sponsor-instead {
+    list-style: none;
+    margin: 14px 0 0;
+    padding: 0;
+
+    li {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+    i {
+        flex: 0 0 auto;
+        margin-top: 2px;
+        font-size: 17px;
+        color: var(--txtHintColor);
+    }
+}
+
+@media only screen and (max-width: 600px) {
+    .sponsor-soon {
+        flex-direction: column;
+        gap: 12px;
+    }
+}

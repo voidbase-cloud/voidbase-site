@@ -38,6 +38,7 @@ export default function PageHeader({ compact = false }: PageHeaderProps) {
             <Link href="/cloud" className="dropdown-item">Cloud</Link>
             <a href={SITE.discordUrl} className="dropdown-item" target="_blank" rel="noreferrer noopener">Discord</a>
             <a href={SITE.discussionsUrl} className="dropdown-item" target="_blank" rel="noreferrer noopener">Discussions</a>
+            <a href={SITE.npmUrl} className="dropdown-item" target="_blank" rel="noreferrer noopener">npm package</a>
             <hr />
             <CloudflareSignIn className="dropdown-item" />
           </Dropdown>
@@ -51,6 +52,9 @@ export default function PageHeader({ compact = false }: PageHeaderProps) {
             </a>
             <a href={SITE.repoUrl} className="btn btn-circle btn-secondary" target="_blank" rel="noreferrer noopener" title="GitHub Repo">
               <i className="ri-github-line" />
+            </a>
+            <a href={SITE.npmUrl} className="btn btn-circle btn-secondary" target="_blank" rel="noreferrer noopener" title="The package on npm">
+              <i className="ri-npmjs-line" />
             </a>
             <CloudflareSignIn className="btn btn-secondary cf-header" />
           </nav>
