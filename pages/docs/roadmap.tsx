@@ -99,20 +99,11 @@ export default function DocsRoadmap() {
         them is what both sections after it stand on.
       </p>
 
-      <h3 className="why-group">Auth</h3>
-      <Item
-        title="Better Auth, natively"
-        from="Void ships Better Auth. voidbase ships PocketBase's. An app built on the voidbase stack has to pick one and work around the other."
-        now="Authentication is PocketBase's: auth collections, its token format, its OAuth flow and the SDK's authStore. That is the right default, because wire compatibility is the point of the project and every existing client expects it."
-        plan="Better Auth as a first-class option beside it, over the same user records rather than a second set of them. The stack's pages and the instance's API then agree on who is signed in, one session covers both, and Better Auth's own plugins for organisations, passkeys and two-factor become available without us writing each one again. PocketBase's auth stays exactly where it is, because the compatibility depends on it."
-        size="Large. The hard part is one identity behind two token formats, not two auth systems living side by side."
-      />
-
       <h3 className="why-group">Upgrading a running instance</h3>
       <Item
         title="Moving an instance onto a newer release, in place"
         from="Every way of running voidbase can be updated except the one that was meant to be the easiest. A CLI install runs one command; a cloud instance waits for us."
-        now="voidbase update covers the executable, a global install and a project's dependency, and a deploy puts the new version live. voidbase cloud provisions from the release it holds, so instances that already exist stay on the release they were created with."
+        now="voidbase update ships now, and covers the executable, a global install and a project's dependency: one command, and a deploy puts the new version live. The shape it does not cover is the one it was most needed for. voidbase cloud provisions from the release it holds and has no endpoint that changes an instance afterwards, so an instance stays on the release it was created with until somebody deletes it and makes another."
         plan="An upgrade for an instance the control plane owns: re-deploy it onto the active release, run the migrations the new version brings, and keep its database, its files, its custom domains and its secrets exactly where they are. Roll it per instance rather than to everyone at once, and make it reversible, because an upgrade you cannot undo is one nobody presses."
         size="Medium. Provisioning already writes a Worker from a release; the work is doing it to an instance that has data, and proving the rollback."
       />
@@ -150,6 +141,15 @@ export default function DocsRoadmap() {
         are versioned with it, and are supported like the rest of it. The order is roughly the order we would build
         them in.
       </p>
+
+      <h3 className="why-group">Auth</h3>
+      <Item
+        title="Better Auth, as an official plugin"
+        from="Void ships Better Auth. voidbase ships PocketBase's. An app built on the voidbase stack has to pick one and work around the other."
+        now="Authentication is PocketBase's: auth collections, its token format, its OAuth flow and the SDK's authStore. That is the right default, because wire compatibility is the point of the project and every existing client expects it."
+        plan="Better Auth beside it rather than instead of it, over the same user records, so the stack's pages and the instance's API agree on who is signed in and one session covers both. Better Auth's own plugins for organisations, passkeys and two-factor come with it rather than being written again. A packaged plugin rather than a change to the core, because it brings dependencies and wants bindings of its own, which is what packaged plugins are for, and because a second auth system should not arrive in an instance that was happy with PocketBase's."
+        size="Large, and the hard part is one identity behind two token formats rather than two auth systems side by side."
+      />
 
       <h3 className="why-group">Backups worth relying on</h3>
       <Item
