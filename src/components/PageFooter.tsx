@@ -61,7 +61,8 @@ export default function PageFooter() {
           </div>
           <div className="flex-fill" />
           <div className="credit">
-            Site design by <a href="https://gani.bg" target="_blank" rel="noopener noreferrer" className="link-hint"><strong>Gani</strong></a> (PocketBase)
+            Forked from PocketBase's site by{" "}
+            <a href="https://gani.bg" target="_blank" rel="noopener noreferrer" className="link-hint"><strong>Gani</strong></a>
           </div>
         </div>
       </div>

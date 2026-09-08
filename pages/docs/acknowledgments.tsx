@@ -54,7 +54,8 @@ export default function DocsAcknowledgments() {
       <h1>Acknowledgments</h1>
       <p className="docs-lead">
         Almost nothing here is original. voidbase is one idea, that PocketBase's API could run on Cloudflare, resting
-        on a great deal of work that other people did first and gave away.
+        on a great deal of work other people did first and gave away. This site is a fork of theirs, and the section
+        below says exactly how much of it we kept.
       </p>
 
       <section className="thanks-major">
@@ -63,8 +64,20 @@ export default function DocsAcknowledgments() {
           <a href="https://pocketbase.io" target="_blank" rel="noreferrer noopener">PocketBase</a> is Gani Georgiev's,
           MIT licensed, and it is the reason this project exists. voidbase reimplements its HTTP API, its filter and
           rule language, its email templates and its JavaScript hook surface. The admin panel served at{" "}
-          <code>/_/</code> is PocketBase's own build, copied in unmodified and still under its licence, and the design
-          of this site is PocketBase's too.
+          <code>/_/</code> is PocketBase's own build, copied in unmodified and still under its licence.
+        </p>
+        <p>
+          <strong>This website is a fork of PocketBase's.</strong> Not an homage to it and not a design inspired by
+          it: the site you are reading started as{" "}
+          <a href="https://github.com/pocketbase/site" target="_blank" rel="noreferrer noopener">pocketbase/site</a>{" "}
+          and still carries its layout, its stylesheets and its components. The landing page is the clearest evidence
+          of that and we would rather point at it than hope nobody notices. What has changed since is the framework,
+          because it was ported from Svelte to React and refactored more than once, and the documentation, which is
+          written from scratch because none of it would have been true otherwise.
+        </p>
+        <p>
+          Copyright (c) 2022 - present, Gani Georgiev, under the MIT licence. The same person wrote the backend we
+          reimplement and the site we forked, which is worth saying in one sentence rather than two paragraphs apart.
         </p>
         <p>
           voidbase is not affiliated with or endorsed by the PocketBase project. If a single machine suits you, run

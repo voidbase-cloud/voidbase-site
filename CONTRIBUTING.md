@@ -71,4 +71,7 @@ are the place for questions and for anything you are not sure about yet.
 
 ## Licence
 
-Contributions are made under the same licence the project ships under.
+This repository is a fork of [pocketbase/site](https://github.com/pocketbase/site), which is MIT licensed and
+Copyright (c) 2022 - present, Gani Georgiev. Its layout, stylesheets and components are still here, under that
+copyright; the framework was changed from Svelte to React and the documentation was written from scratch.
+[LICENSE](LICENSE) carries both notices, and contributions are made under the same terms.
