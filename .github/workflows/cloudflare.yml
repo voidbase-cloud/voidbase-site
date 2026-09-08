@@ -38,6 +38,19 @@ jobs:
           [ -n "$uuid" ] || { echo "no build started: $res"; exit 1; }
           echo "cloudflare: build $uuid ($(printf '%s' "$res" | jq -r '.result.status // "queued"')) of $COMMIT on $BRANCH"
           echo "uuid=$uuid" >> "$GITHUB_ENV"
+      # The trigger's path filters apply to a build started here, not only to one Cloudflare starts itself, so a
+      # trigger set to exclude every path (an attempt to stop it building on its own) skips this build too, and
+      # skipping is not a failure: the workflow would go green while nothing deployed. This says so out loud.
+      - name: Say so if Cloudflare skipped it
+        run: |
+          sleep 90
+          outcome=$(curl -sS "$API/builds/$uuid" -H "Authorization: Bearer $TOKEN" | jq -r '.result.build_outcome // empty')
+          [ "$outcome" != "skipped" ] || {
+            echo "cloudflare skipped build $uuid: nothing was deployed."
+            echo "the trigger's path filters exclude this commit; clear path_excludes in Workers > Settings > Builds."
+            exit 1
+          }
+          echo "cloudflare: build $uuid is ${outcome:-running}"
       - name: Wait for the build (repository variable CF_BUILDS_WAIT=1)
         if: env.WAIT == '1'
         run: |
@@ -48,6 +61,7 @@ jobs:
             case "$status" in
               success) echo "cloudflare: success"; exit 0 ;;
               fail|failure|failed|canceled|cancelled|timed_out|error) echo "cloudflare: $status"; exit 1 ;;
+              skipped) echo "cloudflare: skipped, so nothing deployed; clear the trigger's path_excludes"; exit 1 ;;
               "") unknown=$((unknown + 1)); [ "$unknown" -lt 10 ] || { echo "cannot read the status of build $uuid; see the dashboard"; exit 1; } ;;
             esac
             sleep 30
