@@ -134,11 +134,22 @@ export default function DocsPlugins() {
           reproduce it. A plugin declares which voidbase versions it works against, and the loader refuses one that
           does not fit instead of finding out at request time.
         </li>
+        <li>
+          <strong>Plugins depend on interfaces, not on each other by name.</strong> A plugin declares what it
+          provides and what it requires. Something that takes payments requires the payment interface; Stripe,
+          Polar and Lemon Squeezy each provide it; swapping one for another changes nothing for anything that
+          depended on it. The loader resolves that graph, loads in its order, refuses a cycle, and says so when an
+          interface has no provider or two.
+        </li>
       </ul>
 
       <h2>What is not</h2>
       <ul>
         <li>The manifest: what <code>plugin.json</code> declares, and how strictly.</li>
+        <li>
+          Who may define an interface, and what happens when two plugins define the same thing differently. Get this
+          wrong early and everything built afterwards inherits it.
+        </li>
         <li>
           <strong>Permissions.</strong> A plugin that can add routes and read collections can do damage. What it has
           to ask for, and how that is checked against what it actually does, is the question that decides whether any

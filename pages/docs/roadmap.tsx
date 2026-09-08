@@ -144,6 +144,15 @@ export default function DocsRoadmap() {
         size="Small as code and worth settling early, because every later decision about defaults, upgrades and what a bare instance does hangs off it."
       />
 
+      <h3 className="why-group">Interfaces, and plugins that need other plugins</h3>
+      <Item
+        title="Depend on what a plugin does, not on which plugin it is"
+        from="Three items on this page describe the same mechanism without naming it. The core will need an auth plugin without caring which. Commerce will need a payment plugin without caring which. Payments are one plugin per provider over a shared shape, and the shared shape is the whole point. Left unnamed, that becomes three private arrangements that do not compose."
+        now="Nothing, and this is the decision that has to be made before there are plugins rather than after, because a mechanism like this cannot be retrofitted onto listings that were written without it."
+        plan="A plugin declares what it provides and what it requires, and both are interfaces rather than names. Something that needs to take a payment requires the payment interface; Stripe, Polar and Lemon Squeezy each provide it; swapping one for another is removing a provider and installing another, and nothing that depended on it changes or is even aware. The loader resolves the graph and loads in its order. Interfaces are versioned, because an interface is a contract and a contract that can change silently is not one. The failures are decided up front rather than discovered: no provider for a required interface means the dependent plugin does not load and says why, two providers for the same interface is ambiguous and has to be resolved on purpose rather than by whichever won a sort, and a cycle is refused at install rather than at boot. Auth is the first proof of it: the core requires an auth interface, our Better Auth plugin provides it, and yours can too."
+        size="Medium as code and the highest-consequence design on this page. Interfaces defined badly early are inherited by everything downstream, and a marketplace where every plugin invents its own is no better than having none. Who is allowed to define one, and what happens when two plugins define the same thing differently, is unresolved."
+      />
+
       <h3 className="why-group">Keeping plugins current</h3>
       <Item
         title="Versions, updates, and what happens when voidbase moves underneath one"
@@ -201,7 +210,7 @@ export default function DocsRoadmap() {
         title="Payment providers, as official plugins"
         from="Taking money is the first thing most projects add and the last thing anyone wants to write a second time."
         now="Nothing in the box. The webhook endpoint is a hook you write, and the reconciliation is yours to get right."
-        plan="One plugin per provider over a shared shape, starting with Stripe, Polar and Lemon Squeezy. Each owns its webhook route, verifies signatures, and writes customers, subscriptions and payments into collections you query like any other. Changing provider becomes changing which plugin is installed, and the shared shape is what makes the next provider cheap to add."
+        plan="One plugin per provider, all of them providing the same payment interface, starting with Stripe, Polar and Lemon Squeezy. Each owns its webhook route, verifies signatures, and writes customers, subscriptions and payments into collections you query like any other. Changing provider becomes changing which plugin is installed, and the shared shape is what makes the next provider cheap to add."
         size="Medium for the first. Small for each one after it."
       />
 
@@ -246,7 +255,7 @@ export default function DocsRoadmap() {
         title="A shop the other plugins plug into"
         from="Once payments, files, auth and editable content are all in the box, what is left of a shop is the part nobody enjoys building."
         now="Nothing. You build it on collections, and everybody builds it differently."
-        plan="An official commerce plugin holding the parts that are the same everywhere: products and variants, inventory, carts, orders, tax, shipping, refunds and an audit trail. It declares its extension points, so a payment plugin supplies checkout, a shipping plugin supplies rates, and a plugin of your own supplies whatever your business does that nobody else's does."
+        plan="An official commerce plugin holding the parts that are the same everywhere: products and variants, inventory, carts, orders, tax, shipping, refunds and an audit trail. It requires interfaces rather than particular plugins, so a payment plugin supplies checkout, a shipping plugin supplies rates, and a plugin of your own supplies whatever your business does that nobody else's does, without commerce knowing which."
         size="Large, and last, because it is the one that assumes all the others exist."
       />
 
