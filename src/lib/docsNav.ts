@@ -45,6 +45,12 @@ export const DOCS_NAV: DocsLink[] = [
     summary: "What is coming, and what is deliberately not.",
   },
   {
+    href: "/docs/pricing",
+    title: "Pricing",
+    icon: "ri-price-tag-3-line",
+    summary: "Free. What that means, and how a free backend pays for itself.",
+  },
+  {
     href: "/docs/contribute",
     title: "How to contribute",
     icon: "ri-git-pull-request-line",

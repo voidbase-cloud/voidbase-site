@@ -40,8 +40,8 @@ export default function DocsRoadmap() {
       <span className="why-eyebrow">The roadmap</span>
       <h1>Roadmap</h1>
       <p className="docs-lead">
-        Three sections. The gaps other backends showed us, the shape we want the core to have, and the plugins we
-        intend to ship on top of it.
+        Four sections. The gaps other backends showed us, the shape we want the core to have, the plugins we intend
+        to ship on top of it, and the ecosystem we would rather other people build than build ourselves.
       </p>
 
       <p>
@@ -95,8 +95,8 @@ export default function DocsRoadmap() {
 
       <h2>Where we are taking it</h2>
       <p>
-        Three changes to the core that nobody pointed at. They are the shape we want voidbase to have, and the last
-        of them is what the whole section after it stands on.
+        Changes to the core that nobody pointed at. They are the shape we want voidbase to have, and the last of
+        them is what both sections after it stand on.
       </p>
 
       <h3 className="why-group">Auth</h3>
@@ -115,6 +115,24 @@ export default function DocsRoadmap() {
         now="voidbase update covers the executable, a global install and a project's dependency, and a deploy puts the new version live. voidbase cloud provisions from the release it holds, so instances that already exist stay on the release they were created with."
         plan="An upgrade for an instance the control plane owns: re-deploy it onto the active release, run the migrations the new version brings, and keep its database, its files, its custom domains and its secrets exactly where they are. Roll it per instance rather than to everyone at once, and make it reversible, because an upgrade you cannot undo is one nobody presses."
         size="Medium. Provisioning already writes a Worker from a release; the work is doing it to an instance that has data, and proving the rollback."
+      />
+
+      <h3 className="why-group">The stack</h3>
+      <Item
+        title="The stack, finished"
+        from="It is the newest of the ways to run voidbase and the least complete. It deploys, and that is most of what it does."
+        now="Pages, typed routes, your own Drizzle tables and a voidbase instance build into one Worker and go live in one deploy. Everything past that you wire yourself: two notions of who is signed in, collections the frontend knows nothing about, and an admin panel that lives at its own address rather than inside your app."
+        plan="Make the two halves know about each other. One session across the pages and the API, which is the Better Auth item above. Collection types generated into the app so a renamed field breaks the build the way a renamed Drizzle column already does. The admin panel mountable under your own route behind your own authorisation. And one command that runs the pages, the backend and a seeded instance together, because two terminals is a thing you tolerate rather than a thing you like."
+        size="Medium each, and they are independent. The typed collections are the one that changes how the stack feels."
+      />
+
+      <h3 className="why-group">voidbase cloud</h3>
+      <Item
+        title="A dashboard for the life of an instance, not its first minute"
+        from="It provisions an instance beautifully and then has nothing else to say. Everything past the moment it exists happens somewhere else."
+        now="Sign in with Cloudflare, name an instance, and it is created in your own account with its database, storage and domain. You can delete it. That is the whole of the surface."
+        plan="The things you actually do to a backend after making one: requests and errors over time, logs you can search, backups and a restore that has been tested, custom domains, secrets, superusers, and the upgrade above. Templates, so a new instance can start as something rather than nothing. Teams, so an instance is not tied to whoever happened to click first. Everything the dashboard can do gets a CLI command as well, because a dashboard-only feature is one you cannot script or review."
+        size="Large in total, small in pieces. Most of it is surfacing things the instance already knows."
       />
 
       <h3 className="why-group">Plugins</h3>
@@ -185,6 +203,40 @@ export default function DocsRoadmap() {
         now="Nothing. You build it on collections, and everybody builds it differently."
         plan="An official commerce plugin holding the parts that are the same everywhere: products and variants, inventory, carts, orders, tax, shipping, refunds and an audit trail. It declares its extension points, so a payment plugin supplies checkout, a shipping plugin supplies rates, and a plugin of your own supplies whatever your business does that nobody else's does."
         size="Large, and last, because it is the one that assumes all the others exist."
+      />
+
+      <h2>The ecosystem</h2>
+      <p>
+        The plugin loader above is half a system. The other half is somewhere to get things from, somewhere to put
+        things you made, and a reason for anyone to bother. This is the part we most want other people involved in,
+        so it is written down in more detail than our own confidence deserves.
+      </p>
+
+      <h3 className="why-group">Templates</h3>
+      <Item
+        title="Templates, and a listing anyone can add to"
+        from="Starting from nothing is the slowest part of trying anything, and every project that gets past that point started as a copy of somebody's working example."
+        now="voidbase init writes empty directories and void init scaffolds a stack app. Neither of them gives you a working example of anything, so the first hour is spent building what somebody else has already built."
+        plan="A template is a public repository with a manifest. voidbase init --template <name> starts from one, the cloud dashboard offers them on the create screen, and anyone can publish theirs by adding it to the listing. Official templates are ours and are kept working, and the first of them is this site: voidbase-cloud/voidbase-site is already public, is a real voidbase stack app, and serves the page you are reading, which makes it an honest starting point rather than a demo we wrote to look good."
+        size="Small for the mechanism, ongoing for the templates. The listing is the same listing as the marketplace below."
+      />
+
+      <h3 className="why-group">The marketplace</h3>
+      <Item
+        title="One marketplace for plugins, themes and templates"
+        from="A gist is not a distribution channel, and an author you have never heard of is not a security model. Every backend that grew an ecosystem grew a supply chain problem at the same time."
+        now="Nothing. Installing somebody else's hook means reading their code and pasting it, which is fine once and unworkable at any scale."
+        plan="One place, three kinds of thing, and every listing a versioned repository you install by name. Each submission and each update goes through an automated audit that reports what the code reaches for, whether the permissions it asks for match the ones it uses, and what changed since the version you have, in language a person can read before installing. That audit is a first pass and not a guarantee, so its report is published with the listing and you are free to disagree with it."
+        size="Large, and the audit is the part that decides whether any of it is worth having."
+      />
+
+      <h3 className="why-group">Paying the people who build it</h3>
+      <Item
+        title="Creators keeping what they earn, and us not taking a cut of the ecosystem"
+        from="Free plugin ecosystems get abandoned and paid ones get gouged. The difference is usually who is being paid and for what."
+        now="Nothing to sell and nowhere to sell it, which is at least honest."
+        plan="Official plugins and themes stay free, as many as we can write, because an ecosystem does not start behind a paywall. Later a subscription may cover a growing basket of specialised official ones, and specialised is the word doing the work there: things most projects will never need, and never something that used to be free. Anyone can charge for what they publish and keep what they earn. We would rather the marketplace itself be paid for by sponsors than by a percentage of everybody in it, which is also the answer on the pricing page."
+        size="This is a policy before it is code, and the policy is easier to keep if we write it down now."
       />
 
       <h2>Not on this list</h2>

@@ -1,0 +1,137 @@
+// The pricing page.
+//
+// One price, so no table: a table of one column is a joke. The whole page rests on a single typographic moment, the
+// word itself set larger than anything else on the site, and everything after it stays deliberately plain so the
+// claim is the thing you remember and the qualifications read as honesty rather than small print.
+
+.pricing {
+    --measure: 660px;
+    padding-bottom: 20px;
+
+    p, ul, ol { max-width: var(--measure); }
+
+    h2 {
+        margin-top: 44px;
+        padding-top: 0;
+        border-top: 0;
+    }
+}
+
+.pricing-hero {
+    padding: 10px 0 26px;
+    border-bottom: 1px solid var(--baseAlt2Color);
+    margin-bottom: 8px;
+}
+
+.pricing-eyebrow {
+    display: block;
+    font-family: var(--monospaceFontFamily);
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--txtHintColor);
+    margin-bottom: 10px;
+}
+
+// the one moment on the page: nothing else on this site is set anywhere near this size
+.pricing-word {
+    margin: 0 0 18px;
+    font-size: clamp(84px, 19vw, 216px);
+    line-height: 0.82;
+    font-weight: 700;
+    letter-spacing: -0.045em;
+    color: var(--successColor);
+}
+
+.pricing-claim {
+    font-size: 19px;
+    line-height: 30px;
+    color: var(--txtHintColor);
+    margin: 0;
+}
+
+.pricing .pricing-fact {
+    margin: 22px 0;
+    padding-left: 16px;
+    border-left: 2px solid var(--baseAlt2Color);
+
+    // the docs stylesheet gives h3 a rule and generous space, which turns each of these into a section of its own
+    h3 {
+        margin: 0 0 6px;
+        padding: 0;
+        border: 0;
+        font-size: 17px;
+        line-height: 26px;
+        color: var(--txtPrimaryColor);
+    }
+    p { margin: 0; }
+}
+
+.pricing .pricing-lead {
+    color: var(--txtHintColor);
+}
+
+// numbered because the order is the argument: sponsors first, and the paid pieces last on purpose
+.pricing .pricing-plan {
+    list-style: none;
+    counter-reset: plan;
+    padding: 0;
+    margin: 18px 0;
+
+    > li {
+        counter-increment: plan;
+        position: relative;
+        padding-left: 42px;
+        margin-bottom: 16px;
+
+        &:before {
+            content: counter(plan);
+            position: absolute;
+            left: 0;
+            top: 1px;
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--baseAlt3Color);
+            border-radius: 50%;
+            font-family: var(--monospaceFontFamily);
+            font-size: 12px;
+            color: var(--txtHintColor);
+        }
+        strong { color: var(--txtPrimaryColor); }
+    }
+}
+
+.pricing .pricing-never {
+    list-style: none;
+    padding: 0;
+
+    > li {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        margin-bottom: 10px;
+
+        > i {
+            color: var(--dangerColor);
+            line-height: inherit;
+            flex-shrink: 0;
+        }
+    }
+}
+
+.pricing-next {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 34px;
+    padding-top: 26px;
+    border-top: 1px solid var(--baseAlt2Color);
+}
+
+@media only screen and (max-width: 700px) {
+    .pricing-claim { font-size: 17px; line-height: 27px; }
+    .pricing-next .btn { width: 100%; justify-content: center; }
+}
