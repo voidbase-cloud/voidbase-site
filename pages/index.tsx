@@ -321,29 +321,58 @@ export default function Landing() {
     isSdkLanguage(preference) && preview[preference] ? preference : (Object.keys(preview)[0] as SdkLanguage);
 
 
+  // The gopher watches whoever is nearest, not just you.
+  //
+  // It used to follow the pointer on mousemove, which cannot see anybody else: a visitor's cursor moves with no
+  // local event at all, so the eyes sat still while somebody walked past them. Reading the drawn cursors once a
+  // frame catches every one of them, the visitor's own included, because that arrow is one of the same nodes and
+  // is already placed at the pointer. A node says when it is worth looking at: `is-live` once it has a position,
+  // and `is-hidden` while it steps aside over a text field.
+  //
+  // Ducking stays the visitor's alone. That is a CSS :hover on the box in front of the gopher, so a cursor that is
+  // only a picture of somebody else's pointer cannot trigger it, and the gopher looks at a stranger without
+  // flinching from them.
   useEffect(() => {
-    function onMousemove(e: MouseEvent) {
-      const left = leftEye.current;
-      const right = rightEye.current;
+    const left = leftEye.current;
+    const right = rightEye.current;
+    if (!left || !right) return;
 
-      if (!left || !right || !e) {
-        return;
+    // eyes following someone else's cursor is motion nobody asked for, so with reduced motion they follow only you
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const gopher = left.closest(".gopher");
+
+    let onScreen = true;
+    const watch = new IntersectionObserver(([entry]) => { onScreen = entry?.isIntersecting ?? true; }, { rootMargin: "150px" });
+    if (gopher) watch.observe(gopher);
+
+    let frame = requestAnimationFrame(function look() {
+      frame = requestAnimationFrame(look);
+      if (!onScreen || document.hidden) return;
+
+      const eye = left.getBoundingClientRect();
+      const eyeX = eye.left + eye.width / 2;
+      const eyeY = eye.top + eye.height / 2;
+
+      const selector = calm.matches ? ".presence-cursor-own" : ".presence-cursor";
+      let nearest = Infinity;
+      let atX = 0;
+      let atY = 0;
+      for (const node of document.querySelectorAll(`${selector}.is-live:not(.is-hidden)`)) {
+        const box = node.getBoundingClientRect();
+        // the arrow's box is pulled three pixels up and left so its point lands on the point; this puts it back
+        const x = box.left + 3;
+        const y = box.top + 3;
+        const away = (x - eyeX) ** 2 + (y - eyeY) ** 2;
+        if (away < nearest) { nearest = away; atX = x; atY = y; }
       }
+      if (nearest === Infinity) return;
 
-      const leftRect = left.getBoundingClientRect();
+      const rot = Math.atan2(atX - eyeX, atY - eyeY) * (180 / Math.PI) * -1 + 180;
+      left.style.transform = `rotate(${rot}deg)`;
+      right.style.transform = `rotate(${rot}deg)`;
+    });
 
-      // calc the radius of one of the eye (they are the same size)
-      const leftX = leftRect.left + window.scrollX + leftRect.width / 2;
-      const leftY = leftRect.top + window.scrollY + leftRect.height / 2;
-      const rad = Math.atan2(e.pageX - leftX, e.pageY - leftY);
-      const rot = rad * (180 / Math.PI) * -1 + 180;
-
-      left.style.transform = "rotate(" + rot + "deg)";
-      right.style.transform = "rotate(" + rot + "deg)";
-    }
-
-    window.addEventListener("mousemove", onMousemove);
-    return () => window.removeEventListener("mousemove", onMousemove);
+    return () => { cancelAnimationFrame(frame); watch.disconnect(); };
   }, []);
 
   useEffect(() => {
