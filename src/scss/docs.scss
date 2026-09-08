@@ -141,3 +141,18 @@
         text-align: right;
     }
 }
+
+// The sidebar goes three deep under "Run an instance": section, group, page. Each level steps in by the width of
+// the tree character it sits under, so the connectors line up into a single drawn tree rather than three lists.
+.docs-sidebar .sidebar-list {
+    .docs-depth-2 {
+        padding-left: 30px;
+    }
+    .docs-depth-3 {
+        padding-left: 45px;
+    }
+    // a group is a heading you can also click: it says where you are, and the page under it says exactly where
+    .docs-group {
+        color: var(--txtPrimaryColor);
+    }
+}

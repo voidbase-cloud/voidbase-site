@@ -95,7 +95,7 @@ export default function DocsPricing() {
       </ul>
 
       <div className="pricing-next">
-        <Link href="/docs" className="btn btn-lg btn-primary">
+        <Link href="/docs/start" className="btn btn-lg btn-primary">
           <i className="ri-play-circle-line" />
           <span className="txt">Get one running</span>
         </Link>

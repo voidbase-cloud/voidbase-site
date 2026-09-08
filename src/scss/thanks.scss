@@ -1,0 +1,71 @@
+// The acknowledgments page. A credits list wants to be scannable rather than read, so the names carry the weight
+// and everything after them steps back: the licence is a small monospace tag, the description is hint-coloured.
+
+.thanks {
+    --measure: 660px;
+
+    p { max-width: var(--measure); }
+}
+
+.thanks-major {
+    margin: 26px 0;
+    padding-left: 16px;
+    border-left: 2px solid var(--baseAlt2Color);
+
+    h2 {
+        margin: 0 0 8px;
+        padding: 0;
+        border: 0;
+        font-size: 19px;
+        line-height: 28px;
+    }
+}
+
+.thanks-group {
+    margin-top: 34px;
+
+    > p {
+        color: var(--txtHintColor);
+        margin-top: -6px;
+    }
+}
+
+.thanks .thanks-list {
+    list-style: none;
+    padding: 0;
+    margin: 14px 0 0;
+
+    > li {
+        padding: 9px 0;
+        border-bottom: 1px solid var(--baseAlt1Color);
+
+        &:last-child { border-bottom: 0; }
+
+        > a {
+            font-weight: 600;
+            color: var(--txtPrimaryColor);
+        }
+    }
+}
+
+.thanks-licence {
+    display: inline-block;
+    margin-left: 8px;
+    font-family: var(--monospaceFontFamily);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--txtHintColor);
+    border: 1px solid var(--baseAlt2Color);
+    border-radius: 3px;
+    padding: 0 5px;
+    vertical-align: 1px;
+}
+
+.thanks-what {
+    display: block;
+    color: var(--txtHintColor);
+    font-size: 15px;
+    line-height: 23px;
+    margin-top: 3px;
+    max-width: var(--measure);
+}

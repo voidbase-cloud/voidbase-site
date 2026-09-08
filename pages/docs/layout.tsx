@@ -6,36 +6,56 @@
 import type { ReactNode } from "react";
 import { Link, useRouter } from "@void/react";
 import EditThisPage from "@/components/EditThisPage";
-import { DOCS_NAV, locate, samePath, type DocsLink } from "@/lib/docsNav";
+import { contains, DOCS_NAV, locate, samePath, type DocsLink } from "@/lib/docsNav";
 import "@/scss/docs.scss";
 import "@/scss/edit-page.scss";
 
-function Item({ link, path }: { link: DocsLink; path: string }) {
-  const here = samePath(link.href, path);
-  const inside = !!link.children?.some((c) => samePath(c.href, path));
+/**
+ * One sidebar entry, and whatever is under it.
+ *
+ * Recursive because "Run an instance" holds groups that hold pages, and the sidebar should not care how deep that
+ * goes. A group is highlighted when you are anywhere inside it; a page only when you are on it. A group's own href
+ * is its first child, so highlighting it as a page too would mark the same row twice.
+ */
+function Item({ link, path, depth = 0, last = false }: { link: DocsLink; path: string; depth?: number; last?: boolean }) {
+  const kids = link.children ?? [];
+  const open = contains(link, path);
+  const active = kids.length ? open : samePath(link.href, path);
+  const under = open
+    ? kids.map((c, i) => <Item key={c.href} link={c} path={path} depth={depth + 1} last={i === kids.length - 1} />)
+    : null;
+
+  if (depth === 0) {
+    return (
+      <>
+        <Link href={link.href} className={`list-item${active ? " active" : ""}`}>
+          {link.icon && <span className="icon"><i className={link.icon} /></span>}
+          <span className="txt">{link.title}</span>
+        </Link>
+        {under}
+      </>
+    );
+  }
+
   return (
     <>
-      <Link href={link.href} className={`list-item${here || inside ? " active" : ""}`}>
-        {link.icon && <span className="icon"><i className={link.icon} /></span>}
-        <span className="txt">{link.title}</span>
+      <Link
+        href={link.href}
+        className={`sub-list-item docs-depth-${depth}${kids.length ? " docs-group" : ""}${active ? " active" : ""}`}
+      >
+        <span className="tree-node">{last ? "\u2514" : "\u251c"}</span>
+        {link.title}
       </Link>
-      {/* a section opens only when you are in it, so the sidebar stays a short list rather than a wall of links */}
-      {link.children?.length && (here || inside)
-        ? link.children.map((child, i) => (
-            <Link key={child.href} href={child.href} className={`sub-list-item${samePath(child.href, path) ? " active" : ""}`}>
-              <span className="tree-node">{i === link.children!.length - 1 ? "└" : "├"}</span>
-              {child.title}
-            </Link>
-          ))
-        : null}
+      {under}
     </>
   );
 }
 
 export default function DocsLayout({ children }: { children: ReactNode }) {
   const path = useRouter().path;
-  const { section, page, prev, next } = locate(path);
-  const crumbs = [section?.title, page && page.title !== section?.title ? page.title : null].filter(Boolean);
+  const { trail, prev, next } = locate(path);
+  // the trail already ends at the page, so drop a group whose title the next crumb repeats
+  const crumbs = trail.map((t) => t.title).filter((t, i, all) => t !== all[i + 1]);
 
   return (
     <>
