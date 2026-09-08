@@ -36,8 +36,13 @@ export const DOCS_NAV: DocsLink[] = [
       { href: "/docs/why/appwrite", title: "Compared to Appwrite", summary: "More services in the box, against less to operate." },
       { href: "/docs/why/convex", title: "Compared to Convex", summary: "Functions you write, against an API you get." },
       { href: "/docs/why/encore", title: "Compared to Encore", summary: "A framework for building a backend, against a backend." },
-      { href: "/docs/why/roadmap", title: "What we are going to fix", summary: "The gaps the comparisons turned up, and the plan for each." },
     ],
+  },
+  {
+    href: "/docs/roadmap",
+    title: "Roadmap",
+    icon: "ri-road-map-line",
+    summary: "What is coming, and what is deliberately not.",
   },
   {
     href: "/docs/connect/sdk",

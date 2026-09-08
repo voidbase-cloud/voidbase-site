@@ -14,7 +14,7 @@ import { Link } from "@void/react";
  *
  *   yes       in your favour
  *   no        against you, and staying that way
- *   planned   against you today, and on the roadmap with a design behind it (docs/why/roadmap)
+ *   planned   against you today, and on the roadmap with a design behind it (docs/roadmap)
  *   depends   genuinely depends on what you are building
  *
  * `planned` is not a softer `no`. It is only for the rows where the roadmap page names the work and says how it
@@ -71,7 +71,7 @@ export default function Versus({ other, logo, rows }: { other: string; logo?: Re
       </table>
       <p className="why-legend">
         <span><i className="ri-check-line why-yes" /> in your favour</span>
-        <span><i className="ri-alert-line why-planned" /> not yet, and <Link href="/docs/why/roadmap">on the roadmap</Link></span>
+        <span><i className="ri-alert-line why-planned" /> not yet, and <Link href="/docs/roadmap">on the roadmap</Link></span>
         <span><i className="ri-close-line why-no" /> against you</span>
         <span><i className="ri-subtract-line why-depends" /> depends what you are building</span>
       </p>

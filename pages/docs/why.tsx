@@ -136,6 +136,8 @@ export default function DocsWhy() {
           the differences page
         </a>
         , and if one of them is disqualifying for you, PocketBase on a server is a good answer and we will say so.
+        The first two have a plan on <Link href="/docs/roadmap">the roadmap</Link>. The CPU ceiling is the
+        platform's, and it is staying.
       </p>
 
       <h2>Against the others, one at a time</h2>

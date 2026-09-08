@@ -2,3 +2,4 @@
 # here as Cloudflare's own _redirects, evaluated at the edge before the Worker runs.
 /why            /docs/why           301
 /why/*          /docs/why/:splat    301
+/docs/why/roadmap   /docs/roadmap      301

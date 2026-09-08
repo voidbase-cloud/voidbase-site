@@ -725,3 +725,11 @@
 @media only screen and (max-width: 700px) {
     .perf-scale > div { grid-template-columns: 1fr; gap: 2px; }
 }
+
+// a roadmap item's own heading, inside one of the two halves
+.why .why-group {
+    font-size: 17px;
+    color: var(--txtHintColor);
+    margin: 26px 0 10px;
+    font-weight: 600;
+}
