@@ -414,6 +414,10 @@ export default function Landing() {
             </div>
           </div>
 
+          <Link href="/docs/acknowledgments" className="hero-note">
+            Answers PocketBase's API, and is not affiliated with or endorsed by PocketBase
+          </Link>
+
           <figure className="hero-preview">
             <div className="gopher-proximity-hover" />
 

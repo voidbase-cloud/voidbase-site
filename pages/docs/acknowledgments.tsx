@@ -58,6 +58,20 @@ export default function DocsAcknowledgments() {
         below says exactly how much of it we kept.
       </p>
 
+      <section className="thanks-team">
+        <a href="https://www.saastemly.com/" target="_blank" rel="noreferrer noopener" className="thanks-team-mark">
+          <img src="/images/saastemly_logo.svg" alt="Saastemly" width="120" height="120" loading="lazy" />
+        </a>
+        <div>
+          <h2>Who builds voidbase</h2>
+          <p>
+            voidbase is built by{" "}
+            <a href="https://www.saastemly.com/" target="_blank" rel="noreferrer noopener">Saastemly</a>. Everything
+            below is what we build on, and nobody on those lists works on this or has approved it.
+          </p>
+        </div>
+      </section>
+
       <section className="thanks-major">
         <h2>PocketBase</h2>
         <p>

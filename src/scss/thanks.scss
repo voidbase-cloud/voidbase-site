@@ -69,3 +69,40 @@
     margin-top: 3px;
     max-width: var(--measure);
 }
+
+// Who builds this, above the long list of what it is built on. The lockup carries its own wordmark and tagline, so
+// the heading beside it does not repeat the name any more than once.
+.thanks-team {
+    display: flex;
+    align-items: center;
+    gap: var(--baseSpacing);
+    margin: var(--baseSpacing) 0 var(--lgSpacing);
+    padding: var(--smSpacing) 0;
+    border-top: 1px solid var(--baseAlt2Color);
+    border-bottom: 1px solid var(--baseAlt2Color);
+
+    h2 {
+        margin: 0 0 6px;
+        padding: 0;
+        border: 0;
+    }
+    p { margin: 0; }
+}
+
+.thanks-team-mark {
+    flex: 0 0 auto;
+    line-height: 0;
+    opacity: 0.92;
+    transition: opacity var(--baseAnimationSpeed);
+    &:hover { opacity: 1; }
+    img { display: block; width: 96px; height: 96px; }
+}
+
+@media only screen and (max-width: 600px) {
+    .thanks-team {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--smSpacing);
+    }
+    .thanks-team-mark img { width: 76px; height: 76px; }
+}

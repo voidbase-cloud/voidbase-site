@@ -181,11 +181,29 @@ body:has(.scroll-top-active) .page-header {
     }
     .secondary-bar {
         display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
         width: 100%;
         color: var(--txtHintColor);
         border-top: 1px solid var(--baseAlt2Color);
         padding: var(--smSpacing) 0;
         gap: var(--smSpacing) var(--baseSpacing);
+    }
+    // the fork credit is a fact about the design, not about who builds voidbase, so it reads a step back from the
+    // one above it
+    // their mark keeps their colour: it sits next to their name, so it reads as theirs rather than as an accent
+    // this site is using
+    .credit-team {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        img { display: block; }
+    }
+    .credit-fork {
+        font-size: 0.85em;
+        opacity: 0.75;
+        transition: opacity var(--baseAnimationSpeed);
+        &:hover { opacity: 1; }
     }
     .gopher-credit {
         font-size: 0.8em;
@@ -195,6 +213,12 @@ body:has(.scroll-top-active) .page-header {
         &:hover {
             opacity: 1;
         }
+    }
+
+    // The presence avatars are pinned to the bottom right of the window, so once the credits wrap to full width the
+    // last of them ends up underneath the cluster with a name half hidden. This is the strip they get to sit in.
+    @media only screen and (max-width: 1100px) {
+        padding-bottom: 56px;
     }
 
     // responsive styles

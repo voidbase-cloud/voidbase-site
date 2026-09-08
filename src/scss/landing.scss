@@ -359,6 +359,31 @@
         }
     }
 
+    // The relationship, said once and quietly, where someone reading the hero can see it without being sold it.
+    // It is the smallest type on the page on purpose: an obligation, not a claim.
+    .hero-note {
+        // block, not inline-block: the pill above is an inline-flex, and an inline sibling would sit beside it
+        display: block;
+        width: fit-content;
+        margin: -30px auto 26px;
+        font-size: 13px;
+        line-height: 1.4;
+        color: var(--txtDisabledColor);
+        text-decoration: none;
+        border-bottom: 1px solid transparent;
+        transition: color var(--baseAnimationSpeed), border-color var(--baseAnimationSpeed);
+
+        &:hover,
+        &:focus-visible {
+            color: var(--txtHintColor);
+            border-bottom-color: var(--baseAlt4Color);
+        }
+        @media only screen and (max-width: 800px) {
+            margin: -26px 20px 24px;
+            text-align: center;
+        }
+    }
+
     .hero-content {
         display: block;
         width: 100%;

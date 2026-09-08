@@ -49,7 +49,8 @@ export default function PageFooter() {
 
         <div className="credits-bar">
           <span className="txt">
-            void<strong>base</strong> is an independent project, not affiliated with or endorsed by PocketBase.
+            void<strong>base</strong> is an independent project, not affiliated with or endorsed by PocketBase.{" "}
+            <Link href="/docs/acknowledgments">Who made what</Link>.
           </span>
           <span className="txt">
             It runs <a href="https://pocketbase.io" target="_blank" rel="noopener noreferrer">PocketBase</a>'s API and admin
@@ -66,11 +67,24 @@ export default function PageFooter() {
               <a href="https://github.com/marcusolsson/gophers" target="_blank" rel="noreferrer noopener">marcusolsson/gophers</a>
             </span>
           </div>
-          <div className="flex-fill" />
+          {/*
+            Two credits that are not the same kind of thing, so they do not sit in one sentence: the people building
+            voidbase, and the person whose site design this one is a fork of. Running them together is what made the
+            old line read as though Gani worked on this.
+          */}
           <div className="credit">
-            Forked from PocketBase's site by{" "}
+            Built by{" "}
+            <a href="https://www.saastemly.com/" target="_blank" rel="noopener noreferrer" className="link-hint credit-team">
+              <img src="/images/saastemly_mark.svg" alt="" width="15" height="15" />
+              <strong>Saastemly</strong>
+            </a>
+          </div>
+          <div className="credit credit-fork">
+            Site design forked from PocketBase's, by{" "}
             <a href="https://gani.bg" target="_blank" rel="noopener noreferrer" className="link-hint"><strong>Gani</strong></a>
           </div>
+          {/* the bottom right corner belongs to the presence avatars, which are fixed there and would clip a credit */}
+          <div className="flex-fill" />
         </div>
       </div>
     </footer>
