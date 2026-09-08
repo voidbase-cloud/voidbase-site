@@ -28,7 +28,8 @@ voidbase plugins remove backups-r2 --name blog`,
   cloud: {
     dir: null,
     code: hl.bash`# nothing to run: you do not hold the filesystem of a cloud instance.
-# installing is a button in the dashboard, and the instance redeploys itself.`,
+# installing is a button in the dashboard; the instance is rebuilt and redeployed
+# around the plugin, which takes minutes, and the dashboard shows it happening.`,
   },
   project: {
     dir: "pb_plugins/",
@@ -47,11 +48,11 @@ bun run build && cd .voidbase && voidbase deploy`,
 // which of the two ways reaches this shape at all, which is the part worth saying per page
 const SPLIT: Record<Shape, string> = {
   standalone:
-    "Packaged only. There is no repository here and no build of yours, so a plugin has to arrive already built; installing one puts the executable's instance together again around it. Unpackaged plugins are source that joins a project, which this shape does not have.",
+    "Both, which is more than this page first claimed. The executable already compiles the hooks directory beside it at startup and loads the result, so an unpackaged plugin dropped beside it is loaded the same way pb_hooks is; there is no build of yours to wait for. A packaged one is a prebuilt bundle with its manifest, evaluated the same way. Neither rebuilds the executable, and neither needs to.",
   npm:
-    "Packaged only. An instance made this way is a directory of data and configuration rather than a codebase, so a plugin has to arrive built. The CLI does the rebuild, because the toolchain is already on your machine.",
+    "Both, for the same reason as the executable: an instance made this way is a directory the CLI can compile at startup, so source and prebuilt plugins both load. The CLI does the rebuild where one is needed, because the toolchain is already on your machine.",
   cloud:
-    "Packaged only, and you do none of the work: the control plane rebuilds and redeploys the instance around the plugin. This is the shape the packaged format exists for, because nothing else could reach it.",
+    "Packaged only, and you do none of the work: the control plane rebuilds and redeploys the instance around the plugin. On Cloudflare the set of plugins is fixed when the instance is deployed, so an install here is a deployment, minutes rather than a toggle, and the dashboard says so while it runs. This is the shape the packaged format exists for, because nothing else could reach it.",
   project:
     "Both. Packaged plugins install the way they do everywhere. Unpackaged ones are source in pb_plugins/ that you commit and deploy, which is the cheaper path and only available because you already have a repository.",
   stack:
@@ -70,10 +71,11 @@ export default function PluginsSoon({ shape }: { shape: Shape }) {
         Plugins <span className="label label-warning">Not built yet</span>
       </h2>
       <p>
-        <code>pb_plugins</code> does not exist. There is no manifest format, no loader, and nothing to install, so
-        every command in this section is a proposal rather than something you can run today. It is written down
-        because the shape of it is being decided now and{" "}
-        <Link href="/docs/plugins">the design is worth arguing with</Link> before it is built.
+        <code>pb_plugins</code> does not exist yet. The loader and the manifest do, inside voidbase, and backups is
+        the first feature to arrive through them; but there is nothing to install and no command, so every command
+        in this section is a proposal rather than something you can run today. It is written down because the shape
+        of it is being decided now and <Link href="/docs/plugins">the design is worth arguing with</Link> before
+        the rest is built.
       </p>
 
       <CodeBlock {...code} />

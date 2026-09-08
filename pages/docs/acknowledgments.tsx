@@ -33,6 +33,9 @@ function Credits({ title, lead, items }: { title: string; lead: string; items: C
 
 const RUNTIME: Credit[] = [
   { name: "Hono", url: "https://hono.dev", licence: "MIT", what: "The router every request goes through." },
+  { name: "cordis", url: "https://github.com/cordiverse/cordis", licence: "MIT", what: "The plugin kernel: services, dependency injection and the lifetime of a plugin, from the people behind Koishi." },
+  { name: "cosmokit", url: "https://github.com/cordiverse/cosmokit", licence: "MIT", what: "The utilities cordis is built on." },
+  { name: "Standard Schema", url: "https://standardschema.dev", licence: "MIT", what: "The specification cordis validates plugin configuration against." },
   { name: "fflate", url: "https://github.com/101arrowz/fflate", licence: "MIT", what: "Zip and unzip, for backups and for the admin panel inside the executable." },
   { name: "Photon", url: "https://github.com/silvia-odwyer/photon", licence: "Apache-2.0", what: "Image processing compiled to WebAssembly, by Silvia O'Dwyer, which is what generates thumbnails. Packaged as @cf-wasm/photon." },
   { name: "SimpleWebAuthn", url: "https://simplewebauthn.dev", licence: "MIT", what: "Passkey registration and verification on the server." },
