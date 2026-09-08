@@ -1,4 +1,5 @@
-// The CLI path: instances as things you name, make and throw away, on this machine or on Cloudflare.
+// The CLI path: instances as things you name, make and throw away, locally or on Cloudflare. "Local" is kept
+// deliberately loose, because the same commands are what a laptop, a container and a bundled desktop app all use.
 import CodeBlock from "@/components/CodeBlock";
 
 const INSTALL = `bun i -g @voidbase-cloud/voidbase      # or: npm i -g @voidbase-cloud/voidbase
@@ -42,22 +43,29 @@ export default function DocsNpm() {
       <h1>Instances from the CLI</h1>
       <p className="docs-lead">
         One command line, no repository, no code. Instances are things you make when you need one and delete when you
-        do not, on this machine or in your own Cloudflare account, with the same commands for each.
+        do not, locally or in your own Cloudflare account, with the same commands for each.
       </p>
 
       <CodeBlock language="bash" content={INSTALL} />
 
-      <h2>On this machine</h2>
+      <h2>Local instances</h2>
       <p>
         This is the same job the <a href="/docs/run/standalone">standalone executable</a> does, for people who would
         rather install from npm than download a binary. The difference is that it remembers what you have made, so a
         second instance does not mean finding where you put the first.
       </p>
+      <p>
+        Local means wherever the CLI is running. That is usually a laptop, but it is just as often a container in a
+        compose file, a CI job that needs a real backend for its tests, or a desktop app that ships voidbase inside
+        it. Nothing here talks to Cloudflare and none of it needs an account.
+      </p>
       <CodeBlock language="bash" content={LOCAL_NEW} />
       <CodeBlock language="bash" content={LOCAL_NEW_OUT} />
       <p>
         The instance is a directory holding its own database, hooks and configuration, and a row in{" "}
-        <code>~/.voidbase/instances.json</code> recording its name and port. Nothing is sent anywhere. Pass{" "}
+        <code>~/.voidbase/instances.json</code> recording its name and port. Nothing is sent anywhere. Set{" "}
+        <code>VOIDBASE_HOME</code> and both the registry and the default directory move with it, which is what an
+        image or an app bundle wants. Pass{" "}
         <code>--dir</code> to put it where you want it, <code>--port</code> to pick the port, and{" "}
         <code>--email</code> with <code>--password</code> to choose the superuser rather than have one generated.
       </p>

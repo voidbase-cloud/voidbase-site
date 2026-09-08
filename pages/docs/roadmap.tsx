@@ -1,7 +1,7 @@
-// What is coming, in two halves. The first came out of writing the comparison pages honestly, so every item in it
-// is a row that carries an amber mark and the two stay true to each other: nothing is amber unless it is here, and
-// nothing is here without a design. The second is where we are taking the product regardless of what anyone else
-// does. Both are plans. Neither is a shipped feature.
+// What is coming, in three sections. The first came out of writing the comparison pages honestly, so every item in
+// it is a row that carries an amber mark and the two stay true to each other: nothing is amber unless it is here,
+// and nothing is here without a design. The second is the core, and the third is the plugins we intend to ship on
+// top of it. All three are plans. None of them is a shipped feature.
 import { Link } from "@void/react";
 import "@/scss/why.scss";
 
@@ -40,21 +40,21 @@ export default function DocsRoadmap() {
       <span className="why-eyebrow">The roadmap</span>
       <h1>Roadmap</h1>
       <p className="docs-lead">
-        Two halves. The gaps other backends showed us, and the things we want to build regardless of what anyone
-        else does.
+        Three sections. The gaps other backends showed us, the shape we want the core to have, and the plugins we
+        intend to ship on top of it.
       </p>
 
       <p>
         Everything here is a plan, not a shipped feature. An item earns its place by having a design, not by being
-        desirable. In the first half that rule is visible on the comparison pages: a row is amber only when it is
-        listed below, and a gap with no answer yet stays a red cross.
+        desirable. In the first section that rule is visible on the comparison pages: a row is amber only when it
+        is listed below, and a gap with no answer yet stays a red cross.
       </p>
 
       <h2>From the comparisons</h2>
       <p>
         Writing the <Link href="/docs/why">comparison pages</Link> was the most useful research we have done,
-        because it produced a list of things other people do better. Each item below is a row on one of those pages
-        marked amber rather than red.
+        because it produced a list of things other people do better. Each item in this section is a row on one of
+        those pages marked amber rather than red.
       </p>
 
       <h3 className="why-group">Transactions and the database limits</h3>
@@ -95,9 +95,18 @@ export default function DocsRoadmap() {
 
       <h2>Where we are taking it</h2>
       <p>
-        These are not gaps anyone pointed at. They are the shape we want the product to have, and each one is a
-        design rather than a wish.
+        Two changes to the core that nobody pointed at. They are the shape we want voidbase to have, and the second
+        one is what the whole section after it stands on.
       </p>
+
+      <h3 className="why-group">Auth</h3>
+      <Item
+        title="Better Auth, natively"
+        from="Void ships Better Auth. voidbase ships PocketBase's. An app built on the voidbase stack has to pick one and work around the other."
+        now="Authentication is PocketBase's: auth collections, its token format, its OAuth flow and the SDK's authStore. That is the right default, because wire compatibility is the point of the project and every existing client expects it."
+        plan="Better Auth as a first-class option beside it, over the same user records rather than a second set of them. The stack's pages and the instance's API then agree on who is signed in, one session covers both, and Better Auth's own plugins for organisations, passkeys and two-factor become available without us writing each one again. PocketBase's auth stays exactly where it is, because the compatibility depends on it."
+        size="Large. The hard part is one identity behind two token formats, not two auth systems living side by side."
+      />
 
       <h3 className="why-group">Plugins</h3>
       <Item
@@ -107,6 +116,13 @@ export default function DocsRoadmap() {
         plan="A pb_plugins directory beside the hooks, holding installed plugins the same way pb_hooks holds your own code. A plugin declares what it needs, adds routes, hooks, collections and panel screens, and is installed and updated by name. Core plugins ship with voidbase, official ones are ours and versioned with it, and a marketplace lists what the community has published so installing one does not mean trusting a gist."
         size="Large, and the order matters. The loader and the manifest first, because everything else is a plugin once those exist."
       />
+
+      <h2>The official plugins</h2>
+      <p>
+        Everything below is a plugin, which is why the loader comes first. These are ours: they ship with voidbase,
+        are versioned with it, and are supported like the rest of it. The order is roughly the order we would build
+        them in.
+      </p>
 
       <h3 className="why-group">Backups worth relying on</h3>
       <Item
@@ -123,7 +139,43 @@ export default function DocsRoadmap() {
         from="A pull request that changes the schema cannot be reviewed against production, and reviewing it against nothing is not reviewing it."
         now="A branch build checks the configuration it would deploy with and stops there, which is safe and unhelpful. There is nowhere to click."
         plan="A preview per pull request, in the shape that fits the change. Either a new instance for the branch, using Cloudflare's own preview deployments, seeded from the production schema so the reviewer gets a working address that disappears on merge. Or, where an instance is expensive or the data matters, the same instance with the branch's writes flagged as preview and filtered out of production reads, which makes a preview a query rather than a deploy. The plugin picks based on what the change touches, and the pull request gets the address either way."
-        size="Large, and it lands after the plugin loader, because it is the first thing worth building on top of it."
+        size="Large, and it lands after the plugin loader, because it is the one that exercises every part of it."
+      />
+
+      <h3 className="why-group">AI</h3>
+      <Item
+        title="Workers AI and Think, as official plugins"
+        from="The instance already runs on the network that serves the models, and it already runs a Durable Object for realtime. Calling a third-party API to add a chat box is the long way round."
+        now="Nothing. A hook can call Workers AI because a hook can call anything, and that is the whole of the support."
+        plan="Plugins built on Cloudflare's Think harness, which is a chat agent over Durable Object SQLite with Workers AI behind it. One puts a chat in the admin panel that can read the instance's own schema, records and logs, so finding where something lives is a question rather than a search. One does the same inside a preview environment, where the thing worth asking about is the change under review. And because a Think agent can be driven as a sub-agent over RPC, the third is a chat your own app mounts, scoped to the collections you let it read."
+        size="Medium each, and all three want the plugin loader first."
+      />
+
+      <h3 className="why-group">Payments</h3>
+      <Item
+        title="Payment providers, as official plugins"
+        from="Taking money is the first thing most projects add and the last thing anyone wants to write a second time."
+        now="Nothing in the box. The webhook endpoint is a hook you write, and the reconciliation is yours to get right."
+        plan="One plugin per provider over a shared shape, starting with Stripe, Polar and Lemon Squeezy. Each owns its webhook route, verifies signatures, and writes customers, subscriptions and payments into collections you query like any other. Changing provider becomes changing which plugin is installed, and the shared shape is what makes the next provider cheap to add."
+        size="Medium for the first. Small for each one after it."
+      />
+
+      <h3 className="why-group">Editing content</h3>
+      <Item
+        title="Rich text you edit where it renders"
+        from="Editing a markdown field in an admin panel means editing it away from the page it appears on."
+        now="The panel edits records and your site reads them. Nothing links a block on the page to the field behind it."
+        plan="A plugin that binds a block on your own site to the field it came from. A signed-in admin gets contenteditable on that block with a markdown toolbar over it, edits in place, and the save writes the field back through the same rules as any other write. The content stays markdown in a collection, so it is still queryable and still exports, and none of it turns into a document only one editor can open."
+        size="Medium. A small client script, a field-level permission check, and a toolbar."
+      />
+
+      <h3 className="why-group">Commerce</h3>
+      <Item
+        title="A shop the other plugins plug into"
+        from="Once payments, files, auth and editable content are all in the box, what is left of a shop is the part nobody enjoys building."
+        now="Nothing. You build it on collections, and everybody builds it differently."
+        plan="An official commerce plugin holding the parts that are the same everywhere: products and variants, inventory, carts, orders, tax, shipping, refunds and an audit trail. It declares its extension points, so a payment plugin supplies checkout, a shipping plugin supplies rates, and a plugin of your own supplies whatever your business does that nobody else's does."
+        size="Large, and last, because it is the one that assumes all the others exist."
       />
 
       <h2>Not on this list</h2>
@@ -137,8 +189,10 @@ export default function DocsRoadmap() {
           <Link href="/docs/why/supabase">Supabase</Link> is the answer and always will be.
         </li>
         <li>
-          <strong>Crash reporting, push notifications and analytics products.</strong> Firebase has a suite around
-          the backend. We are a backend.
+          <strong>Separate products around the backend.</strong> Firebase sells crash reporting, push notifications
+          and analytics as their own services, with their own bills and their own accounts. The plugins above are
+          code that runs inside your instance, in your account, installed when you want them. We are not building
+          the other kind.
         </li>
         <li>
           <strong>Server code in other languages.</strong> Hooks are JavaScript, because they run in the Worker
@@ -154,7 +208,7 @@ export default function DocsRoadmap() {
         </li>
       </ul>
 
-      <h2>Where the first half came from</h2>
+      <h2>Where the first section came from</h2>
       <p>
         Each item in it is a row on one of the comparison pages:{" "}
         <Link href="/docs/why/pocketbase">PocketBase</Link> and <Link href="/docs/why/convex">Convex</Link> for

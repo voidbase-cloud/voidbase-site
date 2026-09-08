@@ -38,12 +38,12 @@ export const BRANCHES: Branch[] = [
         because: "One file holding the server, the panel and the database. No npm, no build, no account.",
       },
       {
-        when: "from a terminal, here or on Cloudflare",
+        when: "from a terminal, locally or on Cloudflare",
         href: "/docs/run/npm",
         title: "With the npm CLI",
         command: "bun i -g @voidbase-cloud/voidbase",
         because:
-          "Make, list and delete instances by name, on this machine or in your own Cloudflare account. The same commands either way.",
+          "Make, list and delete instances by name. They run wherever the CLI does, on a laptop, inside a container, bundled into a desktop app, or in your own Cloudflare account. The same commands for all of them.",
       },
       {
         when: "from a dashboard, with nothing to install",
