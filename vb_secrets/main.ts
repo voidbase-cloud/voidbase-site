@@ -49,4 +49,5 @@ export default defineSecrets({
   PB_VB_VERSION: browser(string().optional(), "the voidbase version this build tracks"),
   PB_REPO_URL: browser(url().optional()),
   PB_DISCUSSIONS_URL: browser(url().optional()),
+  PB_DISCORD_URL: browser(url().optional()),
 });

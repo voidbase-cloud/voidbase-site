@@ -23,7 +23,8 @@ export default function DocsContribute() {
       <p className="docs-lead">
         voidbase is in public beta and is built in the open. The API is PocketBase's and is not moving; everything
         around it is 0.x and is. If you know backends, or Cloudflare, or just found a page here that is wrong, there
-        is something useful you can do in the next ten minutes.
+        is something useful you can do in the next ten minutes. If you would rather talk to someone first, we are
+        on <a href={SITE.discordUrl} target="_blank" rel="noreferrer noopener">Discord</a>.
       </p>
 
       <h2>The smallest thing first</h2>
@@ -102,8 +103,14 @@ export default function DocsContribute() {
       <h2>Where to talk</h2>
       <ul>
         <li>
+          <a href={SITE.discordUrl} target="_blank" rel="noreferrer noopener">Discord</a> if you want an answer the
+          same day, or you are part way through something and stuck. It is the fastest of these and the least
+          formal.
+        </li>
+        <li>
           <a href={SITE.discussionsUrl} target="_blank" rel="noreferrer noopener">Discussions</a> for questions,
-          ideas, and anything you are not sure is a bug yet.
+          ideas, and anything you are not sure is a bug yet. Slower than Discord and easier for the next person to
+          find, which is why proposals belong here rather than in a chat scroll.
         </li>
         <li>
           <a href="https://github.com/voidbase-cloud/voidbase/issues" target="_blank" rel="noreferrer noopener">Issues</a>{" "}

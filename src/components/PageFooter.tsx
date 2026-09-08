@@ -4,6 +4,7 @@ import { useTooltip } from "@/lib/useTooltip";
 
 export default function PageFooter() {
   const orgRef = useTooltip<HTMLAnchorElement>({ text: "The voidbase-cloud organization", position: "top" });
+  const discordRef = useTooltip<HTMLAnchorElement>({ text: "Join the Discord", position: "top" });
   const repoRef = useTooltip<HTMLAnchorElement>({ text: "Go to GitHub", position: "top" });
 
   return (
@@ -16,6 +17,7 @@ export default function PageFooter() {
             <Link href="/docs/pricing" className="link-item">Pricing</Link>
             <Link href="/docs/roadmap" className="link-item">Roadmap</Link>
             <Link href="/docs/contribute" className="link-item">Contribute</Link>
+            <a href={SITE.discordUrl} className="link-item" target="_blank" rel="noopener noreferrer">Discord</a>
             <a href={SITE.discussionsUrl} className="link-item" target="_blank" rel="noopener noreferrer">Discussions</a>
           </nav>
 
@@ -31,6 +33,9 @@ export default function PageFooter() {
             </a>
             <a ref={repoRef} href={SITE.repoUrl} rel="noopener noreferrer" target="_blank" className="btn btn-secondary btn-circle btn-hint social-item" aria-label="Go to GitHub">
               <i className="ri-github-line" />
+            </a>
+            <a ref={discordRef} href={SITE.discordUrl} rel="noopener noreferrer" target="_blank" className="btn btn-secondary btn-circle btn-hint social-item" aria-label="Join the voidbase Discord">
+              <i className="ri-discord-line" />
             </a>
           </div>
         </div>

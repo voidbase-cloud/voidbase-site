@@ -10,6 +10,7 @@ export const SITE = {
   pbVersion: env.PB_VERSION ?? "",
   repoUrl: env.PB_REPO_URL ?? "https://github.com/voidbase-cloud/voidbase",
   discussionsUrl: env.PB_DISCUSSIONS_URL ?? "https://github.com/voidbase-cloud/voidbase/discussions",
+  discordUrl: env.PB_DISCORD_URL ?? "https://discord.gg/zYujFvVYgq",
   jsSdkUrl: env.PB_JS_SDK_URL ?? "https://github.com/pocketbase/js-sdk",
   dartSdkUrl: env.PB_DART_SDK_URL ?? "https://github.com/pocketbase/dart-sdk",
   benchmarksUrl: env.PB_BENCHMARKS_URL ?? "",
