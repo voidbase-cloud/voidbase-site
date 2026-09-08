@@ -1,6 +1,8 @@
 // The hosted path. It exists and it works, but it is still moving, so this page says so plainly rather than
 // documenting something that will have changed by the time anyone follows it.
 import { Link } from "@void/react";
+import PluginsSoon from "@/components/PluginsSoon";
+import "@/scss/soon.scss";
 
 export default function DocsCloud() {
   return (
@@ -48,6 +50,7 @@ export default function DocsCloud() {
           <Link href="/docs/run/stack">The voidbase stack</Link> if the backend and the site are one application.
         </li>
       </ul>
+      <PluginsSoon shape="cloud" />
     </>
   );
 }

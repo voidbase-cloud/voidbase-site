@@ -101,6 +101,18 @@ export const DOCS_NAV: DocsLink[] = [
     ],
   },
   {
+    href: "/docs/templates",
+    title: "Templates",
+    icon: "ri-file-copy-2-line",
+    summary: "Start from somebody's working project, or publish one of your own.",
+  },
+  {
+    href: "/docs/plugins",
+    title: "Plugins",
+    icon: "ri-puzzle-line",
+    summary: "The design, before the code. Not built yet.",
+  },
+  {
     href: "/docs/marketplace",
     title: "Marketplace",
     icon: "ri-store-2-line",

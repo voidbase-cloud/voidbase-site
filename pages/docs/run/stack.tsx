@@ -1,5 +1,8 @@
 // The stack path: one application, site and backend, from an empty directory.
 import { Link } from "@void/react";
+import PluginsSoon from "@/components/PluginsSoon";
+import StartFromTemplate from "@/components/StartFromTemplate";
+import "@/scss/soon.scss";
 import Updating from "@/components/Updating";
 import "@/scss/updating.scss";
 import CodeBlock from "@/components/CodeBlock";
@@ -139,6 +142,9 @@ export default function DocsStack() {
           <p className="m-0">This site is built this way: the page you are reading, its API and the admin panel are one Worker.</p>
         </div>
       </div>
+      <StartFromTemplate shape="stack" />
+
+      <PluginsSoon shape="stack" />
     </>
   );
 }

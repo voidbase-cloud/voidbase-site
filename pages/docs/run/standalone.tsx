@@ -1,5 +1,7 @@
 // The shortest path to a running instance: one file, no toolchain. Real commands, copy-paste-able.
 import CodeBlock from "@/components/CodeBlock";
+import PluginsSoon from "@/components/PluginsSoon";
+import "@/scss/soon.scss";
 import { hl } from "@/lib/hl";
 import Updating from "@/components/Updating";
 import "@/scss/updating.scss";
@@ -128,6 +130,7 @@ export default function DocsStandalone() {
         <a href="/docs/run/project/hooks">pb_hooks</a> is the guide to it. When you want that code in a repository
         rather than beside a binary, <a href="/docs/run/project">a voidbase project</a> is the next page.
       </p>
+      <PluginsSoon shape="standalone" />
     </>
   );
 }

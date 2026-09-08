@@ -1,6 +1,8 @@
 // The CLI path: instances as things you name, make and throw away, locally or on Cloudflare. "Local" is kept
 // deliberately loose, because the same commands are what a laptop, a container and a bundled desktop app all use.
 import CodeBlock from "@/components/CodeBlock";
+import PluginsSoon from "@/components/PluginsSoon";
+import "@/scss/soon.scss";
 import { hl } from "@/lib/hl";
 import Updating from "@/components/Updating";
 import "@/scss/updating.scss";
@@ -162,6 +164,7 @@ export default function DocsNpm() {
         in version control rather than clicking into the panel, you want{" "}
         <a href="/docs/run/project">a voidbase project</a>. It is the same instance with a repository around it.
       </p>
+      <PluginsSoon shape="npm" />
     </>
   );
 }

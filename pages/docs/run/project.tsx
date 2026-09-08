@@ -1,6 +1,9 @@
 // The project path: a backend you keep in a repository and extend. This page is the shape and the loop; the
 // directories get a page each.
 import { Link } from "@void/react";
+import PluginsSoon from "@/components/PluginsSoon";
+import StartFromTemplate from "@/components/StartFromTemplate";
+import "@/scss/soon.scss";
 import Updating from "@/components/Updating";
 import "@/scss/updating.scss";
 import CodeBlock from "@/components/CodeBlock";
@@ -140,6 +143,9 @@ export default function DocsProject() {
         database schema in one application than keep a frontend and a backend in step,{" "}
         <Link href="/docs/run/stack">the voidbase stack</Link> is the next page.
       </p>
+      <StartFromTemplate shape="project" />
+
+      <PluginsSoon shape="project" />
     </>
   );
 }

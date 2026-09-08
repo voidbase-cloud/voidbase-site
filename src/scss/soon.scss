@@ -1,0 +1,40 @@
+// The "not built yet" sections, on the pages that tell you how to run an instance.
+//
+// They sit under real, working instructions, so they have to read as clearly unbuilt without shouting: the label in
+// the heading carries that, and a quiet left rule keeps the whole section visibly apart from the page around it.
+
+.soon,
+.from-template {
+    margin-top: 34px;
+    padding-left: 18px;
+    border-left: 2px solid var(--baseAlt2Color);
+
+    > h2 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 0;
+        padding-top: 0;
+        border-top: 0;
+    }
+
+    h3 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+}
+
+// the label is a marker, not a heading: keep it off the type scale
+.soon .label,
+.from-template .label,
+.docs-content h1 .label {
+    font-size: 11px;
+    line-height: 18px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 600;
+    flex-shrink: 0;
+}
