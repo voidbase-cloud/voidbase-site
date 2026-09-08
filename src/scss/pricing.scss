@@ -135,3 +135,121 @@
     .pricing-claim { font-size: 17px; line-height: 27px; }
     .pricing-next .btn { width: 100%; justify-content: center; }
 }
+
+// ---- the Cloudflare calculator ---------------------------------------------------------------------------------
+//
+// The page's one typographic moment is the word "Free". The calculator's answer is the second moment and has to
+// agree with it, so the figure is set in the same weight and colour and at a fraction of the size: when it reads $0
+// it is the same claim, made again with arithmetic.
+
+.pricing .cf-verdict {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px var(--baseSpacing);
+    margin: var(--smSpacing) 0 var(--baseSpacing);
+    padding: 18px 20px;
+    border: 1px solid var(--baseAlt2Color);
+    border-left: 3px solid var(--baseAlt3Color);
+    border-radius: var(--baseRadius);
+    background: var(--baseColor);
+
+    &.is-free {
+        border-left-color: var(--successColor);
+    }
+}
+
+.pricing .cf-verdict-total {
+    flex: 0 0 auto;
+    margin: 0;
+    font-size: 40px;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--txtPrimaryColor);
+    font-variant-numeric: tabular-nums;
+
+    small {
+        font-size: 14px;
+        font-weight: normal;
+        letter-spacing: 0;
+        color: var(--txtHintColor);
+    }
+    .is-free & { color: var(--successColor); }
+}
+
+.pricing .cf-verdict-say {
+    flex: 1 1 260px;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--txtHintColor);
+    strong { color: var(--txtPrimaryColor); font-weight: 600; }
+}
+
+// Each allowance drawn as how much of it this app uses. The bar is the point: it shows the crossing coming before
+// it happens, which a number on its own does not.
+.pricing .cf-allowances {
+    list-style: none;
+    margin: 0 0 var(--baseSpacing);
+    padding: 0;
+    max-width: none;
+
+    li {
+        display: grid;
+        grid-template-columns: minmax(120px, 150px) minmax(80px, 1fr) minmax(130px, 170px);
+        align-items: center;
+        gap: 12px;
+        padding: 5px 0;
+        font-size: 13px;
+    }
+    .is-over .cf-allowance-num { color: var(--warningColor); }
+}
+
+.pricing .cf-allowance-label { color: var(--txtHintColor); }
+
+.pricing .cf-allowance-bar {
+    display: block;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--baseAlt2Color);
+    overflow: hidden;
+
+    i {
+        display: block;
+        height: 100%;
+        border-radius: 3px;
+        background: var(--successColor);
+        transition: width var(--baseAnimationSpeed);
+    }
+}
+
+.pricing .cf-allowances .is-over .cf-allowance-bar i { background: var(--warningColor); }
+
+.pricing .cf-allowance-num {
+    text-align: right;
+    color: var(--txtPrimaryColor);
+    font-variant-numeric: tabular-nums;
+
+    em {
+        font-style: normal;
+        color: var(--txtDisabledColor);
+    }
+}
+
+// one card, so it should not stretch to the width of two
+.pricing .cost-cards.is-single {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 520px;
+}
+
+@media only screen and (max-width: 600px) {
+    .pricing .cf-allowances li {
+        grid-template-columns: 1fr auto;
+        gap: 4px 10px;
+    }
+    .pricing .cf-allowance-bar {
+        grid-column: 1 / -1;
+        order: 3;
+    }
+}

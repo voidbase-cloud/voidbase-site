@@ -1,0 +1,241 @@
+// The cost calculator: preset chips, sliders, the itemised cards and the assumptions panel.
+//
+// These moved out of why.scss when the pricing page grew a calculator of its own. They belong to the component
+// rather than to a page, so costUi.tsx imports this and every page that uses those parts gets the styles with them.
+
+// ---- the cost model ---------------------------------------------------------------------------------------------
+// Sliders that change two bills at once. The panel is quiet; the numbers are the loud part.
+.cost-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px 32px;
+    padding: 22px 24px;
+    margin: 0 0 20px;
+    border: 1px solid var(--baseAlt1Color);
+    border-radius: var(--baseRadius);
+    background: var(--baseColor);
+}
+
+.cost-slider {
+    display: block;
+
+    .cost-slider-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 12px;
+        font-size: 14px;
+        color: var(--txtHintColor);
+        margin-bottom: 6px;
+
+        b {
+            font-family: var(--monospaceFontFamily);
+            font-size: 15px;
+            color: var(--txtPrimaryColor);
+        }
+    }
+
+    input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--baseAlt2Color);
+        outline: none;
+
+        &::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--successColor);
+            cursor: pointer;
+            border: 0;
+        }
+        &::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--successColor);
+            cursor: pointer;
+            border: 0;
+        }
+        &:focus-visible { outline: 2px solid var(--successColor); outline-offset: 4px; }
+    }
+}
+
+.cost-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 14px;
+    margin: 0 0 36px;
+}
+
+.cost-card {
+    border: 1px solid var(--baseAlt1Color);
+    border-radius: var(--baseRadius);
+    padding: 22px 24px;
+
+    &:first-child { border-color: var(--baseAlt3Color); }
+}
+
+.cost-card-title {
+    font-size: 15px;
+    color: var(--txtHintColor);
+    margin: 0 0 4px;
+}
+
+.cost-total {
+    font-size: 42px;
+    line-height: 48px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin: 0 0 2px;
+    font-variant-numeric: tabular-nums;
+
+    small {
+        font-size: 17px;
+        font-weight: 400;
+        color: var(--txtHintColor);
+        letter-spacing: 0;
+    }
+}
+
+.cost-card-sub {
+    font-family: var(--monospaceFontFamily);
+    font-size: 13px;
+    color: var(--txtDisabledColor);
+    margin: 0 0 16px;
+}
+
+.cost-ratio {
+    display: inline-block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--warningColor);
+    margin: 0 0 14px;
+}
+
+.cost-lines {
+    margin: 0;
+    font-size: 14px;
+
+    > div {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 16px;
+        padding: 7px 0;
+        border-bottom: 1px solid #131313;
+    }
+    dt {
+        color: var(--txtHintColor);
+        span {
+            display: block;
+            font-size: 12.5px;
+            color: var(--txtDisabledColor);
+        }
+    }
+    dd {
+        margin: 0;
+        font-family: var(--monospaceFontFamily);
+        font-variant-numeric: tabular-nums;
+        color: var(--txtPrimaryColor);
+        white-space: nowrap;
+    }
+}
+
+.cost-caveat {
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--txtDisabledColor);
+    margin: 14px 0 0;
+}
+
+// preset chips: three shapes of app, so nobody has to drag five sliders to see anything
+.cost-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 14px;
+}
+
+.cost-preset {
+    border: 1px solid var(--baseAlt2Color);
+    background: var(--baseColor);
+    color: var(--txtHintColor);
+    border-radius: var(--baseRadius);
+    padding: 7px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: border-color var(--baseAnimationSpeed), color var(--baseAnimationSpeed);
+
+    &:hover { border-color: var(--baseAlt4Color); color: var(--txtPrimaryColor); }
+    &.active {
+        border-color: var(--successColor);
+        color: var(--txtPrimaryColor);
+        background: var(--successAltColor);
+    }
+}
+
+// the stacked bar on our own card: where the money actually goes
+.cost-stack {
+    display: flex;
+    height: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+    gap: 2px;
+    margin: 0 0 14px;
+
+    i { display: block; height: 100%; }
+}
+
+.cost-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 7px;
+    vertical-align: middle;
+}
+
+.cost-card.is-unpriced {
+    border-style: dashed;
+    .cost-total { color: var(--txtDisabledColor); font-size: 30px; }
+}
+
+.cost-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cost-ratio.is-cheaper { color: var(--successColor); }
+
+// the assumptions, folded away but never absent
+.cost-assumptions {
+    border: 1px solid var(--baseAlt1Color);
+    border-radius: var(--baseRadius);
+    padding: 14px 18px;
+    margin: 0 0 8px;
+
+    summary {
+        cursor: pointer;
+        font-size: 15px;
+        color: var(--txtHintColor);
+        &:hover { color: var(--txtPrimaryColor); }
+    }
+    p {
+        font-size: 14px;
+        line-height: 23px;
+        color: var(--txtDisabledColor);
+        margin: 12px 0 0;
+        max-width: none;
+    }
+}
+
+@media only screen and (max-width: 700px) {
+    .cost-total { font-size: 34px; line-height: 40px; }
+}

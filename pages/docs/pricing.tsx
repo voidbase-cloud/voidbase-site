@@ -4,6 +4,7 @@
 // bill that is not ours, and how a free thing pays for itself. The mechanics of the last part live on the roadmap,
 // because someone asking what voidbase costs does not want to read about revenue share.
 import { Link } from "@void/react";
+import CloudflareCost from "@/components/CloudflareCost";
 import "@/scss/pricing.scss";
 
 function Fact({ title, children }: { title: string; children: React.ReactNode }) {
@@ -44,11 +45,12 @@ export default function DocsPricing() {
 
       <Fact title="You might still get a bill, and it will not be ours">
         Cloudflare's, if you outgrow their free tier. A project with no users costs nothing there; a project with
-        users pays for the users. We have priced that against every other backend we could get real rates for, with a
-        calculator on each page, because "it depends" is not an answer. Start with{" "}
-        <Link href="/docs/why/supabase">Supabase</Link> or <Link href="/docs/why/firebase">Firebase</Link> if you are
-        coming from one of those.
+        users pays for the users. Rather than leave that as "it depends", the calculator below works out what they
+        would charge and what would tip you over. To compare it against what you are paying now, every{" "}
+        <Link href="/docs/why">comparison page</Link> ends with the same calculator priced against that backend.
       </Fact>
+
+      <CloudflareCost />
 
       <h2>Then how does this pay for itself?</h2>
       <p className="pricing-lead">

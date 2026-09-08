@@ -74,6 +74,49 @@ export const CF = {
   perMillionDoRequests: 0.15,
 };
 
+// What Cloudflare gives away before any of the above applies. Read off the same four pages as the paid rates on
+// 8 September 2026, and every paid rate on those pages matched the constants above, which is some evidence the
+// numbers here are being read correctly. The daily ones are daily: Cloudflare resets them each day rather than
+// pooling them over a month, so a monthly figure has to be divided by thirty before it is compared.
+export const CF_FREE = {
+  requestsPerDay: 100_000,
+  d1RowsReadPerDay: 5_000_000,
+  d1RowsWrittenPerDay: 100_000,
+  d1StorageGb: 5,
+  doRequestsPerDay: 100_000,
+  r2StorageGb: 10,
+};
+
+export interface Allowance {
+  label: string;
+  used: number;
+  allowed: number;
+  /** the period the allowance covers, said the way the reader would say it */
+  per: string;
+  /** what the two numbers are counted in, where they are not a plain count */
+  unit?: string;
+}
+
+/**
+ * Whether an app of this size costs nothing at all, and how much room is left in each allowance. This is the
+ * question the pricing page raises and never answers: a bill only starts when one of these runs out, and knowing
+ * which one runs out first is more use than knowing the bill.
+ */
+export function freePlan(u: Usage): { fits: boolean; allowances: Allowance[] } {
+  const daily = (perMonth: number) => perMonth / 30;
+  const apiRequests = u.reads + u.writes;
+  const rowsWritten = u.writes * ASSUME.rowsPerWrite;
+  const allowances: Allowance[] = [
+    { label: "Worker requests", used: daily(apiRequests + u.realtime), allowed: CF_FREE.requestsPerDay, per: "a day" },
+    { label: "Rows read", used: daily(u.reads * ASSUME.rowsPerRead), allowed: CF_FREE.d1RowsReadPerDay, per: "a day" },
+    { label: "Rows written", used: daily(rowsWritten), allowed: CF_FREE.d1RowsWrittenPerDay, per: "a day" },
+    { label: "Realtime fanout", used: daily(u.realtime * ASSUME.pushesPerConnectionPerDay * 30), allowed: CF_FREE.doRequestsPerDay, per: "a day" },
+    { label: "Database storage", used: (rowsWritten / 1_000_000) * ASSUME.dbGbPerMillionRows, allowed: CF_FREE.d1StorageGb, per: "in total", unit: "GB" },
+    { label: "File storage", used: u.storage, allowed: CF_FREE.r2StorageGb, per: "a month", unit: "GB" },
+  ];
+  return { fits: allowances.every((a) => a.used <= a.allowed), allowances };
+}
+
 export function voidbaseCost(u: Usage): Estimate {
   const apiRequests = u.reads + u.writes;
   const requests = apiRequests + u.realtime; // a websocket connection is one request; its messages are not
