@@ -68,29 +68,29 @@ export default function DocsRoadmap() {
 
       <h3 className="why-group">Offline</h3>
       <Item
-        title="Writes that survive a tunnel"
+        title="Writes that survive a tunnel, as a client plugin"
         from="Firebase caches writes on the device and reconciles them when the network returns, and has done for a decade."
         now="Nothing. A request that fails is a request your code has to handle."
-        plan="Two pieces, in order. A service worker that queues mutations and replays them on reconnect, which needs no change to the API and works with the existing SDK. Then a client of our own that reads through a local store so a screen renders before the network answers, which is the part that needs the typed client below to exist first."
-        size="Medium for the queue, large for the local store. The queue is worth shipping alone, and the plugin that wraps it into an installable app is further down this page."
+        plan="A plugin on the typed client above rather than a feature inside it, because offline is exactly the shape that surface is for: it sits in the request path, holds state of its own, and most applications do not want it. Two pieces, in order. A queue that takes mutations the network refused and replays them on reconnect, which needs no change to the API. Then reads through a local store, so a screen renders before the network answers. Being a plugin is what makes the second piece safe to attempt: an application that only wants the queue installs only the queue, and one that wants neither carries neither."
+        size="Medium for the queue, large for the local store, and both wait on the client having a plugin surface at all. The installable-app plugin further down this page wraps whichever of them you have."
       />
 
       <h3 className="why-group">Types</h3>
       <Item
-        title="A typed client generated from your collections"
+        title="A typed client, and a client that takes plugins"
         from="Convex types the whole path from schema to component, so a rename breaks the build. Ours breaks at the call instead."
-        now="The PocketBase SDK is typed, but it knows nothing about your collections: a record is a bag of fields, and a renamed field is a runtime surprise."
-        plan="Generate a typed client from the collections the instance actually has, the way the schema already generates the API. A command writes it, the build refreshes it, and a rename becomes a compile error. The collection definitions are already data on the server, so nothing new has to be described."
-        size="Medium, and it does not touch the server."
+        now="The PocketBase SDK is typed, but it knows nothing about your collections: a record is a bag of fields, and a renamed field is a runtime surprise. It is also closed to extension, so anything you want around a request you wrap by hand, once per project."
+        plan="Generate a typed client from the collections the instance actually has, the way the schema already generates the API. A command writes it, the build refreshes it, and a rename becomes a compile error. The collection definitions are already data on the server, so nothing new has to be described. Then give that client the same thing the server is getting: a plugin surface. A client plugin sits in the request path, can add methods, and can hold state of its own, which is what turns the next item from a feature we would have to build into something that can be written by us or by anyone else. Caching, retries, telemetry and offline are all the same shape once that exists."
+        size="Medium for the generator, medium again for the plugin surface, and neither touches the server."
       />
 
       <h3 className="why-group">Operations</h3>
       <Item
-        title="Cloudflare's observability, on by default"
+        title="Cloudflare's observability, as a core plugin"
         from="Every hosted competitor shows you what your backend is doing. Ours makes you go and look."
         now="Errors reach Workers Logs if your code logs them, and the platform's own request data is there for anyone who opens the dashboard. Neither is set up for you or surfaced anywhere."
-        plan="Turn on Workers Observability at deploy so logs and traces are retained without being asked for, sample the request path into an Analytics Engine dataset the deploy already knows how to create, and put the instance's own numbers behind the admin panel: requests, errors, slow endpoints, and which hooks are costing the CPU."
-        size="Small for the wiring, medium for the panel screens."
+        plan="Turn on Workers Observability at deploy so logs and traces are retained without being asked for, sample the request path into an Analytics Engine dataset the deploy already knows how to create, and put the instance's own numbers behind the admin panel: requests, errors, slow endpoints, and which hooks are costing the CPU. All of it as a core plugin, installed and on by default, which is the second of those after auth. Core because an instance you cannot see into is one you cannot operate, and a plugin because somebody who would rather send all of this somewhere else should be able to remove ours and install theirs against the same interface rather than fork the server."
+        size="Small for the wiring, medium for the panel screens, and it lands after the loader like everything else that is a plugin."
       />
 
       <h2>Where we are taking it</h2>
@@ -140,7 +140,7 @@ export default function DocsRoadmap() {
         title="Core plugins, installed and on by default"
         from="Auth leaving the core creates a problem the loader alone does not solve: an instance with no auth plugin is not a lean instance, it is a broken one. Some plugins are not optional in any useful sense."
         now="Nothing, because there are no plugins. The distinction matters now rather than later, because auth is the first thing that will need it and the loader has to know about the tier before it can carry auth."
-        plan="Three tiers, and they differ in what happens if you do nothing. A core plugin is installed and enabled by default and comes with voidbase, because the instance is not usable without it: auth is the first, and there will not be many. An official plugin is ours and supported and versioned with voidbase, but it arrives because you asked for it. A community plugin is somebody else's, from our marketplace or a registry of your own. Removing a core plugin has to be possible, because replacing auth is the entire point of moving it out, but it has to be a thing you did on purpose rather than a thing that happened while you were installing something else, and the instance should say plainly what it is now missing."
+        plan="Three tiers, and they differ in what happens if you do nothing. A core plugin is installed and enabled by default and comes with voidbase, because the instance is not usable without it: auth and observability are the two, one because nothing works without it and the other because an instance you cannot see into is one you cannot operate, and the list should stay about that short. An official plugin is ours and supported and versioned with voidbase, but it arrives because you asked for it. A community plugin is somebody else's, from our marketplace or a registry of your own. Removing a core plugin has to be possible, because replacing auth is the entire point of moving it out, but it has to be a thing you did on purpose rather than a thing that happened while you were installing something else, and the instance should say plainly what it is now missing."
         size="Small as code and worth settling early, because every later decision about defaults, upgrades and what a bare instance does hangs off it."
       />
 
@@ -235,9 +235,9 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Installable, and usable on a bad connection</h3>
       <Item
         title="A progressive web app, and the service worker under it"
-        from="The offline item in the first section is the engine. This is everything you would otherwise assemble around it by hand, once per project, from a manifest you copied off a blog post."
+        from="The offline plugin in the first section is the engine. This is everything you would otherwise assemble around it by hand, once per project, from a manifest you copied off a blog post."
         now="Nothing. A voidbase app is a website. Making it installable, cacheable and useful on a train is entirely yours."
-        plan="A plugin that writes the manifest, the icon set and the service worker from what the app already declares, registers it with the parts everyone gets wrong handled: the update prompt, the skip-waiting path, and a way to unregister, because a stuck service worker is the worst bug in this area and the hardest to talk a user through. It precaches the shell and reuses the mutation queue from the offline item rather than inventing a second one, so a write made with no signal replays through the same path whichever page queued it."
+        plan="A plugin that writes the manifest, the icon set and the service worker from what the app already declares, registers it with the parts everyone gets wrong handled: the update prompt, the skip-waiting path, and a way to unregister, because a stuck service worker is the worst bug in this area and the hardest to talk a user through. It precaches the shell and reuses the offline plugin's queue rather than inventing a second one, so a write made with no signal replays through the same path whichever page queued it. Two plugins on two different surfaces, one on the client and one on the server side of the build, which is a reasonable early test of whether those surfaces compose."
         size="Medium, and it lands after the offline queue. Without that queue it is a caching layer with a better name."
       />
 
