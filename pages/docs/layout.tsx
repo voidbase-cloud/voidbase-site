@@ -5,8 +5,10 @@
 // The sidebar's markup is the site's existing sidebar markup, so it needs no styles of its own.
 import type { ReactNode } from "react";
 import { Link, useRouter } from "@void/react";
+import EditThisPage from "@/components/EditThisPage";
 import { DOCS_NAV, locate, samePath, type DocsLink } from "@/lib/docsNav";
 import "@/scss/docs.scss";
+import "@/scss/edit-page.scss";
 
 function Item({ link, path }: { link: DocsLink; path: string }) {
   const here = samePath(link.href, path);
@@ -69,6 +71,8 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
             )}
           </nav>
         )}
+
+        <EditThisPage path={path} />
       </div>
     </>
   );

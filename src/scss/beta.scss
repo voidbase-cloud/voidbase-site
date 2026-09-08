@@ -1,0 +1,66 @@
+// The public beta bar, above the header on every page, and the channel mark beside the version in the logo.
+//
+// It sits on every page of the site, so it has to survive being read a hundred times: one line, no colour of its
+// own beyond the mark, and nothing that moves. The mark carries the whole signal.
+
+.beta-banner {
+    border-bottom: 1px solid var(--baseAlt2Color);
+    background: var(--baseAlt1Color);
+    font-size: 13px;
+    line-height: 18px;
+
+    .wrapper {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-top: 7px;
+        padding-bottom: 7px;
+    }
+}
+
+.beta-banner-mark {
+    flex-shrink: 0;
+    font-family: var(--monospaceFontFamily);
+    font-size: 10px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--warningColor);
+    border: 1px solid var(--warningColor);
+    border-radius: 3px;
+    padding: 1px 6px;
+}
+
+.beta-banner-txt {
+    color: var(--txtHintColor);
+    min-width: 0;
+}
+
+.beta-banner-link {
+    flex-shrink: 0;
+    margin-left: auto;
+    color: var(--txtHintColor);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+
+    &:hover { color: var(--txtPrimaryColor); }
+}
+
+// the channel beside the version in the logo, styled as a quieter sibling of .version
+.page-header .logo .channel {
+    font-family: var(--monospaceFontFamily);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--warningColor);
+    border: 1px solid var(--warningColor);
+    border-radius: 3px;
+    padding: 0 4px;
+    margin-left: 4px;
+    line-height: 15px;
+}
+
+@media only screen and (max-width: 700px) {
+    // on a phone the sentence is the thing worth keeping; the call to action is one tap away in the footer anyway
+    .beta-banner-link { display: none; }
+    .beta-banner-txt { font-size: 12px; }
+}

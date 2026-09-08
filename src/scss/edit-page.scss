@@ -1,0 +1,63 @@
+// The "improve this page" card under every documentation page. It sits after the pager, so it is the last thing on
+// the page and has to look like an invitation rather than another navigation control.
+
+.edit-page {
+    margin-top: 30px;
+    padding: 18px 20px;
+    border: 1px solid var(--baseAlt1Color);
+    border-radius: var(--baseRadius);
+    background: var(--baseAlt1Color);
+}
+
+.edit-page-head {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 14px;
+
+    > i {
+        color: var(--successColor);
+        font-size: 20px;
+        line-height: 24px;
+        flex-shrink: 0;
+    }
+    strong { color: var(--txtPrimaryColor); }
+    p {
+        margin: 4px 0 0;
+        color: var(--txtHintColor);
+        font-size: 14px;
+        line-height: 22px;
+        max-width: 68ch;
+    }
+}
+
+.edit-page-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding: 5px 10px;
+    border: 1px solid var(--baseAlt2Color);
+    border-radius: var(--baseRadius);
+    background: var(--baseColor);
+    color: var(--txtHintColor);
+    cursor: pointer;
+    transition: color var(--baseAnimationSpeed), border-color var(--baseAnimationSpeed);
+
+    code {
+        background: none;
+        padding: 0;
+        font-size: 13px;
+        color: inherit;
+    }
+    i { font-size: 14px; }
+
+    &:hover { color: var(--txtPrimaryColor); border-color: var(--baseAlt3Color); }
+    &.is-copied { color: var(--successColor); border-color: var(--successColor); }
+}
+
+.edit-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}

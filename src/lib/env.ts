@@ -3,7 +3,10 @@
 const env = import.meta.env as unknown as Record<string, string | undefined>;
 
 export const SITE = {
-  vbVersion: env.PB_VB_VERSION ?? "0.1.0",
+  // PB_VB_VERSION is set by the deploy; the fallback is here so a dev server and a fork show something true rather
+  // than a number nobody updated. A version with a prerelease part ("0.9.0-beta") is what puts the beta mark in the
+  // header and the banner on every page, so going stable is a version bump and nothing else.
+  vbVersion: env.PB_VB_VERSION ?? "0.9.0-beta",
   pbVersion: env.PB_VERSION ?? "",
   repoUrl: env.PB_REPO_URL ?? "https://github.com/voidbase-cloud/voidbase",
   discussionsUrl: env.PB_DISCUSSIONS_URL ?? "https://github.com/voidbase-cloud/voidbase/discussions",
@@ -13,6 +16,12 @@ export const SITE = {
   releasesUrl: env.PB_GITHUB_RELEASES_URL ?? "",
   godocUrl: env.PB_GODOC_URL ?? "",
 } as const;
+
+/** "0.9.0-beta" split into the number and the channel; channel is empty once a release has no prerelease part. */
+export const RELEASE = (() => {
+  const [number, ...rest] = SITE.vbVersion.split("-");
+  return { number: number ?? SITE.vbVersion, channel: rest.join("-").replace(/\.\d+$/, "") };
+})();
 
 /** the release downloads the landing page links to */
 export const DOWNLOADS = {

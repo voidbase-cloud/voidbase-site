@@ -1,7 +1,7 @@
 import { Link } from "@void/react";
 import CloudflareSignIn from "@/components/CloudflareSignIn";
 import Dropdown from "@/components/Dropdown";
-import { SITE } from "@/lib/env";
+import { RELEASE, SITE } from "@/lib/env";
 
 export interface PageHeaderProps { compact?: boolean }
 
@@ -15,7 +15,8 @@ export default function PageHeader({ compact = false }: PageHeaderProps) {
           <Link href="/" className={`logo${compact ? " logo-sm" : ""}`} title={`voidbase ${SITE.vbVersion}${SITE.pbVersion ? ` · PocketBase ${SITE.pbVersion} API` : ""}`}>
             <img src="/images/logo.svg" alt="voidbase logo" width="40" height="40" />
             <span className="txt">void<strong>base</strong></span>
-            <span className="version">{SITE.vbVersion}</span>
+            <span className="version">{RELEASE.number}</span>
+            {RELEASE.channel && <span className="channel">{RELEASE.channel}</span>}
           </Link>
         </div>
 

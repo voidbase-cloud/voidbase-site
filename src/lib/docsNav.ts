@@ -45,6 +45,12 @@ export const DOCS_NAV: DocsLink[] = [
     summary: "What is coming, and what is deliberately not.",
   },
   {
+    href: "/docs/contribute",
+    title: "How to contribute",
+    icon: "ri-git-pull-request-line",
+    summary: "Where help matters most, and how to fix a page in about a minute.",
+  },
+  {
     href: "/docs/connect/sdk",
     title: "Connect to an instance",
     icon: "ri-plug-line",

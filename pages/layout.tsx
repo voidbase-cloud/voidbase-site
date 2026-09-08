@@ -2,6 +2,8 @@
 // its own layout (pages/_layouts/blank.tsx), the way the SvelteKit site's (blank) group did.
 import { useEffect, type ReactNode } from "react";
 import "@/scss/main.scss";
+import "@/scss/beta.scss";
+import BetaBanner from "@/components/BetaBanner";
 import PageFooter from "@/components/PageFooter";
 import PageHeader from "@/components/PageHeader";
 import ScrollToTop from "@/components/ScrollToTop";
@@ -22,6 +24,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   return (
     <>
+      <BetaBanner />
       <PageHeader compact />
       <main className="wrapper wrapper-lg page-content-wrapper">{children}</main>
       <PageFooter />

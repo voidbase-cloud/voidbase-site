@@ -13,6 +13,8 @@ export default function PageFooter() {
           <nav className="footer-col links">
             <Link href="/docs" className="link-item">Docs</Link>
             <Link href="/docs/why" className="link-item">Why</Link>
+            <Link href="/docs/roadmap" className="link-item">Roadmap</Link>
+            <Link href="/docs/contribute" className="link-item">Contribute</Link>
             <a href={SITE.discussionsUrl} className="link-item" target="_blank" rel="noopener noreferrer">Discussions</a>
           </nav>
 
