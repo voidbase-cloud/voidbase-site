@@ -110,67 +110,95 @@ body:has(.scroll-top-active) .page-header {
     margin-top: auto;
     background: var(--baseAlt1Color);
 
-    .primary-bar {
-        display: flex;
+    // Four tracks: the brand block anchors the left, three groups of links sit beside it. Each group is four rows,
+    // which is what keeps this footer the height of a footer rather than the height of a page.
+    .footer-top {
+        display: grid;
+        grid-template-columns: minmax(230px, 1.35fr) repeat(3, minmax(130px, 1fr));
+        gap: var(--baseSpacing);
         width: 100%;
-        padding: var(--smSpacing) 0;
-        font-size: var(--lgFontSize);
-        gap: var(--smSpacing) var(--baseSpacing);
-        .link-item {
-            display: flex;
-            gap: 5px;
-            align-items: center;
-            width: 100%;
-            min-width: 200px;
-            padding: 10px 10px;
-            margin: 10px 0;
-            border-radius: var(--baseRadius);
-            outline: 0;
-            user-select: none;
-            text-decoration: none;
-            transition: background var(--baseAnimationSpeed);
-            &:hover,
-            &:focus {
-                background: var(--baseAlt2Color);
-            }
-            &:active {
-                background: var(--baseAlt3Color);
-            }
-        }
-        .footer-col.socials {
-            position: relative;
-            display: flex;
-            margin-left: auto;
-            text-align: right;
-            align-items: flex-end;
-            justify-content: flex-end;
-            gap: var(--xsSpacing);
-            .social-item {
-                i {
-                    font-size: 1.5rem;
-                }
-            }
-        }
-        .watermark-logo {
-            position: absolute;
-            right: 0;
-            top: 15px;
-            font-size: 18px;
-            opacity: 0.5;
-            color: var(--txtDisabledColor);
-            user-select: none;
-        }
+        padding: 30px 0 26px;
     }
+
+    .footer-brand {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        max-width: 260px;
+    }
+
+    .footer-mark {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 6px;
+        font-size: 19px;
+        line-height: 1;
+        color: var(--txtPrimaryColor);
+        text-decoration: none;
+        strong { font-weight: bold; }
+        &:hover { color: var(--txtPrimaryColor); }
+    }
+
+    .footer-version {
+        font-family: var(--monospaceFontFamily);
+        font-size: 12px;
+        color: var(--txtDisabledColor);
+    }
+
+    .footer-what {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--txtHintColor);
+    }
+
+    .footer-socials {
+        display: flex;
+        gap: 8px;
+        margin-top: 2px;
+    }
+
+    .footer-group {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 9px;
+    }
+
+    // the same eyebrow the pricing page sets its own label in, so the device belongs to this site
+    .footer-label {
+        margin: 0 0 3px;
+        padding: 0;
+        border: 0;
+        font-family: var(--monospaceFontFamily);
+        font-size: 11px;
+        font-weight: normal;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--txtDisabledColor);
+    }
+
+    .footer-link {
+        font-size: 14px;
+        line-height: 1.3;
+        color: var(--txtHintColor);
+        text-decoration: none;
+        transition: color var(--baseAnimationSpeed);
+        &:hover,
+        &:focus-visible { color: var(--txtPrimaryColor); }
+    }
+
     .credits-bar {
         display: flex;
         flex-direction: column;
         gap: 4px;
         width: 100%;
-        font-size: 0.9em;
-        line-height: 1.5;
+        font-size: 13px;
+        line-height: 1.55;
         color: var(--txtHintColor);
         border-top: 1px solid var(--baseAlt2Color);
-        padding: var(--smSpacing) 0;
+        padding: 14px 0;
         a {
             color: inherit;
             text-decoration: underline;
@@ -186,8 +214,9 @@ body:has(.scroll-top-active) .page-header {
         width: 100%;
         color: var(--txtHintColor);
         border-top: 1px solid var(--baseAlt2Color);
-        padding: var(--smSpacing) 0;
-        gap: var(--smSpacing) var(--baseSpacing);
+        padding: 12px 0 16px;
+        gap: 6px var(--smSpacing);
+        font-size: 12.5px;
     }
     // the fork credit is a fact about the design, not about who builds voidbase, so it reads a step back from the
     // one above it
@@ -221,29 +250,23 @@ body:has(.scroll-top-active) .page-header {
         padding-bottom: 56px;
     }
 
+    @media only screen and (max-width: 460px) {
+        .footer-top {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
     // responsive styles
     @media only screen and (max-width: 700px) {
-        .primary-bar {
-            flex-wrap: wrap;
-            gap: var(--xsSpacing);
-            .footer-col.socials {
-                width: 100%;
-                margin-top: 10px;
-                gap: var(--smSpacing);
-                justify-content: start;
-                text-align: left;
-            }
-            .footer-col.links {
-                flex-basis: 0;
-                flex-grow: 1;
-                width: 1px;
-                .link-item {
-                    min-width: 0;
-                }
-            }
-            .watermark-logo {
-                display: none;
-            }
+        .footer-top {
+            // the brand block takes the full width and the three groups share the row under it
+            grid-template-columns: repeat(3, minmax(100px, 1fr));
+            gap: var(--smSpacing) var(--xsSpacing);
+            padding: 24px 0 20px;
+        }
+        .footer-brand {
+            grid-column: 1 / -1;
+            max-width: none;
         }
     }
 }
