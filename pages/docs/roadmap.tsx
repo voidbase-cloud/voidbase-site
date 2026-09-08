@@ -187,6 +187,24 @@ export default function DocsRoadmap() {
         size="Small to write, and the reason it is on this list is not its size. CORS at origin * is safe today only because authentication is a bearer token: nothing a browser sends automatically can carry it. Auth becoming a plugin means somebody can install one that uses cookies, and Better Auth is session-first by default, at which point a wildcard origin and an automatic credential are a CSRF hole that arrived without anybody deciding to open it. This lands with that item, not after it."
       />
 
+      <h3 className="why-group">A domain of your own</h3>
+      <Item
+        title="Canonical domain, set up for you when the zone is already on the account"
+        from="An instance answers on a workers.dev subdomain until somebody does the DNS themselves. When the domain is registered with Cloudflare and its zone is on the same account, every step of that is an API call nobody should be typing."
+        now="The deploy attaches whatever hostnames VOIDBASE_DEPLOY_DOMAIN lists, finding the zone by walking the name's labels up, and Cloudflare adds the record and the certificate. It attaches them equally: nothing decides which of example.com and www.example.com is the real one, nothing redirects between them, and nothing waits for the certificate before saying it is done."
+        plan="A plugin that takes a domain and finishes the job. Pick the canonical hostname, attach it, attach the others alongside it, and permanently redirect them to the one that counts, so links and search engines see one address rather than two identical sites. Wait for the certificate and say when it is actually serving rather than when the API accepted the request. Where the zone is on the same account, none of that needs a person: the records, the certificate and the redirects are all reachable, and the plugin should ask for a domain and nothing else."
+        size="Small, and mostly the parts that are easy to get subtly wrong: which hostname is canonical, that the redirect is permanent, and that detaching one removes its DNS record, which is a thing worth saying out loud before somebody discovers it during a rename."
+      />
+
+      <h3 className="why-group">Email from that domain</h3>
+      <Item
+        title="Sending through Cloudflare Email Service, on the domain you just set up"
+        from="A backend sends password resets, verification links and email changes. Sending them from a domain with no SPF, no DKIM and no DMARC is sending them to spam folders, and that is a thing nobody discovers until users say they never got the mail."
+        now="A real SMTP client over Cloudflare TCP sockets, with implicit TLS or STARTTLS and AUTH PLAIN or LOGIN. It works, and it asks you to bring a mail server, its credentials, and every deliverability record yourself. Nothing about running on Cloudflare helps."
+        plan="Use Cloudflare's own Email Service instead, which wants exactly what the item above already arranged: a domain whose zone is on the account and whose DNS Cloudflare runs. Onboarding it writes the SPF, DKIM and DMARC records itself, which is the whole deliverability problem solved by the thing that already has the authority to solve it. The Worker gets a send_email binding, the plugin points the instance's mail at it, and the sender address is restricted to the domain rather than left open. SMTP stays for anyone who has a mail server they trust and would rather use it."
+        size="Small if Email Service is available to the account, and it is the pair to the domain plugin rather than a separate errand: one asks for a domain, the other makes mail from that domain arrive. Worth checking its availability before promising it, because it is new."
+      />
+
       <h3 className="why-group">Backups worth relying on</h3>
       <Item
         title="Enterprise backup, as an official plugin"
