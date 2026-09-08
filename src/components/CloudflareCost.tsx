@@ -47,7 +47,7 @@ export default function CloudflareCost() {
 
       <div className={`cf-verdict${fits ? " is-free" : ""}`}>
         <p className="cf-verdict-total">
-          {fits ? "$0" : `$${bill.total.toFixed(2)}`}
+          {`$${bill.total.toFixed(2).replace(/\.00$/, "")}`}
           <small>/month</small>
         </p>
         <p className="cf-verdict-say">
@@ -94,12 +94,12 @@ export default function CloudflareCost() {
         })}
       </ul>
 
-      <h3>The bill, once you are past it</h3>
+      <h3>{fits ? "What it would be itemised as" : "The bill, once you are past it"}</h3>
       <div className="cost-cards is-single">
         <Card
           title="Your Cloudflare account"
           mark="cloudflare"
-          sub="Workers Paid, D1, R2, Durable Objects"
+          sub={`${fits ? "Workers Free" : "Workers Paid"}, D1, R2, Durable Objects`}
           estimate={bill}
           stacked
         />

@@ -74,7 +74,9 @@ export function Sliders({ index, onChange, showMau = true }: { index: Index; onC
 export function Card({ title, mark, sub, estimate, compare, stacked }: {
   title: string; mark?: string; sub: string; estimate: Estimate; compare?: number; stacked?: boolean;
 }) {
+  // a multiple of zero says nothing, so a rival priced against a free voidbase says the plain thing instead
   const ratio = compare && compare > 0 ? estimate.total / compare : null;
+  const freeAgainst = compare === 0 && estimate.total > 0;
   const paid = estimate.lines.filter((l) => l.amount > 0);
   const sum = paid.reduce((a, l) => a + l.amount, 0) || 1;
   return (
@@ -84,6 +86,7 @@ export function Card({ title, mark, sub, estimate, compare, stacked }: {
       <p className="cost-card-sub">{sub}</p>
       {ratio && ratio > 1.05 && <p className="cost-ratio">{ratio.toFixed(1)}× the voidbase bill</p>}
       {ratio && ratio < 0.95 && <p className="cost-ratio is-cheaper">{(1 / ratio).toFixed(1)}× cheaper than voidbase</p>}
+      {freeAgainst && <p className="cost-ratio">voidbase is free at this size</p>}
       {stacked && (
         <div className="cost-stack" aria-hidden="true">
           {paid.map((l, n) => (

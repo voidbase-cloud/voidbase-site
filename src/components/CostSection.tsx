@@ -2,9 +2,10 @@
 // rival to price against and this does the rest, so the interface is built once rather than six times. The presets,
 // the sliders and the card are shared with the pricing page's calculator and live in costUi.tsx.
 import { useMemo, useState } from "react";
+import { Link } from "@void/react";
 import ProductMark from "@/components/ProductMark";
 import { Card, PRESETS, Presets, Sliders, STEPS, type Index } from "@/components/costUi";
-import { ASSUME, OUR_SOURCES, RIVALS, voidbaseCost, type Usage } from "@/lib/costModel";
+import { ASSUME, CF_FREE, OUR_SOURCES, RIVALS, voidbaseCost, type Usage } from "@/lib/costModel";
 
 export default function CostSection({ product }: { product: string }) {
   const rival = RIVALS[product];
@@ -34,7 +35,13 @@ export default function CostSection({ product }: { product: string }) {
       <Sliders index={i} onChange={setI} />
 
       <div className="cost-cards">
-        <Card title="voidbase, on your own Cloudflare account" mark="voidbase" sub="Workers Paid, D1, R2, Durable Objects" estimate={ours} stacked />
+        <Card
+          title="voidbase, on your own Cloudflare account"
+          mark="voidbase"
+          sub={`${ours.total === 0 ? "Workers Free" : "Workers Paid"}, D1, R2, Durable Objects`}
+          estimate={ours}
+          stacked
+        />
         {theirs ? (
           <Card title={`The same app on ${rival.name}`} mark={product} sub={rival.plan} estimate={theirs} compare={ours.total} />
         ) : (
@@ -57,6 +64,16 @@ export default function CostSection({ product }: { product: string }) {
           connection is billed as one request and the messages over it are not, and a hibernating connection bills no
           compute. Monthly active users are an authentication headcount: voidbase has no per-user charge at all,
           because signing in is an ordinary request.
+        </p>
+        <p>
+          The $5 Workers Paid minimum is not a floor. An app inside Cloudflare's free allowances costs nothing at
+          all, and the column says $0 when it is: {CF_FREE.requestsPerDay.toLocaleString("en-US")} Worker requests a
+          day, {(CF_FREE.d1RowsReadPerDay / 1_000_000).toFixed(0)}M rows read and{" "}
+          {CF_FREE.d1RowsWrittenPerDay.toLocaleString("en-US")} written,{" "}
+          {CF_FREE.doRequestsPerDay.toLocaleString("en-US")} durable object requests, {CF_FREE.d1StorageGb}GB of
+          database and {CF_FREE.r2StorageGb}GB of files. The first of those to run out moves the account to Workers
+          Paid, and the whole bill starts there.{" "}
+          <Link href="/docs/pricing#calculator">The pricing page</Link> draws how much room is left in each.
         </p>
         <p>
           Rates as of 8 September 2026, from{" "}

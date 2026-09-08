@@ -117,7 +117,29 @@ export function freePlan(u: Usage): { fits: boolean; allowances: Allowance[] } {
   return { fits: allowances.every((a) => a.used <= a.allowed), allowances };
 }
 
+/**
+ * What Cloudflare would charge for an app of this size.
+ *
+ * The $5 Workers Paid minimum is not a floor. It is what you start paying once you leave the free plan, and until
+ * then the answer is nothing at all: this site's own account runs several instances and a CI pipeline for $0. A
+ * model that opened at $5 was wrong about every small app, on this page and on all six comparison pages, so the
+ * free plan is checked first and the paid rates only apply past it.
+ */
 export function voidbaseCost(u: Usage): Estimate {
+  const free = freePlan(u);
+  if (free.fits) {
+    const room = (a: Allowance) => `${Math.round((a.used / a.allowed) * 100)}% of the free allowance`;
+    return {
+      total: 0,
+      lines: [
+        { label: "Workers Free", detail: "no account minimum", amount: 0 },
+        ...free.allowances.map((a) => ({ label: a.label, detail: room(a), amount: 0 })),
+      ],
+      caveat:
+        "Nothing is billed at this size: every one of these is inside what Cloudflare gives away. The first of them to run out puts the account on Workers Paid, and the whole bill starts there rather than just that line.",
+    };
+  }
+
   const apiRequests = u.reads + u.writes;
   const requests = apiRequests + u.realtime; // a websocket connection is one request; its messages are not
   const cpuMs = apiRequests * ASSUME.cpuMsPerRequest;
