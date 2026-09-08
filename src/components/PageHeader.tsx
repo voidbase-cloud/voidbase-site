@@ -36,6 +36,7 @@ export default function PageHeader({ compact = false }: PageHeaderProps) {
             <Link href="why" className="dropdown-item">Why</Link>
             <Link href="/docs/pricing" className="dropdown-item">Pricing</Link>
             <Link href="/cloud" className="dropdown-item">Cloud</Link>
+            <Link href="/docs/run/project" className="dropdown-item">Get it running</Link>
             <a href={SITE.discordUrl} className="dropdown-item" target="_blank" rel="noreferrer noopener">Discord</a>
             <a href={SITE.discussionsUrl} className="dropdown-item" target="_blank" rel="noreferrer noopener">Discussions</a>
             <a href={SITE.npmUrl} className="dropdown-item" target="_blank" rel="noreferrer noopener">npm package</a>
@@ -47,6 +48,9 @@ export default function PageHeader({ compact = false }: PageHeaderProps) {
             <Link href="/docs" className="btn btn-secondary">Docs</Link>
             <Link href="/docs/why" className="btn btn-secondary">Why</Link>
             <Link href="/docs/pricing" className="btn btn-secondary">Pricing</Link>
+            <Link href="/docs/run/project" prefetch="hover" className="btn btn-circle btn-secondary" title="Get voidbase running">
+              <i className="ri-download-2-line" />
+            </Link>
             <a href={SITE.discordUrl} className="btn btn-circle btn-secondary" target="_blank" rel="noreferrer noopener" title="Join the Discord">
               <i className="ri-discord-line" />
             </a>
