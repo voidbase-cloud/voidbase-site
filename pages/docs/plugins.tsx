@@ -147,6 +147,12 @@ export default function DocsPlugins() {
       <ul>
         <li>The manifest: what <code>plugin.json</code> declares, and how strictly.</li>
         <li>
+          <strong>Whether a plugin can act at deploy time.</strong> Everything above describes a plugin running
+          inside an instance, handling requests. Some of what should be a plugin happens around a deploy instead:
+          attaching a hostname, turning on a platform setting, creating an instance for a preview. That surface does
+          not exist, and several roadmap items want it.
+        </li>
+        <li>
           Who may define an interface, and what happens when two plugins define the same thing differently. Get this
           wrong early and everything built afterwards inherits it.
         </li>
