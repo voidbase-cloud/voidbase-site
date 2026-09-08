@@ -2,7 +2,7 @@
 import CodeBlock from "@/components/CodeBlock";
 import { hl } from "@/lib/hl";
 
-const DECLARE = hl.javascript`// vb_secrets/main.ts
+const DECLARE = hl.typescript`// vb_secrets/main.ts
 import { defineSecrets, secret, server, browser, local, string, number, boolean } from "@voidbase-cloud/voidbase/secrets";
 
 export default defineSecrets({
@@ -18,10 +18,10 @@ export default defineSecrets({
   VOIDBASE_DEPLOY_NAME:       local(string().default("my-app"), "the Worker this deploys to"),
 });`;
 
-const BROWSER = hl.javascript`// in a page or a component: the value is inlined at build time
+const BROWSER = hl.typescript`// in a page or a component: the value is inlined at build time
 const name = import.meta.env.PUBLIC_SITE_NAME;`;
 
-const SERVER = hl.javascript`// in a route or a hook
+const SERVER = hl.typescript`// in a route or a hook
 const limit = Number($os.getenv("MAX_UPLOAD_MB"));`;
 
 export default function DocsStackSecrets() {

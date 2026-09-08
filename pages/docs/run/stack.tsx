@@ -10,7 +10,7 @@ const SCAFFOLD = hl.bash`bun add void
 bunx void init          # asks which framework and starter; React and a database-backed one here
 bun add @voidbase-cloud/voidbase`;
 
-const CONFIG = hl.javascript`// vite.config.ts
+const CONFIG = hl.typescript`// vite.config.ts
 import { defineConfig } from "vite";
 import { voidPlugin } from "void";
 import { voidReact } from "@void/react/plugin";
@@ -18,20 +18,26 @@ import { voidbaseAdapter } from "@voidbase-cloud/voidbase/adapter/plugin";
 
 export default defineConfig({ plugins: [voidPlugin(), voidReact(), voidbaseAdapter()] });`;
 
-const TREE = hl.bash`my-app/
-├─ pages/           the site, server-rendered
-├─ routes/          typed API endpoints
-├─ middleware/      what runs on every request
-├─ crons/           scheduled work
-├─ queues/          background jobs
-├─ db/              the app's own tables, in Drizzle
-├─ src/             library code the rest imports
-│
-├─ vb_hooks/        handlers that run around record writes
-├─ vb_migrations/   collections, for the schema the panel manages
-├─ vb_secrets/      configuration, for the server, the build and the browser
-│
-└─ .voidbase/       generated on build; the instance this becomes (git-ignored)`;
+const TREE = hl.markdown`Your application:
+
+- \`pages/\`: the site, server-rendered
+- \`routes/\`: typed API endpoints
+- \`middleware/\`: what runs on every request
+- \`crons/\`: scheduled work
+- \`queues/\`: background jobs
+- \`db/\`: the app's own tables, in Drizzle
+- \`src/\`: library code the rest imports
+
+What voidbase reads:
+
+- \`vb_hooks/\`: handlers that run around record writes
+- \`vb_migrations/\`: collections, for the schema the panel manages
+- \`vb_secrets/\`: configuration, for the server, the build and the browser
+
+Written by the build:
+
+- \`.voidbase/\`: the instance this becomes, and git-ignored
+`;
 
 const BUILD = hl.bash`bun run build                                  # or: bunx --bun vite build
 bun .voidbase/main.ts --http 127.0.0.1:8090    # site at /, API at /api, panel at /_/`;
@@ -40,7 +46,7 @@ const DEPLOY = hl.bash`cd .voidbase && voidbase deploy`;
 
 const UPDATE = hl.bash`voidbase update`;
 
-const IGNORE = hl.bash`.voidbase/
+const IGNORE = hl.gitignore`.voidbase/
 vb_secrets/secrets.json`;
 
 export default function DocsStack() {

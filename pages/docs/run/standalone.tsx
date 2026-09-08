@@ -22,13 +22,13 @@ const UPDATE = hl.bash`./voidbase update --backup`;
 const START = hl.bash`./voidbase superuser upsert you@example.com your-password
 ./voidbase serve`;
 
-const OUTPUT = hl.bash`Server started at http://127.0.0.1:8090
+const OUTPUT = hl.output`Server started at http://127.0.0.1:8090
 ├─ REST API:  http://127.0.0.1:8090/api/
 └─ Dashboard: http://127.0.0.1:8090/_/`;
 
 const PUBLIC = hl.bash`./voidbase serve --http 0.0.0.0:8090`;
 
-const SERVICE = hl.bash`# /etc/systemd/system/voidbase.service
+const SERVICE = hl.systemd`# /etc/systemd/system/voidbase.service
 [Unit]
 Description=voidbase
 After=network.target

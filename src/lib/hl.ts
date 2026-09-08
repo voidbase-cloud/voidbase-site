@@ -17,7 +17,13 @@ const uncompiled = (): Block => {
 type Tag = (strings: TemplateStringsArray) => Block;
 
 export const hl: Record<
-  "bash" | "sh" | "shell" | "js" | "javascript" | "ts" | "typescript" | "json" | "yaml" | "yml" | "go" | "dart" | "md" | "markdown",
+  | "bash" | "sh" | "shell"
+  | "js" | "javascript" | "ts" | "typescript"
+  | "json" | "yaml" | "yml" | "systemd"
+  | "go" | "dart"
+  | "md" | "markdown"
+  // no grammar to highlight: a file git reads, a file something else reads, and what the terminal printed
+  | "gitignore" | "text" | "output",
   Tag
 > = {
   bash: uncompiled,
@@ -30,8 +36,12 @@ export const hl: Record<
   json: uncompiled,
   yaml: uncompiled,
   yml: uncompiled,
+  systemd: uncompiled,
   go: uncompiled,
   dart: uncompiled,
   md: uncompiled,
   markdown: uncompiled,
+  gitignore: uncompiled,
+  text: uncompiled,
+  output: uncompiled,
 };

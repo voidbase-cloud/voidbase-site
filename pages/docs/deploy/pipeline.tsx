@@ -3,7 +3,7 @@ import { Link } from "@void/react";
 import CodeBlock from "@/components/CodeBlock";
 import { hl } from "@/lib/hl";
 
-const TOKENS = hl.javascript`// pb_secrets/main.ts   (vb_secrets/main.ts in a stack app)
+const TOKENS = hl.typescript`// pb_secrets/main.ts   (vb_secrets/main.ts in a stack app)
 import { defineSecrets, local, string } from "@voidbase-cloud/voidbase/secrets";
 
 export default defineSecrets({
@@ -19,12 +19,12 @@ const VALUES = hl.json`{
 
 const SYNC = hl.bash`voidbase sync`;
 
-const FIRST = hl.bash`ci: the GitHub App is not installed for you/blog-api. One dashboard step:
+const FIRST = hl.output`ci: the GitHub App is not installed for you/blog-api. One dashboard step:
   open https://dash.cloudflare.com/?to=/:account/workers/services/view/blog-api/production/builds
   Under Builds, connect you/blog-api: that installs the "Cloudflare Workers and Pages"
   GitHub App for it and creates the build token. Then run voidbase sync again.`;
 
-const SECOND = hl.bash`ci: you/blog-api -> Worker blog-api (account Example Ltd)
+const SECOND = hl.output`ci: you/blog-api -> Worker blog-api (account Example Ltd)
   created trigger "blog-api (main)": a push to main runs \`true\`, then \`bun run deploy\`
   created trigger "blog-api (branches)": every other branch runs \`true\`, then \`bun run version\`; nothing live is touched
   build environment: BUN_VERSION, VOIDBASE_DEPLOY_CF_API_KEY (secret), MAX_UPLOAD_MB

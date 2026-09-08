@@ -17,6 +17,8 @@ import goIcon from "thesvg/go";
 import jsIcon from "thesvg/javascript";
 import jsonIcon from "thesvg/json";
 import mdIcon from "thesvg/markdown";
+import gitIcon from "thesvg/git";
+import linuxIcon from "thesvg/linux";
 import tsIcon from "thesvg/typescript";
 import yamlIcon from "thesvg/yaml";
 import "@/scss/code.scss";
@@ -35,17 +37,27 @@ function scopeIds(svg: string, key: string): string {
 }
 
 // JSON's and YAML's own marks are drawn for a white page: one is a black-to-white gradient, the other a red glyph
-// that goes muddy on black. Their mono variants carry no fill, so they take the colour `.code-lang` sets.
-const MARKS: Record<string, { svg: string }> = {
+// that goes muddy on black. Their mono variants carry no fill, so they take the colour `.code-lang` sets. The three
+// kinds that are not code have no logo to wear, so they get a glyph that says which one it is.
+const MARKS: Record<string, { svg: string } | { glyph: string }> = {
   bash: bashIcon,
   javascript: jsIcon,
   typescript: tsIcon,
   json: { svg: jsonIcon.variants.mono },
   yaml: { svg: yamlIcon.variants.mono },
+  systemd: { svg: linuxIcon.variants.mono },
   go: goIcon,
   dart: dartIcon,
   markdown: mdIcon,
+  gitignore: { svg: gitIcon.variants.mono },
+  text: { glyph: "ri-file-list-line" },
+  output: { glyph: "ri-terminal-line" },
 };
+
+// What a block is for, which decides how it is framed. A shell block is pasted into a terminal and a block in a
+// language is pasted into a file, so both are framed as things you take away. A document and what the terminal
+// printed back are neither: they are there to be read, and the frame should not invite a copy that means nothing.
+const READING = new Set(["markdown", "output"]);
 
 export interface CodeBlockProps extends Block {
   /** extra classes on the wrapper; named `class` because that is what the Svelte component exported */
@@ -84,9 +96,13 @@ export default function CodeBlock({ language, html, content, class: classes = "m
   const mark = MARKS[language] ?? MARKS.javascript!;
 
   return (
-    <figure className={`code-block${markdown ? " is-markdown" : ""} ${classes}`}>
+    <figure className={`code-block${READING.has(language) ? " is-reading" : ""} ${classes}`}>
       <div className="code-tools">
-        <span className="code-lang" dangerouslySetInnerHTML={{ __html: scopeIds(mark.svg, language) }} title={language} />
+        <span className="code-lang" title={language}>
+          {"glyph" in mark
+            ? <i className={mark.glyph} aria-hidden="true" />
+            : <span dangerouslySetInnerHTML={{ __html: scopeIds(mark.svg, language) }} />}
+        </span>
         <CopyButton text={content} from={body} />
       </div>
       {title && <figcaption className="code-title">{title}</figcaption>}

@@ -10,14 +10,14 @@ voidbase version`;
 
 const LOCAL_NEW = hl.bash`voidbase local new blog`;
 
-const LOCAL_NEW_OUT = hl.bash`created "blog" in ~/.voidbase/instances/blog (pb_hooks/main.pb.js, .gitignore, pb_secrets/main.ts)
+const LOCAL_NEW_OUT = hl.output`created "blog" in ~/.voidbase/instances/blog (pb_hooks/main.pb.js, .gitignore, pb_secrets/main.ts)
 superuser admin@example.com / k3f8s2m1qzA1
 
 next: voidbase local start blog   (the API on 8090, the panel at http://127.0.0.1:8090/_/)`;
 
 const LOCAL_LS = hl.bash`voidbase local ls`;
 
-const LOCAL_LS_OUT = hl.bash`3 local instance(s), from ~/.voidbase/instances.json:
+const LOCAL_LS_OUT = hl.output`3 local instance(s), from ~/.voidbase/instances.json:
   blog                 :8090   running      2 MB  ~/.voidbase/instances/blog
   shop                 :8091   stopped    941 kB  ~/.voidbase/instances/shop
   workshop             :8092   stopped     14 MB  ~/.voidbase/instances/workshop`;
@@ -33,7 +33,7 @@ voidbase deploy --name blog-api --domain api.example.com`;
 
 const CLOUD_LS = hl.bash`voidbase instances`;
 
-const CLOUD_LS_OUT = hl.bash`3 instance(s) on Example Ltd:
+const CLOUD_LS_OUT = hl.output`3 instance(s) on Example Ltd:
   blog-api                         release 0.7.0  updated 2026-09-08
   staging-api                      release 0.7.0  updated 2026-09-04
   workshop-demo                    release 0.6.2  updated 2026-08-30`;

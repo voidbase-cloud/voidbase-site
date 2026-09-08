@@ -52,6 +52,11 @@
         // A shape that names its own colour keeps it: its own attribute beats an inherited value.
         fill: currentColor;
     }
+    // the kinds with no logo of their own wear a glyph instead
+    i {
+        font-size: 16px;
+        line-height: 1;
+    }
 }
 
 .code-copy {
@@ -120,15 +125,27 @@
         // and `code { line-height: 1.2rem }`, which is set on the element itself and so beats the one on the <pre>
         line-height: 22px;
     }
+    // a kind with no grammar: the same box and the same measure, but no colour, because nothing here is syntax
+    pre.plain {
+        margin: 0;
+        padding: 16px 18px;
+        padding-right: 120px;
+        background: transparent;
+        font-family: var(--monospaceFontFamily);
+        font-size: 14px;
+        line-height: 22px;
+        color: #c8c6bd;
+    }
+
     // Shiki writes a newline between its line spans and lets `white-space: pre` on the code turn each one into a
     // line break. Making the spans blocks as well would break the line twice and double the spacing, so they stay
     // inline and the newlines do the work, which is also what keeps a blank line in the source a blank line here.
     .line { display: inline; }
 }
 
-// A markdown block is a document. It gets document typography, and none of the code framing that would invite
-// somebody to paste it into a terminal.
-.code-block.is-markdown {
+// A block nobody is meant to copy: a document, or what the terminal printed back. It loses the terminal's frame,
+// because that frame is an invitation to paste, and there is nothing here to paste.
+.code-block.is-reading {
     --code-bg: var(--baseColor);
     border-color: var(--baseAlt2Color);
     border-left-width: 3px;
@@ -155,6 +172,7 @@
     h1 { font-size: 22px; }
     h2 { font-size: 19px; }
     h3 { font-size: 16px; }
+    h4 { font-size: 15px; }
 
     p { margin: 0 0 12px; }
 

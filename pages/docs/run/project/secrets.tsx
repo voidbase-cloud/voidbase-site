@@ -2,7 +2,7 @@
 import CodeBlock from "@/components/CodeBlock";
 import { hl } from "@/lib/hl";
 
-const DECLARE = hl.javascript`// pb_secrets/main.ts
+const DECLARE = hl.typescript`// pb_secrets/main.ts
 import { defineSecrets, secret, server, browser, local, string, number, boolean } from "@voidbase-cloud/voidbase/secrets";
 
 export default defineSecrets({
@@ -29,7 +29,7 @@ const limit = Number($os.getenv("MAX_UPLOAD_MB"));`;
 
 const LIST = hl.bash`voidbase secrets`;
 
-const LIST_OUT = hl.bash`pb_secrets: 7 declared (2 secret, 2 server, 1 public, 2 local, never deployed), 3 valued in secrets.json,
+const LIST_OUT = hl.output`pb_secrets: 7 declared (2 secret, 2 server, 1 public, 2 local, never deployed), 3 valued in secrets.json,
 worker "blog-api" has 2 of the secrets
   SMTP_PASSWORD       secret   local value    on the worker      the mail provider's password
   STRIPE_KEY          secret   local value    on the worker

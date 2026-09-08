@@ -2,17 +2,19 @@
 import CodeBlock from "@/components/CodeBlock";
 import { hl } from "@/lib/hl";
 
-const TREE = hl.bash`pb_public/
-├─ index.html
-├─ 404.html          optional; a copy of index.html is used when there is none
-├─ assets/
-└─ favicon.ico`;
+const TREE = hl.markdown`Inside \`pb_public/\`:
+
+- \`index.html\`
+- \`404.html\`: optional; a copy of \`index.html\` is used when there is none
+- \`assets/\`
+- \`favicon.ico\`
+`;
 
 const BUILD = hl.bash`# build your frontend wherever it lives, then put the output here
 cd ../web && bun run build
 rm -rf ../blog-api/pb_public && cp -r dist ../blog-api/pb_public`;
 
-const REDIRECTS = hl.bash`/old-post/:slug   /posts/:slug        301
+const REDIRECTS = hl.text`/old-post/:slug   /posts/:slug        301
 /download         https://example.com/dl  302`;
 
 export default function DocsProjectPublic() {

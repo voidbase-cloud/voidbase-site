@@ -2,7 +2,7 @@
 import CodeBlock from "@/components/CodeBlock";
 import { hl } from "@/lib/hl";
 
-const FILE = hl.javascript`// vb_hooks/slug.ts
+const FILE = hl.typescript`// vb_hooks/slug.ts
 import { defineHook } from "@voidbase-cloud/voidbase/adapter";
 
 export default defineHook("onRecordCreateRequest", (e) => {
@@ -10,7 +10,7 @@ export default defineHook("onRecordCreateRequest", (e) => {
   e.next();
 }, "posts");`;
 
-const SHARED = hl.javascript`// vb_hooks/notify.ts
+const SHARED = hl.typescript`// vb_hooks/notify.ts
 import { defineHook } from "@voidbase-cloud/voidbase/adapter";
 import { sendDigest } from "@/shared/mail";     // the same module routes/ imports
 
@@ -19,7 +19,7 @@ export default defineHook("onRecordAfterCreateSuccess", async (e) => {
   e.next();
 }, "posts");`;
 
-const GUARD = hl.javascript`export default defineHook("onRecordUpdateRequest", (e) => {
+const GUARD = hl.typescript`export default defineHook("onRecordUpdateRequest", (e) => {
   if (e.record.get("locked") && !e.auth?.isSuperuser()) throw new ForbiddenError("locked");
   e.next();
 }, "posts");`;

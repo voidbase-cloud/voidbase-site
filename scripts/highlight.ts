@@ -5,11 +5,17 @@
 // ran on the server produces plain text. Shipping the highlighter to fix that costs 98KB gzipped; shipping its
 // output costs 12KB for every block on the site. So the output is what ships.
 //
-// The transform is textual and deliberately dumb: it finds `hl.<language>` followed by a template literal, runs
-// Shiki over the string, and replaces the whole expression with the object the block renders. Nothing parses JSX,
-// and a template with a `${}` in it is a build error rather than a silent miss, because a snippet that cannot be
-// resolved at build time is a snippet that would arrive uncoloured. What is left in the module is a string, so it
-// lands in that page's own chunk and no page pays for another page's code.
+// The transform is textual and deliberately dumb: it finds `hl.<kind>` followed by a template literal, renders the
+// string according to that kind, and replaces the whole expression with the object the block renders. Nothing
+// parses JSX, and a template with a `${}` in it is a build error rather than a silent miss, because a snippet that
+// cannot be resolved at build time is a snippet that would arrive uncoloured. What is left in the module is a
+// string, so it lands in that page's own chunk and no page pays for another page's code.
+//
+// A kind is not always a language. What a reader needs to know first is what a block is for: a shell block is
+// pasted into a terminal, a block in a language is pasted into a file, and the rest is neither. Those get kinds of
+// their own rather than being dressed as shell, which is what they had been: a directory listing is markdown, what
+// the terminal printed back is `output`, and a file with no grammar to highlight keeps its own mark, so a
+// .gitignore wears git's.
 import { marked } from "marked";
 import { createHighlighterCoreSync } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
@@ -20,6 +26,7 @@ import jsLang from "shiki/langs/javascript.mjs";
 import jsonLang from "shiki/langs/json.mjs";
 import tsLang from "shiki/langs/typescript.mjs";
 import yamlLang from "shiki/langs/yaml.mjs";
+import systemdLang from "shiki/langs/systemd.mjs";
 import shikiTheme from "shiki/themes/vitesse-dark.mjs";
 import type { Plugin } from "vite";
 
@@ -39,16 +46,28 @@ const GRAMMARS: Record<string, string> = {
   yml: "yaml",
   go: "go",
   dart: "dart",
+  systemd: "systemd",
   md: "markdown",
   markdown: "markdown",
+  // Three kinds with no grammar to highlight, kept apart because a reader wants to know which one is in front of
+  // them: a file git reads, a file something else reads, and what the terminal printed back.
+  gitignore: "gitignore",
+  text: "text",
+  output: "output",
 };
+
+/** the kinds with no grammar: they are shown as they were written, and nothing colours them */
+const PLAIN = new Set(["gitignore", "text", "output"]);
+
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 let highlighter: { codeToHtml(code: string, o: { lang: string; theme: string }): string } | null = null;
 function highlight(code: string, grammar: string): string {
   if (!highlighter) {
     highlighter = createHighlighterCoreSync({
       themes: [shikiTheme],
-      langs: [bashLang, dartLang, goLang, jsLang, jsonLang, tsLang, yamlLang],
+      langs: [bashLang, dartLang, goLang, jsLang, jsonLang, systemdLang, tsLang, yamlLang],
       engine: createJavaScriptRegexEngine(),
     }) as unknown as typeof highlighter;
   }
@@ -100,9 +119,11 @@ export function compile(src: string, id: string): string | null {
     const end = closes(src, open, id);
     // the body is a template literal with no substitutions, so JavaScript's own reading of it is the right one
     const text = dedent(new Function(`return \`${src.slice(open + 1, end)}\``)() as string);
-    const html = grammar === "markdown"
-      ? (marked.parse(text, { async: false, gfm: true, breaks: false }) as string)
-      : highlight(text, grammar);
+    const html = PLAIN.has(grammar)
+      ? `<pre class="plain"><code>${escapeHtml(text)}</code></pre>`
+      : grammar === "markdown"
+        ? (marked.parse(text, { async: false, gfm: true, breaks: false }) as string)
+        : highlight(text, grammar);
     // markdown keeps its source, because copying a rendered document gives you the document and not the markdown
     const block = grammar === "markdown"
       ? { language: grammar, html, content: text }

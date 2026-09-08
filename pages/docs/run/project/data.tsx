@@ -5,11 +5,13 @@ import { hl } from "@/lib/hl";
 const TYPES = hl.javascript`/// <reference path="../pb_data/types.d.ts" />`;
 
 
-const TREE = hl.bash`pb_data/
-├─ data.db                    the database: your collections and their records
-├─ storage/                   uploaded files, by collection and record
-├─ types.d.ts                 generated: what makes hook editing autocomplete
-└─ .superuser-credentials     only when a password was generated for you`;
+const TREE = hl.markdown`Inside \`pb_data/\`:
+
+- \`data.db\`: the database, meaning your collections and their records
+- \`storage/\`: uploaded files, by collection and record
+- \`types.d.ts\`: generated, and what makes hook editing autocomplete
+- \`.superuser-credentials\`: only when a password was generated for you
+`;
 
 const BACKUP = hl.bash`# locally: stop the server, copy the directory
 cp -r pb_data pb_data.backup-$(date +%F)`;

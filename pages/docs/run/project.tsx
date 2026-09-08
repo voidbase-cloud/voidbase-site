@@ -14,13 +14,15 @@ voidbase init
 voidbase superuser upsert you@example.com your-password
 voidbase serve`;
 
-const TREE = hl.bash`blog-api/
-├─ pb_hooks/        endpoints, event handlers, scheduled work
-├─ pb_migrations/   the schema, as code
-├─ pb_public/       static files served at /   (optional)
-├─ pb_secrets/      configuration, and who may read each key
-├─ pb_data/         the database and the uploaded files (git-ignored)
-└─ .gitignore`;
+const TREE = hl.markdown`Inside \`blog-api/\`:
+
+- \`pb_hooks/\`: endpoints, event handlers, scheduled work
+- \`pb_migrations/\`: the schema, as code
+- \`pb_public/\`: static files served at \`/\`, if you want any
+- \`pb_secrets/\`: configuration, and who may read each key
+- \`pb_data/\`: the database and the uploaded files, git-ignored
+- \`.gitignore\`
+`;
 
 const DEV = hl.bash`voidbase serve --dev`;
 

@@ -3,7 +3,7 @@ import { Link } from "@void/react";
 import CodeBlock from "@/components/CodeBlock";
 import { hl } from "@/lib/hl";
 
-const IGNORE = hl.bash`# a project
+const IGNORE = hl.gitignore`# a project
 pb_data/                    the database and the uploaded files
 pb_secrets/secrets.json     the values of your configuration
 .cloud/                     the generated Cloudflare project
