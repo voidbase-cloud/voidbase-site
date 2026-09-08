@@ -3,7 +3,7 @@
 // which already puts its children in the flex wrapper this expects (src/scss/_layout.scss: .page-content-wrapper).
 //
 // The sidebar's markup is the site's existing sidebar markup, so it needs no styles of its own.
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { Link, useRouter } from "@void/react";
 import EditThisPage from "@/components/EditThisPage";
 import { contains, DOCS_NAV, locate, samePath, type DocsLink } from "@/lib/docsNav";
@@ -66,7 +66,13 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
       <aside className="page-sidebar docs-sidebar">
         <div className="sidebar-content">
           <nav className="sidebar-list">
-            {DOCS_NAV.map((link) => <Item key={link.href} link={link} path={path} />)}
+            {DOCS_NAV.map((link, i) => (
+              <Fragment key={link.href}>
+                {/* a rule wherever the band changes, so the list reads as four short lists rather than one long one */}
+                {i > 0 && link.group !== DOCS_NAV[i - 1]!.group && <hr className="docs-band" />}
+                <Item link={link} path={path} />
+              </Fragment>
+            ))}
           </nav>
         </div>
       </aside>

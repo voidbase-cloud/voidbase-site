@@ -156,3 +156,11 @@
         color: var(--txtPrimaryColor);
     }
 }
+
+// The rules between the sidebar's bands. They separate four short lists rather than decorating one long one, so they
+// are as quiet as a rule can be while still doing that job.
+.docs-sidebar .sidebar-list .docs-band {
+    border: 0;
+    border-top: 1px solid var(--baseAlt2Color);
+    margin: 14px 0 14px 12px;
+}

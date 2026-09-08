@@ -16,18 +16,28 @@ export interface DocsLink {
   summary?: string;
   icon?: string;
   children?: DocsLink[];
+  /**
+   * Which band of the sidebar this section belongs to. The sidebar draws a rule wherever the band changes, so the
+   * grouping is a property of the section rather than a divider entry sitting in the list pretending to be a page.
+   */
+  group?: Group;
 }
+
+/** what a reader is doing, in the order they tend to do it */
+export type Group = "about" | "using" | "extending" | "project";
 
 export const DOCS_NAV: DocsLink[] = [
   {
     href: "/docs",
     title: "Introduction",
+    group: "about",
     icon: "ri-home-2-line",
     summary: "What voidbase is, what it is made of, and what these pages assume.",
   },
   {
     href: "/docs/why",
     title: "Why voidbase",
+    group: "about",
     icon: "ri-question-line",
     summary: "Where this came from, and how it compares to the backends you already know.",
     children: [
@@ -43,12 +53,14 @@ export const DOCS_NAV: DocsLink[] = [
   {
     href: "/docs/start",
     title: "Where to start",
+    group: "about",
     icon: "ri-signpost-line",
     summary: "Two questions, and the page that answers them for you.",
   },
   {
     href: "/docs/run/standalone",
     title: "Run an instance",
+    group: "using",
     icon: "ri-server-line",
     summary: "Every way of getting one, from a downloaded file to a repository that deploys itself.",
     children: [
@@ -93,6 +105,7 @@ export const DOCS_NAV: DocsLink[] = [
   {
     href: "/docs/connect/sdk",
     title: "Connect to an instance",
+    group: "using",
     icon: "ri-plug-line",
     summary: "Someone has given you an address. Here is how to use it.",
     children: [
@@ -103,18 +116,21 @@ export const DOCS_NAV: DocsLink[] = [
   {
     href: "/docs/templates",
     title: "Templates",
+    group: "extending",
     icon: "ri-file-copy-2-line",
     summary: "Start from somebody's working project, or publish one of your own.",
   },
   {
     href: "/docs/plugins",
     title: "Plugins",
+    group: "extending",
     icon: "ri-puzzle-line",
     summary: "The design, before the code. Not built yet.",
   },
   {
     href: "/docs/marketplace",
     title: "Marketplace",
+    group: "extending",
     icon: "ri-store-2-line",
     summary: "Templates and plugins other people wrote, and how to publish your own.",
     children: [
@@ -127,30 +143,35 @@ export const DOCS_NAV: DocsLink[] = [
   {
     href: "/docs/pricing",
     title: "Pricing",
+    group: "project",
     icon: "ri-price-tag-3-line",
     summary: "Free. What that means, and how a free backend pays for itself.",
   },
   {
     href: "/docs/sponsor",
     title: "Support voidbase",
+    group: "project",
     icon: "ri-hand-coin-line",
     summary: "Sponsorship, what it pays for, and what it will never buy.",
   },
   {
     href: "/docs/acknowledgments",
     title: "Acknowledgments",
+    group: "project",
     icon: "ri-heart-3-line",
     summary: "The projects voidbase is built out of, and the people who wrote them.",
   },
   {
     href: "/docs/roadmap",
     title: "Roadmap",
+    group: "project",
     icon: "ri-road-map-line",
     summary: "What is coming, and what is deliberately not.",
   },
   {
     href: "/docs/contribute",
     title: "How to contribute",
+    group: "project",
     icon: "ri-git-pull-request-line",
     summary: "Where help matters most, and how to fix a page in about a minute.",
   },
