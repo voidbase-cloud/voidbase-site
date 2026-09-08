@@ -56,7 +56,7 @@ export const DOCS_NAV: DocsLink[] = [
     summary: "An instance of your own, without writing anything.",
     children: [
       { href: "/docs/run/standalone", title: "Standalone executable", summary: "One file on your own machine or server. No npm, no build." },
-      { href: "/docs/run/npm", title: "Instances on Cloudflare", summary: "Create, list and delete cloud instances from the command line." },
+      { href: "/docs/run/npm", title: "Instances from the CLI", summary: "Create, list and delete instances by name, locally or on Cloudflare." },
       { href: "/docs/run/cloud", title: "voidbase cloud", summary: "Instances without an account of your own. Experimental." },
     ],
   },
