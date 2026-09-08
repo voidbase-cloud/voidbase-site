@@ -277,7 +277,8 @@
         .loaded & .gen-pocket s:after { transition-delay: 0.73s; }
     }
 
-    // Two ways on: the one for someone who wants it running, and the one for someone still deciding.
+    // Three ways on, in the order of how sure you are: get one running, find out why this one, or go and read.
+    // The third is a step quieter than the two beside it, so the pair still reads as the pair.
     .hero-actions {
         display: flex;
         flex-wrap: wrap;
@@ -285,6 +286,26 @@
         justify-content: center;
         gap: 12px;
         margin: 0 0 var(--heroSpacing);
+
+        // Filled, then outlined, then text. btn-hint only recolours the label; the fill comes from .btn's own
+        // background layer, which has to go or the quietest of the three arrives as the loudest.
+        .hero-read {
+            gap: 4px;
+            background: none;
+            color: var(--txtHintColor);
+            &:before { display: none; }
+
+            i {
+                font-size: 1.05em;
+                transition: transform var(--baseAnimationSpeed);
+            }
+            &:hover,
+            &:focus-visible {
+                background: none;
+                color: var(--txtPrimaryColor);
+                i { transform: translateX(3px); }
+            }
+        }
     }
 
     @media (prefers-reduced-motion: reduce) {

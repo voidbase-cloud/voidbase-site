@@ -378,6 +378,10 @@ export default function Landing() {
             <Link href="/docs/why" prefetch="hover" className="btn btn-lg btn-outline">
               <span className="txt">Why voidbase</span>
             </Link>
+            <Link href="/docs" className="btn btn-lg btn-hint hero-read">
+              <span className="txt">Read the documentation</span>
+              <i className="ri-arrow-right-line" />
+            </Link>
           </div>
 
           <div className="hero-checks">
