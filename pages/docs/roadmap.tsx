@@ -135,6 +135,24 @@ export default function DocsRoadmap() {
         size="Large, and the order matters. The loader and the manifest first, because everything else is a plugin once those exist."
       />
 
+      <h3 className="why-group">The three tiers, and what "core" means</h3>
+      <Item
+        title="Core plugins, installed and on by default"
+        from="Auth leaving the core creates a problem the loader alone does not solve: an instance with no auth plugin is not a lean instance, it is a broken one. Some plugins are not optional in any useful sense."
+        now="Nothing, because there are no plugins. The distinction matters now rather than later, because auth is the first thing that will need it and the loader has to know about the tier before it can carry auth."
+        plan="Three tiers, and they differ in what happens if you do nothing. A core plugin is installed and enabled by default and comes with voidbase, because the instance is not usable without it: auth is the first, and there will not be many. An official plugin is ours and supported and versioned with voidbase, but it arrives because you asked for it. A community plugin is somebody else's, from our marketplace or a registry of your own. Removing a core plugin has to be possible, because replacing auth is the entire point of moving it out, but it has to be a thing you did on purpose rather than a thing that happened while you were installing something else, and the instance should say plainly what it is now missing."
+        size="Small as code and worth settling early, because every later decision about defaults, upgrades and what a bare instance does hangs off it."
+      />
+
+      <h3 className="why-group">Keeping plugins current</h3>
+      <Item
+        title="Versions, updates, and what happens when voidbase moves underneath one"
+        from="A plugin system without an update path produces the thing it was meant to prevent: code copied in once, never touched again, and quietly wrong two releases later. The gist problem with extra steps."
+        now="Nothing. voidbase update already keeps voidbase itself current across the executable, a global install and a project's dependency, so the shape of the answer exists; there is simply nothing yet for it to apply to."
+        plan="Every plugin is versioned and every install is recorded, so an instance can say what it is running and reproduce it. A plugin declares which voidbase versions it works against, and the loader refuses one that does not fit rather than discovering it at request time. Updating is one command for all of them or one for a named plugin, it says what changed before it does anything, and an unpackaged update is files while a packaged update is a rebuild, which is the same split as installing. Two harder halves come with it. Upgrading voidbase itself has to say which installed plugins will not survive the jump, before the upgrade rather than after. And a packaged plugin's update currently drags the whole instance onto the newest release, because rebuilding is how it is applied; separating those is the thing that decides whether a plugin update is routine or something you schedule."
+        size="Medium for the mechanism, and the compatibility half is the part nobody enjoys: it only earns its keep once there are enough plugins for it to be tested against something real."
+      />
+
       <h2>The official plugins</h2>
       <p>
         Everything below is a plugin, which is why the loader comes first. These are ours: they ship with voidbase,

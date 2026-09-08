@@ -118,8 +118,21 @@ export default function DocsPlugins() {
           for unless there is a reason not to.
         </li>
         <li>
-          Core plugins ship with voidbase, official ones are ours and versioned with it, and anyone can publish their
-          own through <Link href="/docs/marketplace">the marketplace</Link> or a registry of their own.
+          <strong>Three tiers, differing in what happens if you do nothing.</strong> A core plugin is installed and
+          on by default, because the instance is not usable without it; auth is the first and there will not be
+          many. An official plugin is ours, supported and versioned with voidbase, and arrives because you asked
+          for it. A community plugin is somebody else's, from{" "}
+          <Link href="/docs/marketplace">the marketplace</Link> or a registry of your own.
+        </li>
+        <li>
+          Removing a core plugin is possible, because replacing auth is the whole reason it left the core, but it
+          has to be deliberate rather than something that happens while you install something else, and the
+          instance should say what it is now missing.
+        </li>
+        <li>
+          Everything is versioned and every install is recorded, so an instance can say what it is running and
+          reproduce it. A plugin declares which voidbase versions it works against, and the loader refuses one that
+          does not fit instead of finding out at request time.
         </li>
       </ul>
 
@@ -131,7 +144,10 @@ export default function DocsPlugins() {
           to ask for, and how that is checked against what it actually does, is the question that decides whether any
           of this is safe to install, and it is the one we are least sure about.
         </li>
-        <li>Versioning: what happens to an installed plugin when voidbase changes underneath it.</li>
+        <li>
+          Upgrading voidbase under installed plugins: telling you which ones will not survive the jump before you
+          take it, rather than after.
+        </li>
         <li>Isolation: whether a plugin runs in the same isolate as your hooks, and what its failures do to yours.</li>
         <li>
           <strong>The upgrade a packaged install drags along.</strong> Rebuilding puts the instance on the current
