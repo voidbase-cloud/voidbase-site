@@ -1,7 +1,10 @@
 // The tree on the front page of the documentation.
 //
 // Two questions get people to the right page. What do you want to do, and then which shape of it. Everything else
-// in these docs hangs off one of the five leaves below, so this is the only place that has to be read in order.
+// in these docs hangs off one of the leaves below, so this is the only place that has to be read in order.
+//
+// The third branch is the one people actually arrive on. Almost nobody starts by writing a migration: they make an
+// instance, click around the panel, and only then want what they built in a repository.
 //
 // The condition on each branch is written as the reader's own sentence, because someone choosing a backend knows
 // what they want before they know what we call it.
@@ -55,9 +58,17 @@ export const BRANCHES: Branch[] = [
     ],
   },
   {
-    question: "I want to build on one",
-    detail: "Your endpoints, your schema, your repository. Both of these deploy to your own Cloudflare account.",
+    question: "I want it in a repository from the start",
+    detail: "Your endpoints, your schema and your configuration are files you commit, and the instance is built out of them.",
     leaves: [
+      {
+        when: "on my own server, with nothing installed",
+        href: "/docs/run/binary",
+        title: "A directory the binary serves",
+        command: "./voidbase init",
+        because:
+          "The three tracked directories, served by the executable. No npm and no build, which also means no Cloudflare.",
+      },
       {
         when: "as a backend my app talks to",
         href: "/docs/run/project",
@@ -73,6 +84,33 @@ export const BRANCHES: Branch[] = [
         command: "bunx void init",
         because:
           "Pages, typed routes and the backend in one project, deployed as a single Worker. Pick this if you are starting from nothing.",
+      },
+    ],
+  },
+  {
+    question: "I already have one running",
+    detail: "You made an instance, designed collections in the panel, and now you want that in git. It keeps running while you do.",
+    leaves: [
+      {
+        when: "and I want to stay on my own machine",
+        href: "/docs/track/binary",
+        title: "Into a directory the binary serves",
+        command: "voidbase export ./snapshot",
+        because: "Track what defines it, keep serving it with the executable, and add nothing to the machine.",
+      },
+      {
+        when: "and I want it on Cloudflare",
+        href: "/docs/track/project",
+        title: "Into a voidbase project",
+        command: "voidbase sync --repo you/blog-api",
+        because: "The npm layout, which is the one that deploys, and a push that becomes the deploy.",
+      },
+      {
+        when: "and I want the site in there too",
+        href: "/docs/track/stack",
+        title: "Into a voidbase stack",
+        command: "bunx void init",
+        because: "One repository and one Worker holding the application and the backend together.",
       },
     ],
   },

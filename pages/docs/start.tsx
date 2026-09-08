@@ -1,5 +1,5 @@
-// Two questions that decide which page you read next. Everything else hangs off one of the five leaves in the tree,
-// so this is the only page here that has to be read in order.
+// Two questions that decide which page you read next. Everything else hangs off one of the leaves in the tree, so
+// this is the only page here that has to be read in order.
 //
 // It used to be the front page of the documentation and is now a page of its own, because "what is this" and "which
 // of these do I want" are different questions and answering both at once served neither.
@@ -10,10 +10,11 @@ import "@/scss/tree.scss";
 export default function DocsIndex() {
   return (
     <>
-      <h1>Where to start</h1>
+      <h1>Which one do I want?</h1>
       <p className="docs-lead">
-        Two questions get you to the right page. What do you want to do, and then which shape of it. If you have not
-        read <Link href="/docs">the introduction</Link> yet, it is shorter than this page.
+        Two questions get you to the right page. What do you want to do, and then which shape of it. If the word
+        instance is doing more work than you would like, <Link href="/docs/instance">what an instance is</Link>{" "}
+        answers that first and takes a minute.
       </p>
 
       <p className="tree-aside">
@@ -28,6 +29,10 @@ export default function DocsIndex() {
         <Link href="/docs/deploy/pipeline" className="docs-card">
           <strong>Deploy on every push</strong>
           <span>Connect the repository once and a push is the deploy, with every change tracked but your secrets.</span>
+        </Link>
+        <Link href="/docs/instance" className="docs-card">
+          <strong>What is an instance</strong>
+          <span>What one is made of, the shapes it comes in, and the one constraint that decides between them.</span>
         </Link>
         <Link href="/docs/connect/sdk" className="docs-card">
           <strong>Talk to it from your app</strong>
@@ -44,6 +49,12 @@ export default function DocsIndex() {
         Take the standalone executable. It is one file, it needs nothing installed, and it deletes cleanly, so it is
         the cheapest way to find out whether any of this is what you wanted. Everything you build against it works
         against every other option on this page, because they are all the same server.
+      </p>
+      <p>
+        Nothing here is a one-way door either. The third branch above exists because starting without a repository
+        is the normal thing to do, and{" "}
+        <Link href="/docs/track/project">turning what you made into one</Link> is three commands whenever you are
+        ready.
       </p>
     </>
   );

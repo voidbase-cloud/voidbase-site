@@ -29,7 +29,7 @@ export default function DocsAdminPanel() {
       <h2>No account yet?</h2>
       <p>
         Whoever runs the instance creates it. If that is you, every page under{" "}
-        <a href="/docs/run/standalone">Run an instance</a> makes one as part of the setup, and it is a single command
+        <a href="/docs/start">Where to start</a> makes one as part of the setup, and it is a single command
         either way.
       </p>
 

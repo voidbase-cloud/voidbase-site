@@ -13,7 +13,7 @@ import "@/scss/edit-page.scss";
 /**
  * One sidebar entry, and whatever is under it.
  *
- * Recursive because "Run an instance" holds groups that hold pages, and the sidebar should not care how deep that
+ * Recursive because "Where to start" holds groups that hold pages, and the sidebar should not care how deep that
  * goes. A group is highlighted when you are anywhere inside it; a page only when you are on it. A group's own href
  * is its first child, so highlighting it as a page too would mark the same row twice.
  */
