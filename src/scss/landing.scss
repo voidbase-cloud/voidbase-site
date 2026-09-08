@@ -405,12 +405,25 @@
         overflow-y: auto; /* fallback */
         overflow-y: overlay;
         border-radius: var(--baseRadius);
-        .code-wrapper {
+        .code-block {
             height: 100%;
-            margin: 0 !important;
+            margin: 0;
+            border: 0;
+            border-radius: 0;
         }
-        code {
+        // the buttons above already name the language, so the block's own mark would only repeat them, and the
+        // copy button sits under the row rather than behind it
+        .code-lang {
+            display: none;
+        }
+        .code-tools {
+            top: 44px;
+            right: 2px;
+        }
+        .code-body pre.shiki {
             min-height: 100%;
+            padding: 18px 20px;
+            padding-right: 120px;
         }
         .sdk-btns {
             position: absolute;

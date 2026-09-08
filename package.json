@@ -2,14 +2,15 @@
   "dependencies": {
     "@void/react": "^0.10.13",
     "@voidbase-cloud/voidbase": "^0.6.2",
+    "marked": "^18.0.12",
     "pocketbase": "^0.28.1",
-    "prismjs": "^1.29.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "shiki": "^4.4.3",
+    "thesvg": "^3.3.2"
   },
   "devDependencies": {
     "@types/bun": "^1.4.1",
-    "@types/prismjs": "^1.26.6",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "sass": "^1.104.0",

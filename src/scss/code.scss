@@ -1,0 +1,204 @@
+// Code blocks: the frame, the tools in the corner, and the markdown variant.
+//
+// Shiki writes the colours inline from its theme, so nothing here touches the tokens. What is here is the box
+// around them, the language mark and the copy button, and the typography for a block that is a document rather
+// than something to run.
+
+.code-block {
+    // named so the tools can paint the same ground over a line that runs under them
+    --code-bg: #0a0a0c;
+
+    position: relative;
+    margin: 0 0 var(--xsSpacing);
+    border: 1px solid var(--baseAlt1Color);
+    border-radius: var(--baseRadius);
+    overflow: hidden;
+    background: var(--code-bg);
+}
+
+// The mark and the copy button, top right, always visible: a control that appears on hover cannot be tapped. The
+// block reserves room for them, but a line longer than the block still scrolls underneath, so they carry the
+// block's own background and fade the line out rather than letting it show through.
+.code-tools {
+    position: absolute;
+    // pinned to the corner itself, with the inset moved into the padding, so the ground it paints reaches the edge
+    // and covers the whole of the first line rather than a band across the middle of it
+    top: 0;
+    right: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 8px 8px 28px;
+    background: linear-gradient(to right, transparent, var(--code-bg) 26px);
+}
+
+.code-lang {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: var(--baseRadius);
+    background: rgba(255, 255, 255, 0.07);
+    // marks with no fill of their own (JSON's mono variant) take this; the rest carry their own colour
+    color: #d4d4d8;
+
+    svg {
+        width: 17px;
+        height: 17px;
+        display: block;
+        // SVG's default fill is black, not currentColor, so a mark with no fill of its own would be invisible here.
+        // A shape that names its own colour keeps it: its own attribute beats an inherited value.
+        fill: currentColor;
+    }
+}
+
+.code-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 26px;
+    padding: 0 9px;
+    border: 1px solid var(--baseAlt2Color);
+    border-radius: var(--baseRadius);
+    background: rgba(10, 10, 12, 0.9);
+    color: var(--txtHintColor);
+    font-size: 12px;
+    font-family: var(--baseFontFamily);
+    cursor: pointer;
+    transition: color var(--baseAnimationSpeed), border-color var(--baseAnimationSpeed);
+
+    i { font-size: 13px; }
+
+    &:hover {
+        color: var(--txtPrimaryColor);
+        border-color: var(--baseAlt4Color);
+    }
+    &.is-done {
+        color: var(--successColor);
+        border-color: var(--successColor);
+    }
+    &:focus-visible {
+        outline: 2px solid var(--successColor);
+        outline-offset: 2px;
+    }
+}
+
+.code-title {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--baseAlt1Color);
+    font-family: var(--monospaceFontFamily);
+    font-size: 13px;
+    color: var(--txtDisabledColor);
+}
+
+// Shiki emits <pre class="shiki"><code>. It carries its own background, which we replace with the block's own.
+.code-body {
+    overflow-x: auto;
+
+    pre.shiki {
+        margin: 0;
+        padding: 16px 18px;
+        background: transparent !important;
+        font-family: var(--monospaceFontFamily);
+        font-size: 14px;
+        line-height: 22px;
+        // room for the tools, so the first line never runs under them
+        padding-right: 120px;
+    }
+    code {
+        background: none;
+        padding: 0;
+        font-size: inherit;
+        display: block;
+        width: fit-content;
+        min-width: 100%;
+        // the site sets `code { white-space: nowrap }`, and pre-wrap under 600px. Neither is right inside a <pre>:
+        // one joins the lines, the other reflows them. The block scrolls sideways instead.
+        white-space: pre;
+    }
+    .line { display: block; min-height: 22px; }
+}
+
+// A markdown block is a document. It gets document typography, and none of the code framing that would invite
+// somebody to paste it into a terminal.
+.code-block.is-markdown {
+    --code-bg: var(--baseColor);
+    border-color: var(--baseAlt2Color);
+    border-left-width: 3px;
+    border-left-color: var(--baseAlt3Color);
+}
+
+.md-body {
+    padding: 18px 22px;
+    padding-right: 120px;
+    font-size: 15px;
+    line-height: 24px;
+    color: #d6d6d6;
+
+    > :first-child { margin-top: 0; }
+    > :last-child { margin-bottom: 0; }
+
+    h1, h2, h3, h4 {
+        margin: 20px 0 8px;
+        padding: 0;
+        border: 0;
+        line-height: 1.3;
+        color: var(--txtPrimaryColor);
+    }
+    h1 { font-size: 22px; }
+    h2 { font-size: 19px; }
+    h3 { font-size: 16px; }
+
+    p { margin: 0 0 12px; }
+
+    ul, ol { margin: 0 0 12px; padding-left: 22px; }
+    li { margin-bottom: 4px; }
+
+    a { color: var(--txtPrimaryColor); text-decoration: underline; text-underline-offset: 2px; }
+
+    blockquote {
+        margin: 0 0 12px;
+        padding-left: 14px;
+        border-left: 2px solid var(--baseAlt3Color);
+        color: var(--txtHintColor);
+    }
+
+    // inline code inside a document still looks like code, because there it is a quotation rather than the point
+    code {
+        font-family: var(--monospaceFontFamily);
+        font-size: 13.5px;
+        background: var(--baseAlt1Color);
+        padding: 1px 5px;
+        border-radius: 3px;
+    }
+    pre {
+        background: var(--baseAlt1Color);
+        padding: 12px 14px;
+        border-radius: var(--baseRadius);
+        overflow-x: auto;
+        margin: 0 0 12px;
+        code { background: none; padding: 0; white-space: pre; }
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0 0 12px;
+        th, td {
+            text-align: left;
+            padding: 7px 10px;
+            border-bottom: 1px solid var(--baseAlt1Color);
+        }
+        th { color: var(--txtHintColor); font-weight: 600; }
+    }
+
+    hr { border: 0; border-top: 1px solid var(--baseAlt1Color); margin: 18px 0; }
+}
+
+@media only screen and (max-width: 600px) {
+    .code-copy span { display: none; }
+    .code-copy { padding: 0 7px; }
+    .code-body pre.shiki, .md-body { padding-right: 76px; }
+}

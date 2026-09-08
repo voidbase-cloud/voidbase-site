@@ -12,4 +12,15 @@ export default defineConfig({
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
+  build: {
+    rollupOptions: {
+      treeshake: {
+        // `marked` renders markdown on the server only (src/components/CodeBlock.tsx), but it ships no
+        // "sideEffects": false, so the bundler has to assume importing it does something and keeps it in the client
+        // build behind a branch that can never run. It does not; saying so is what lets the client drop it.
+        // Everything else keeps Rollup's default, which is to assume a module may have side effects.
+        moduleSideEffects: (id) => !id.includes("node_modules/marked/"),
+      },
+    },
+  },
 });

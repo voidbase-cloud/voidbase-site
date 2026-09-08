@@ -36,26 +36,3 @@
     }
 }
 
-// CodeBlock's scoped <style> block from the Svelte site, scoped under .code-wrapper so it stays global-safe
-.code-wrapper {
-    display: block;
-    width: 100%;
-
-    code {
-        display: block;
-        width: 100%;
-        padding: var(--xsSpacing);
-        white-space: pre-wrap;
-        word-break: break-word;
-    }
-
-    &.prism-light code {
-        color: var(--txtPrimaryColor);
-        background: var(--baseAlt1Color);
-    }
-
-    &.prism-dark code {
-        background: var(--baseColor);
-        color: var(--txtPrimaryColor);
-    }
-}

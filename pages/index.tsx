@@ -314,7 +314,6 @@ export default function Landing() {
   const previewLanguage: SdkLanguage =
     isSdkLanguage(preference) && preview[preference] ? preference : (Object.keys(preview)[0] as SdkLanguage);
 
-  const previewContent = preview[previewLanguage] || "";
 
   useEffect(() => {
     function onMousemove(e: MouseEvent) {
@@ -521,7 +520,23 @@ export default function Landing() {
                     ),
                 )}
               </div>
-              <CodeBlock language={previewLanguage} content={previewContent} />
+              {/*
+                Every snippet is rendered once and all but one is hidden, rather than one block whose language
+                changes. The highlighting is done at build time and never ships to the browser, so a block that
+                re-renders here would lose its colours; giving each snippet its own block means none of them ever
+                has to.
+              */}
+              {(Object.entries(codePreviews) as [PreviewKey, Partial<Record<SdkLanguage, string>>][]).map(
+                ([key, group]) =>
+                  (Object.entries(group) as [SdkLanguage, string][]).map(([snippetLanguage, snippet]) => (
+                    <div
+                      key={`${key}-${snippetLanguage}`}
+                      hidden={key !== activePreview || snippetLanguage !== previewLanguage}
+                    >
+                      <CodeBlock language={snippetLanguage} content={snippet} />
+                    </div>
+                  )),
+              )}
             </div>
           </div>
         </section>
