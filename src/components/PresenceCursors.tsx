@@ -281,12 +281,29 @@ export default function PresenceCursors() {
       {pointing && (
         <div ref={own} className="presence-cursor presence-cursor-own">
           <Arrow color={identity.color} />
+          <Hand color={identity.color} />
           <span className="presence-name" style={{ backgroundColor: identity.color }}>
             You{live?.enabled && holdsSlot === false ? " · watching" : ""}
           </span>
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * The shape a browser would show over a link. The real cursor is hidden on this page, so the affordance has to be
+ * drawn: over anything clickable the arrow is swapped for this, in the same colour, by a class the pointer handler
+ * already sets. Only your own cursor gets it; someone else's arrow is not yours to change.
+ */
+function Hand({ color }: { color: string }) {
+  return (
+    <svg className="cursor-hand" width="24" height="24" viewBox="0 0 24 24" focusable="false">
+      <path
+        d="M8.6 2.4a1.4 1.4 0 0 1 2.8 0v7.1a1.3 1.3 0 0 1 2.5.4v.7a1.3 1.3 0 0 1 2.5.4v.7a1.3 1.3 0 0 1 2.4.5v2.9c0 3-2.1 5.5-5.3 5.5h-1.6c-1.9 0-3.1-.8-4.2-2.1L4.5 14a1.4 1.4 0 0 1 2-2l1.7 1.4z"
+        fill={color} stroke="#fff" strokeWidth="1.5" strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

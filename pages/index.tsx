@@ -365,10 +365,21 @@ export default function Landing() {
           </div>
 
           <p className="hero-lineage">
-            <span ref={fireRef}><Link href="/docs/why/firebase" className="gen gen-fire" aria-label="Compared to Firebase"><s>Fire</s></Link></span>
-            <span ref={supaRef}><Link href="/docs/why/supabase" className="gen gen-supa" aria-label="Compared to Supabase"><s>Supa</s></Link></span>
-            <span ref={pocketRef}><Link href="/docs/why/pocketbase" className="gen gen-pocket" aria-label="Compared to PocketBase"><s>Pocket</s></Link></span>
-            <span ref={whyRef}><Link href="/docs/why" className="gen gen-void" aria-label="Why another backend?"><span>Void</span><strong>base</strong></Link></span>
+            <span className="word">
+              <span ref={fireRef}><Link href="/docs/why/firebase" className="gen gen-fire" aria-label="Compared to Firebase"><s>Fire</s></Link></span>
+              <span ref={supaRef}><Link href="/docs/why/supabase" className="gen gen-supa" aria-label="Compared to Supabase"><s>Supa</s></Link></span>
+              <span ref={pocketRef}><Link href="/docs/why/pocketbase" className="gen gen-pocket" aria-label="Compared to PocketBase"><s>Pocket</s></Link></span>
+              <span ref={whyRef}><Link href="/docs/why" className="gen gen-void" aria-label="Why another backend?"><span>Void</span><strong>base</strong></Link></span>
+
+              {/*
+                Each rule is the same text, set transparent, so its width is exactly the run it has to cross and no
+                measurement is needed: "Fire", then "FireSupa", then "FireSupaPocket". They stack down the line box,
+                which is the whole point of them, because what each generation crossed out was everything before it.
+              */}
+              <span className="rule rule-fire" aria-hidden="true">Fire</span>
+              <span className="rule rule-supa" aria-hidden="true">FireSupa</span>
+              <span className="rule rule-pocket" aria-hidden="true">FireSupaPocket</span>
+            </span>
           </p>
 
           <div className="hero-actions">

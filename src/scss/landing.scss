@@ -211,16 +211,19 @@
         letter-spacing: -0.022em;
         white-space: nowrap;
 
-        // the four names run together into one word, so nothing between them may add a gap
-        > span {
+        // the four names run together into one word, so nothing between them may add a gap, and the run they sit in
+        // shrink-wraps them: the rules below are laid out from its left edge, which is the F of Fire
+        .word {
+            position: relative;
+            display: inline-block;
+        }
+        > .word > span {
             display: inline;
         }
 
         .gen {
-            position: relative;
             color: inherit;
             text-decoration: none;
-            transition: opacity var(--baseAnimationSpeed);
             border-radius: 3px;
 
             &:focus-visible {
@@ -231,7 +234,6 @@
 
         // A struck name is history, so it sits back until you go looking at it.
         s {
-            position: relative;
             text-decoration: none;
             opacity: 0.72;
             transition: opacity var(--baseAnimationSpeed);
@@ -241,23 +243,40 @@
             opacity: 1;
         }
 
-        // The deletion. Not text-decoration: that draws one identical hairline through every word, and this is three
-        // people crossing out a name on three different days. Each rule takes the colour of what it cancels,
-        // overshoots the word by its own amount, and sits a fraction off level.
-        s:after {
-            content: "";
+        // The deletions. Each generation crossed out everything that came before it, so the lines are not one per
+        // word: they start together at the F and stop at a different name, stacked down the line box. Widths come
+        // from the transparent copy of the text each one carries, so they are exact in any font at any size.
+        .rule {
             position: absolute;
-            top: 54%;
-            height: 0.09em;
-            background: currentColor;
-            border-radius: 2px;
-            transform-origin: left center;
-            transform: scaleX(0) rotate(var(--tilt));
-        }
+            left: 0;
+            top: 0;
+            white-space: pre;
+            pointer-events: none;
+            // hidden rather than transparent, so find-in-page does not match a name three more times, and the line
+            // itself takes its visibility back
+            visibility: hidden;
 
-        .gen-fire { color: var(--dangerColor); s:after { left: -4%; width: 111%; --tilt: -1.1deg; } }
-        .gen-supa { color: var(--successColor); s:after { left: -6%; width: 108%; --tilt: 0.9deg; } }
-        .gen-pocket { color: var(--infoColor); s:after { left: -3%; width: 106%; --tilt: -0.5deg; } }
+            &:after {
+                content: "";
+                visibility: visible;
+                position: absolute;
+                left: -3px;
+                right: -5px;
+                height: 0.075em;
+                border-radius: 2px;
+                transform: scaleX(0);
+                transform-origin: left center;
+            }
+        }
+        // each name and the line that cancels it share a colour, so the staircase reads as three generations rather
+        // than three stripes
+        .gen-fire { color: var(--dangerColor); }
+        .gen-supa { color: var(--successColor); }
+        .gen-pocket { color: var(--infoColor); }
+
+        .rule-fire:after { top: 33%; background: var(--dangerColor); }
+        .rule-supa:after { top: 50%; background: var(--successColor); }
+        .rule-pocket:after { top: 67%; background: var(--infoColor); }
 
         // the survivor: grey prefix, white constant, exactly as the logo sets it
         .gen-void {
@@ -266,15 +285,15 @@
             &:hover { color: var(--txtPrimaryColor); }
         }
 
-        // Read the absurd word whole for a beat, then watch three generations get crossed off in order. It runs
-        // once, on the class the gopher's entrance already waits for.
-        .loaded & s:after {
-            transition: transform 0.34s cubic-bezier(0.5, 0, 0.2, 1);
-            transform: scaleX(1) rotate(var(--tilt));
+        // Read the absurd word whole for a beat, then watch each generation cross off everything before it, in
+        // order. It runs once, on the class the gopher's entrance already waits for.
+        .loaded & .rule:after {
+            transition: transform 0.38s cubic-bezier(0.5, 0, 0.2, 1);
+            transform: scaleX(1);
         }
-        .loaded & .gen-fire s:after { transition-delay: 0.45s; }
-        .loaded & .gen-supa s:after { transition-delay: 0.59s; }
-        .loaded & .gen-pocket s:after { transition-delay: 0.73s; }
+        .loaded & .rule-fire:after { transition-delay: 0.45s; }
+        .loaded & .rule-supa:after { transition-delay: 0.62s; }
+        .loaded & .rule-pocket:after { transition-delay: 0.79s; }
     }
 
     // Three ways on, in the order of how sure you are: get one running, find out why this one, or go and read.
@@ -309,9 +328,9 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-        .hero-lineage s:after,
-        .loaded & .hero-lineage s:after {
-            transform: scaleX(1) rotate(var(--tilt));
+        .hero-lineage .rule:after,
+        .loaded & .hero-lineage .rule:after {
+            transform: scaleX(1);
             transition: none;
         }
     }
@@ -708,7 +727,13 @@
 
     // over a text field the system's own I-beam says something this arrow cannot, so it steps aside
     &.is-hidden { opacity: 0; }
-    &.is-clickable svg { transform: scale(1.22); }
+    // the real cursor is hidden here, so this has to carry the affordance the browser would have: over anything
+    // clickable the arrow becomes the hand, in the same colour, with its fingertip where the arrow's point was
+    .cursor-hand { display: none; }
+    &.is-clickable {
+        .cursor-hand { display: block; margin: -1px 0 0 -6px; }
+        > svg:not(.cursor-hand) { display: none; }
+    }
     .presence-name { opacity: 0.85; }
 }
 
