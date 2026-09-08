@@ -40,7 +40,8 @@ export default function DocsPlugins() {
         A plugin is code somebody else wrote that you install into your instance by name, instead of copying a hook
         file out of a gist and hoping. There are two ways one could arrive, one cheap and one that rebuilds the
         instance, and the difference between them is most of this page. <code>pb_plugins</code> does not exist yet:
-        no format, no loader, nothing to install. This is the design, written down so it can be argued with before
+        the manifest format and the loader do, inside voidbase, carrying backups, realtime and the request limits, but
+        there is nothing to install. This is the design, written down so it can be argued with before
         it is built.
       </p>
 
