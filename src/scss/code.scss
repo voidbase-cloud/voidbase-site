@@ -117,8 +117,13 @@
         // the site sets `code { white-space: nowrap }`, and pre-wrap under 600px. Neither is right inside a <pre>:
         // one joins the lines, the other reflows them. The block scrolls sideways instead.
         white-space: pre;
+        // and `code { line-height: 1.2rem }`, which is set on the element itself and so beats the one on the <pre>
+        line-height: 22px;
     }
-    .line { display: block; min-height: 22px; }
+    // Shiki writes a newline between its line spans and lets `white-space: pre` on the code turn each one into a
+    // line break. Making the spans blocks as well would break the line twice and double the spacing, so they stay
+    // inline and the newlines do the work, which is also what keeps a blank line in the source a blank line here.
+    .line { display: inline; }
 }
 
 // A markdown block is a document. It gets document typography, and none of the code framing that would invite
