@@ -14,12 +14,21 @@ const SHAPE = hl.bash`my-instance/
       ├─ plugin.json    what it is, what it needs, what it may touch
       ├─ hooks/         handlers it registers
       ├─ migrations/    collections it owns
-      └─ panel/         screens it adds to the admin panel`;
+      ├─ panel/         screens it adds to the admin panel
+      └─ register.ts    packaged plugins only: what the build composes in`;
 
-const USE = hl.bash`voidbase plugins                 # what is installed
-voidbase plugins add backups-r2  # install by name from the marketplace
-voidbase plugins update          # bring them up to date
+// in a project or a stack app, where you already have the source
+const USE = hl.bash`voidbase plugins                 # what is installed, and which way each one is in
+voidbase plugins add backups-r2  # source into pb_plugins/, committed like any dependency
+voidbase plugins update
 voidbase plugins remove backups-r2`;
+
+// anywhere, including the shapes that have no repository at all
+const PACKAGED = hl.bash`./voidbase plugins add cache-kv     # the standalone executable
+voidbase plugins add cache-kv --name blog   # an instance made with the CLI
+# or a button in the dashboard, for a cloud instance
+#
+# each rebuilds the instance around the plugin and restarts it on the result.`;
 
 export default function DocsPlugins() {
   return (
@@ -29,8 +38,10 @@ export default function DocsPlugins() {
       </h1>
       <p className="docs-lead">
         A plugin is code somebody else wrote that you install into your instance by name, instead of copying a hook
-        file out of a gist and hoping. <code>pb_plugins</code> does not exist yet: there is no format, no loader, and
-        nothing to install. This page is the design, written down so it can be argued with before it is built.
+        file out of a gist and hoping. There are two ways one could arrive, one cheap and one that rebuilds the
+        instance, and the difference between them is most of this page. <code>pb_plugins</code> does not exist yet:
+        no format, no loader, nothing to install. This is the design, written down so it can be argued with before
+        it is built.
       </p>
 
       <h2>What one will be</h2>
@@ -45,19 +56,67 @@ export default function DocsPlugins() {
         calls everything else.
       </p>
 
-      <h2>Using one</h2>
-      <CodeBlock {...USE} />
+      <h2>Two ways in</h2>
       <p>
-        Installed by name, versioned, and recorded in a lock file, so what is running is what your repository says is
-        running. Each page under <Link href="/docs/run/standalone">Run an instance</Link> has a section on what this
-        looks like for that shape, because a downloaded executable, a committed project and a cloud instance cannot
-        all install things the same way.
+        A plugin arrives one of two ways, and the difference is who can install it. One asks you to have a
+        repository and a build. The other asks nothing of you at all.
       </p>
+
+      <h3>Unpackaged, for instances you build</h3>
+      <p>
+        Source in <code>pb_plugins/</code>, joining your repository the way <code>pb_hooks</code> does. It works in{" "}
+        <Link href="/docs/run/project">a voidbase project</Link> and{" "}
+        <Link href="/docs/run/stack">a stack app</Link>, and only there, because those are the shapes where you
+        already have the code, the toolchain and a deploy of your own. The plugin is one more thing in a build you
+        were running anyway.
+      </p>
+      <p>
+        That makes it the cheap path for people who are already writing code, and useless to everyone else. It also
+        keeps what the plugin can do inside what a hook can do: routes, handlers, collections, panel screens. No npm
+        dependencies of its own, no new bindings.
+      </p>
+      <CodeBlock {...USE} />
+
+      <h3>Packaged, for every instance, without writing anything</h3>
+      <p>
+        The plugin is a built artifact rather than source, so installing it does not require you to have a project,
+        a toolchain or an opinion about builds. It works in{" "}
+        <Link href="/docs/run/standalone">the standalone executable</Link>,{" "}
+        <Link href="/docs/run/npm">instances from the CLI</Link> and{" "}
+        <Link href="/docs/run/cloud">voidbase cloud</Link> as well as in a project or a stack app. Someone who has
+        never opened an editor can install one, which is the entire point of the format existing.
+      </p>
+      <p>
+        What that costs is a rebuild, done by the tooling rather than by you: the instance is put together again with
+        the plugin compiled into it, and the result is what runs. In exchange the plugin gets what an unpackaged one
+        cannot have, which is real dependencies and bindings of its own, a queue or a KV namespace the base instance
+        never had.
+      </p>
+      <CodeBlock {...PACKAGED} />
+      <p>
+        Because the instance is rebuilt, it is rebuilt on the current voidbase release rather than whichever one it
+        was running. A packaged install therefore carries an upgrade with it whether or not you wanted one. That is
+        the most awkward thing in this design and it is not settled.
+      </p>
+
+      <div className="alert alert-info">
+        <div className="content">
+          <p className="m-0">
+            If you are publishing, packaged is what reaches people. Unpackaged reaches only those who already have a
+            repository, which is the smaller half of everyone running voidbase and the half least in need of help.
+          </p>
+        </div>
+      </div>
 
       <h2>What is decided</h2>
       <ul>
         <li>Plugins live in a directory beside your hooks, installed and updated by name rather than copied in.</li>
         <li>A plugin declares what it needs and can add routes, hooks, collections and admin panel screens.</li>
+        <li>
+          There are two ways in, and a plugin declares which it is. Unpackaged reaches projects and stack apps only.
+          Packaged reaches every shape, including the ones with no repository, and is what a publisher should aim
+          for unless there is a reason not to.
+        </li>
         <li>
           Core plugins ship with voidbase, official ones are ours and versioned with it, and anyone can publish their
           own through <Link href="/docs/marketplace">the marketplace</Link> or a registry of their own.
@@ -74,6 +133,16 @@ export default function DocsPlugins() {
         </li>
         <li>Versioning: what happens to an installed plugin when voidbase changes underneath it.</li>
         <li>Isolation: whether a plugin runs in the same isolate as your hooks, and what its failures do to yours.</li>
+        <li>
+          <strong>The upgrade a packaged install drags along.</strong> Rebuilding puts the instance on the current
+          release, so installing a plugin and upgrading voidbase become the same action. Whether that can be
+          separated, by rebuilding on the version you are already on, is open, and it is the difference between a
+          plugin install being routine and being a thing you schedule.
+        </li>
+        <li>
+          Whether a packaged plugin can be uninstalled without a second rebuild, and what an instance falls back to
+          if that rebuild fails.
+        </li>
       </ul>
 
       <h2>What you can do now</h2>

@@ -12,14 +12,14 @@ export type Shape = "standalone" | "npm" | "cloud" | "project" | "stack";
 
 const COMMANDS: Record<Shape, { code: ReturnType<typeof hl.bash>; dir: string | null }> = {
   standalone: {
-    dir: "pb_plugins/",
+    dir: null,
     code: hl.bash`./voidbase plugins                  # what this instance has
 ./voidbase plugins add backups-r2    # install by name
 ./voidbase plugins update            # bring them all up to date
 ./voidbase plugins remove backups-r2`,
   },
   npm: {
-    dir: "pb_plugins/",
+    dir: null,
     code: hl.bash`voidbase plugins --name blog             # what a local instance has
 voidbase plugins add backups-r2 --name blog
 voidbase plugins update --name blog
@@ -44,6 +44,20 @@ bun run build && cd .voidbase && voidbase deploy`,
   },
 };
 
+// which of the two ways reaches this shape at all, which is the part worth saying per page
+const SPLIT: Record<Shape, string> = {
+  standalone:
+    "Packaged only. There is no repository here and no build of yours, so a plugin has to arrive already built; installing one puts the executable's instance together again around it. Unpackaged plugins are source that joins a project, which this shape does not have.",
+  npm:
+    "Packaged only. An instance made this way is a directory of data and configuration rather than a codebase, so a plugin has to arrive built. The CLI does the rebuild, because the toolchain is already on your machine.",
+  cloud:
+    "Packaged only, and you do none of the work: the control plane rebuilds and redeploys the instance around the plugin. This is the shape the packaged format exists for, because nothing else could reach it.",
+  project:
+    "Both. Packaged plugins install the way they do everywhere. Unpackaged ones are source in pb_plugins/ that you commit and deploy, which is the cheaper path and only available because you already have a repository.",
+  stack:
+    "Both, and unpackaged is at its most natural here: the plugin joins the same build as your pages and routes, which is the closest this design gets to a plugin being ordinary code.",
+};
+
 const REGISTRY = hl.bash`# our marketplace is the default; any registry serving the same shape works
 voidbase plugins add backups-r2 --registry https://marketplace.example.com
 VOIDBASE_PLUGIN_REGISTRY=https://marketplace.example.com voidbase plugins add backups-r2`;
@@ -64,22 +78,27 @@ export default function PluginsSoon({ shape }: { shape: Shape }) {
 
       <CodeBlock {...code} />
 
-      {shape === "cloud" ? (
+      {dir ? (
         <p>
-          A cloud instance is provisioned for you, so there is no directory of yours for a plugin to land in.
-          Installing one would be a choice in the dashboard, applied by redeploying the instance onto the same
-          release with that plugin included.
+          Unpackaged plugins land in <code>{dir}</code>, beside{" "}
+          {shape === "stack" ? <code>vb_hooks</code> : <code>pb_hooks</code>}, which is where installed things sit
+          beside your own code everywhere else in voidbase. They are committed, so what is running is what the
+          repository says is running, and a deploy is what puts a new one live. A packaged plugin is not a directory
+          at all: it is part of what the build produces.
         </p>
       ) : (
         <p>
-          Installed plugins land in <code>{dir}</code>, beside{" "}
-          {shape === "stack" ? <code>vb_hooks</code> : <code>pb_hooks</code>}, which is where installed things sit
-          beside your own code everywhere else in voidbase.{" "}
-          {shape === "project" || shape === "stack"
-            ? "They are committed, so what is running is what the repository says is running, and a deploy is what puts a new one live."
-            : "They load at startup, so restarting the server is what picks up a change."}
+          Nothing lands in a directory you keep. A packaged plugin is compiled into the instance, so installing one
+          replaces what is running rather than adding a file beside it, and the instance restarts on the result.
         </p>
       )}
+
+      <h3>Which of the two ways this shape can do</h3>
+      <p>
+        A plugin arrives <Link href="/docs/plugins">unpackaged or packaged</Link>: source that joins a repository you
+        already have, or a built artifact that installs into any instance without you writing a line.{" "}
+        {SPLIT[shape]}
+      </p>
 
       <h3>Somewhere other than our marketplace</h3>
       <p>
