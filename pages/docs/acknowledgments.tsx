@@ -101,6 +101,26 @@ export default function DocsAcknowledgments() {
         </p>
       </section>
 
+      <section className="thanks-major">
+        <h2>The Omarchy plugin marketplace</h2>
+        <p>
+          <a href="https://github.com/omacom/omarchy-plugin-marketplace" target="_blank" rel="noreferrer noopener">
+            omarchy-plugin-marketplace
+          </a>{" "}
+          worked out how to run a community marketplace without accounts, uploads or a place to host other people's
+          code: a submission is a GitHub issue, an automated pass reports on the repository before anyone decides, an
+          explicit maintainer approval is what publishes it, and the registry is a file in the repository rather than
+          rows in a database.
+        </p>
+        <p>
+          <a href="https://marketplace.voidbase.cloud" target="_blank" rel="noreferrer noopener">
+            The voidbase marketplace
+          </a>{" "}
+          is a much smaller version of that idea and none of their code is in it, but the shape is theirs and it saved
+          us from designing a worse one.
+        </p>
+      </section>
+
       <Credits
         title="What the server is made of"
         lead="Runtime dependencies, from the package's NOTICE file."
