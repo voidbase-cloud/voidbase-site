@@ -28,6 +28,7 @@ jobs:
       # master deploys; every other branch is checked and built on the branches trigger
       TRIGGER: ${{ github.ref_name == 'master' && vars.CF_CI_TRIGGER_MASTER || vars.CF_CI_TRIGGER_BRANCHES }}
       WAIT: ${{ vars.CF_BUILDS_WAIT }}
+      WORKER: voidbase-site-backend
     steps:
       - name: Start the build
         run: |
@@ -38,16 +39,16 @@ jobs:
           [ -n "$uuid" ] || { echo "no build started: $res"; exit 1; }
           echo "cloudflare: build $uuid ($(printf '%s' "$res" | jq -r '.result.status // "queued"')) of $COMMIT on $BRANCH"
           echo "uuid=$uuid" >> "$GITHUB_ENV"
-      # The trigger's path filters apply to a build started here, not only to one Cloudflare starts itself, so a
-      # trigger set to exclude every path (an attempt to stop it building on its own) skips this build too, and
-      # skipping is not a failure: the workflow would go green while nothing deployed. This says so out loud.
+      # A build Cloudflare declines to run comes back "skipped", which is not "fail", so the job would go green
+      # while nothing deployed: one commit went out that way before this step existed. Only the outcome is
+      # trustworthy here, not a reason for it, so this reports the fact and points at the dashboard.
       - name: Say so if Cloudflare skipped it
         run: |
           sleep 90
           outcome=$(curl -sS "$API/builds/$uuid" -H "Authorization: Bearer $TOKEN" | jq -r '.result.build_outcome // empty')
           [ "$outcome" != "skipped" ] || {
-            echo "cloudflare skipped build $uuid: nothing was deployed."
-            echo "the trigger's path filters exclude this commit; clear path_excludes in Workers > Settings > Builds."
+            echo "cloudflare skipped build $uuid, so $COMMIT did not deploy."
+            echo "see Workers > $WORKER > Settings > Builds for why, then push again or start a build there."
             exit 1
           }
           echo "cloudflare: build $uuid is ${outcome:-running}"
@@ -61,7 +62,7 @@ jobs:
             case "$status" in
               success) echo "cloudflare: success"; exit 0 ;;
               fail|failure|failed|canceled|cancelled|timed_out|error) echo "cloudflare: $status"; exit 1 ;;
-              skipped) echo "cloudflare: skipped, so nothing deployed; clear the trigger's path_excludes"; exit 1 ;;
+              skipped) echo "cloudflare: skipped, so nothing deployed; see the build in the dashboard"; exit 1 ;;
               "") unknown=$((unknown + 1)); [ "$unknown" -lt 10 ] || { echo "cannot read the status of build $uuid; see the dashboard"; exit 1; } ;;
             esac
             sleep 30
