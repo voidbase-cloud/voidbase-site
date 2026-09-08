@@ -7,13 +7,13 @@ import Updating from "@/components/Updating";
 import "@/scss/updating.scss";
 
 const LINUX = hl.bash`# pick the build for this machine: linux_amd64, linux_arm64, or linux_amd64_musl on Alpine
-VERSION=0.7.0
+VERSION=0.9.0-beta.1
 curl -LO https://github.com/voidbase-cloud/voidbase/releases/download/v\${VERSION}/voidbase_\${VERSION}_linux_amd64.zip
 
 unzip voidbase_\${VERSION}_linux_amd64.zip
 chmod +x voidbase`;
 
-const MAC = hl.bash`VERSION=0.7.0
+const MAC = hl.bash`VERSION=0.9.0-beta.1
 curl -LO https://github.com/voidbase-cloud/voidbase/releases/download/v\${VERSION}/voidbase_\${VERSION}_darwin_arm64.zip
 unzip voidbase_\${VERSION}_darwin_arm64.zip
 chmod +x voidbase

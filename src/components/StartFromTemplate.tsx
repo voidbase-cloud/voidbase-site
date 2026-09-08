@@ -11,9 +11,9 @@ const SCRATCH: Record<"project" | "stack", ReturnType<typeof hl.bash>> = {
   stack: hl.bash`bun add void && bunx void init && bun add @voidbase-cloud/voidbase`,
 };
 
-const PROPOSED = hl.bash`voidbase init blog-api --template voidbase-cloud/voidbase-site
-voidbase init blog-api --template blog-with-comments   # by listed name
-voidbase init blog-api --template acme/internal-starter --registry https://templates.acme.internal`;
+const PROPOSED = hl.bash`voidbase init blog-api --template voidbase-cloud/voidbase-demo
+voidbase init blog-api --template voidbase-site                 # by listed name
+voidbase init blog-api --template acme/starter --registry https://templates.acme.internal/list.json`;
 
 export default function StartFromTemplate({ shape }: { shape: "project" | "stack" }) {
   const what = shape === "project" ? "a voidbase project" : "a stack app";
@@ -55,18 +55,19 @@ export default function StartFromTemplate({ shape }: { shape: "project" | "stack
         )}
       </p>
 
-      <h3>
-        From the CLI <span className="label label-warning">Not built yet</span>
-      </h3>
+      <h3>From the CLI</h3>
       <p>
-        Cloning through a browser is fine once and tedious after that, so <code>init</code> should be able to take a
-        template directly, from our marketplace or from a registry of your own. This is a proposal, not a command
-        that exists.
+        Cloning through a browser is fine once and tedious after that, so <code>init</code> takes a template
+        directly. Give it <code>owner/name</code>, a GitHub URL, or the name of anything listed in the marketplace,
+        which it looks up for you.
       </p>
       <CodeBlock {...PROPOSED} />
-      <p className="txt-hint">
-        Until it lands, the command that does exist starts from nothing:
+      <p>
+        It writes the files and nothing else: no <code>.git</code>, no history, no remote pointing at somebody
+        else's repository. It refuses a directory that already has anything in it, because writing a whole project
+        over your work is not something you can undo. <code>--registry</code> points it at a listing of your own.
       </p>
+      <p className="txt-hint">Starting from nothing is still one command:</p>
       <CodeBlock {...SCRATCH[shape]} />
       <p>
         Publishing your own is <Link href="/docs/marketplace/templates">a GitHub issue</Link>, and{" "}
