@@ -72,6 +72,28 @@ export default function DocsContribute() {
         each other.
       </p>
 
+      <h3>A logo, if you draw</h3>
+      <p>
+        The mark at the top of this page is an open ring with a dot crossing the gap. A model produced it in one
+        attempt, nobody iterated on it, and it has stayed because it was good enough and there was nothing else. It
+        is 379 bytes of hand-checkable SVG, which is the nicest thing that can be said about it.
+      </p>
+      <p>
+        We would replace it with something better and we cannot pay for one. There is no revenue here and{" "}
+        <Link href="/docs/pricing">the pricing page</Link> explains why there is unlikely to be any soon, so
+        commissioning a designer is not a thing we can honestly do. That leaves asking, which is what this is.
+      </p>
+      <p>
+        What it has to survive: 16 pixels as a favicon, one colour, light and dark backgrounds, and being small
+        enough to inline. If you make one and we use it, it ships under the project's licence and you are credited
+        on <Link href="/docs/acknowledgments">the acknowledgments page</Link>. Nothing is owed either way, and we
+        would rather say that plainly than have someone spend a weekend on a maybe.
+      </p>
+      <p>
+        Show it in <a href={SITE.discordUrl} target="_blank" rel="noreferrer noopener">Discord</a> or open an issue.
+        A sketch is enough to start a conversation; it does not need to be finished.
+      </p>
+
       <h2>Working on voidbase</h2>
       <CodeBlock {...SETUP} />
       <p>
