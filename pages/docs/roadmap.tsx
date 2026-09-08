@@ -72,7 +72,7 @@ export default function DocsRoadmap() {
         from="Firebase caches writes on the device and reconciles them when the network returns, and has done for a decade."
         now="Nothing. A request that fails is a request your code has to handle."
         plan="Two pieces, in order. A service worker that queues mutations and replays them on reconnect, which needs no change to the API and works with the existing SDK. Then a client of our own that reads through a local store so a screen renders before the network answers, which is the part that needs the typed client below to exist first."
-        size="Medium for the queue, large for the local store. The queue is worth shipping alone."
+        size="Medium for the queue, large for the local store. The queue is worth shipping alone, and the plugin that wraps it into an installable app is further down this page."
       />
 
       <h3 className="why-group">Types</h3>
@@ -194,6 +194,33 @@ export default function DocsRoadmap() {
         now="The panel edits records and your site reads them. Nothing links a block on the page to the field behind it."
         plan="A plugin that binds a block on your own site to the field it came from. A signed-in admin gets contenteditable on that block with a markdown toolbar over it, edits in place, and the save writes the field back through the same rules as any other write. The content stays markdown in a collection, so it is still queryable and still exports, and none of it turns into a document only one editor can open."
         size="Medium. A small client script, a field-level permission check, and a toolbar."
+      />
+
+      <h3 className="why-group">Search engines, and the other crawlers</h3>
+      <Item
+        title="SEO, as official plugins"
+        from="Anything that serves pages has to answer crawlers, and every project answers them again from scratch with a handful of routes nobody enjoys writing."
+        now="pb_public serves static files and a stack app renders pages, so you can write a robots.txt and a sitemap by hand. Nothing generates either from what is actually in your collections, which is where the truth is and where a hand-written copy goes stale."
+        plan="Generated from the routes and records that exist rather than kept in step by hand: robots.txt, a sitemap that changes when records do, JSON-LD from schema.org types mapped onto collections, OpenGraph and Twitter tags, canonical URLs so one page has one address, per-route rules for what may be indexed, and llms.txt for the crawlers that are not search engines. Open Graph images rendered on request and cached the way thumbnails already are, so a share card is a field rather than a design job. Deployment skew and asset versioning are on this list too, because they are the same question asked at deploy time: a browser that loaded one version should keep working against that version, and an asset URL should say which version it came from. Cloudflare's Worker versions and gradual deployments are what that would be built on."
+        size="Medium, and it splits cleanly. robots.txt and the sitemap are small and useful on their own; the image rendering and the skew handling are the two that need real design."
+      />
+
+      <h3 className="why-group">Installable, and usable on a bad connection</h3>
+      <Item
+        title="A progressive web app, and the service worker under it"
+        from="The offline item in the first section is the engine. This is everything you would otherwise assemble around it by hand, once per project, from a manifest you copied off a blog post."
+        now="Nothing. A voidbase app is a website. Making it installable, cacheable and useful on a train is entirely yours."
+        plan="A plugin that writes the manifest, the icon set and the service worker from what the app already declares, registers it with the parts everyone gets wrong handled: the update prompt, the skip-waiting path, and a way to unregister, because a stuck service worker is the worst bug in this area and the hardest to talk a user through. It precaches the shell and reuses the mutation queue from the offline item rather than inventing a second one, so a write made with no signal replays through the same path whichever page queued it."
+        size="Medium, and it lands after the offline queue. Without that queue it is a caching layer with a better name."
+      />
+
+      <h3 className="why-group">Languages</h3>
+      <Item
+        title="Translations, as an official plugin"
+        from="Every application that reaches a second country rebuilds this, and what gets rebuilt is usually a JSON file per language and a helper that cannot tell you which keys are missing."
+        now="Nothing. A translated field is a field you named yourself, following a convention only your own code knows about."
+        plan="Two halves, because they are two problems. Interface strings live in the project, are typed, and fail the build when a key is missing rather than rendering the key to a user. Content translations live in the collections: a field is declared translatable once and the API answers in the language the request asks for, falling back the way you said rather than the way we guessed. Then the parts around both, which is a locale in the route, hreflang and canonical tags handled by the SEO plugin above, and a panel screen showing what is untranslated so you find out before a reader does."
+        size="Large. The content half reaches into the query path, which is the part of the server we change most carefully."
       />
 
       <h3 className="why-group">Commerce</h3>
