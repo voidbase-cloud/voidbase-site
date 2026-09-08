@@ -32,9 +32,10 @@ export default function PageHeader({ compact = false }: PageHeaderProps) {
               </button>
             )}
           >
-            <Link href="/docs" className="dropdown-item">Docs</Link>
+            <Link href="/docs/start" className="dropdown-item">Docs</Link>
             <Link href="why" className="dropdown-item">Why</Link>
             <Link href="/docs/pricing" className="dropdown-item">Pricing</Link>
+            <a href={SITE.marketplaceUrl} className="dropdown-item" target="_blank" rel="noreferrer noopener">Marketplace</a>
             <Link href="/cloud" className="dropdown-item">Cloud</Link>
             <Link href="/docs/run/project" className="dropdown-item">Get it running</Link>
             <a href={SITE.discordUrl} className="dropdown-item" target="_blank" rel="noreferrer noopener">Discord</a>
@@ -45,8 +46,9 @@ export default function PageHeader({ compact = false }: PageHeaderProps) {
           </Dropdown>
 
           <nav className="main-menu">
-            <Link href="/docs" className="btn btn-secondary">Docs</Link>
+            <Link href="/docs/start" prefetch="hover" className="btn btn-secondary">Docs</Link>
             <Link href="/docs/why" className="btn btn-secondary">Why</Link>
+            <a href={SITE.marketplaceUrl} className="btn btn-secondary" target="_blank" rel="noreferrer noopener">Marketplace</a>
             <Link href="/docs/pricing" className="btn btn-secondary">Pricing</Link>
             <Link href="/docs/run/project" prefetch="hover" className="btn btn-circle btn-secondary" title="Get voidbase running">
               <i className="ri-download-2-line" />

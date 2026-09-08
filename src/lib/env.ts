@@ -11,6 +11,7 @@ export const SITE = {
   repoUrl: env.PB_REPO_URL ?? "https://github.com/voidbase-cloud/voidbase",
   discussionsUrl: env.PB_DISCUSSIONS_URL ?? "https://github.com/voidbase-cloud/voidbase/discussions",
   discordUrl: env.PB_DISCORD_URL ?? "https://discord.gg/zYujFvVYgq",
+  marketplaceUrl: env.PB_MARKETPLACE_URL ?? "https://marketplace.voidbase.cloud",
   npmUrl: env.PB_NPM_URL ?? "https://www.npmjs.com/package/@voidbase-cloud/voidbase",
   jsSdkUrl: env.PB_JS_SDK_URL ?? "https://github.com/pocketbase/js-sdk",
   dartSdkUrl: env.PB_DART_SDK_URL ?? "https://github.com/pocketbase/dart-sdk",

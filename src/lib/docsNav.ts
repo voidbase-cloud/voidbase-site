@@ -101,6 +101,18 @@ export const DOCS_NAV: DocsLink[] = [
     ],
   },
   {
+    href: "/docs/marketplace",
+    title: "Marketplace",
+    icon: "ri-store-2-line",
+    summary: "Templates and plugins other people wrote, and how to publish your own.",
+    children: [
+      { href: "/docs/marketplace", title: "What it is", summary: "What you can list, what you can use, and what is not built yet." },
+      { href: "/docs/marketplace/templates", title: "Publish a template", summary: "What makes one, what the audit checks, and how to submit it." },
+      { href: "/docs/marketplace/plugins", title: "Publish a plugin", summary: "Register one now; the format it will build against is still being designed." },
+      { href: "/docs/marketplace/getting-paid", title: "Getting paid", summary: "What is promised about charging for your work, and what is still undecided." },
+    ],
+  },
+  {
     href: "/docs/pricing",
     title: "Pricing",
     icon: "ri-price-tag-3-line",

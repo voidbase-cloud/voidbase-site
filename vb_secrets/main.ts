@@ -50,4 +50,5 @@ export default defineSecrets({
   PB_REPO_URL: browser(url().optional()),
   PB_DISCUSSIONS_URL: browser(url().optional()),
   PB_DISCORD_URL: browser(url().optional()),
+  PB_MARKETPLACE_URL: browser(url().optional()),
 });
