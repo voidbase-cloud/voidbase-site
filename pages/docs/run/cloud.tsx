@@ -22,6 +22,20 @@ export default function DocsCloud() {
         every one of them puts it in an account you control.
       </p>
 
+      <h2>Updating</h2>
+      <p>
+        There is nothing for you to run. voidbase cloud provisions an instance from the release it is holding, and we
+        publish a new release into it when one is out. New instances are created on the newest release from that
+        moment.
+      </p>
+      <p>
+        Instances that already exist stay on the release they were created with. Moving a running instance onto a
+        newer one in place is the piece that is missing, and it is why this page still says experimental. It is on{" "}
+        <Link href="/docs/roadmap">the roadmap</Link>. Until it lands, an instance you want to keep on a version of
+        your choosing is better made from <Link href="/docs/run/npm">the CLI</Link>, where{" "}
+        <code>voidbase update</code> and <code>voidbase deploy</code> are yours to run whenever you want them.
+      </p>
+
       <h2>In the meantime</h2>
       <ul>
         <li>

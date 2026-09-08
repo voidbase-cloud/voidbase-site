@@ -1,6 +1,8 @@
 // The CLI path: instances as things you name, make and throw away, locally or on Cloudflare. "Local" is kept
 // deliberately loose, because the same commands are what a laptop, a container and a bundled desktop app all use.
 import CodeBlock from "@/components/CodeBlock";
+import Updating from "@/components/Updating";
+import "@/scss/updating.scss";
 
 const INSTALL = `bun i -g @voidbase-cloud/voidbase      # or: npm i -g @voidbase-cloud/voidbase
 voidbase version`;
@@ -36,6 +38,8 @@ const CLOUD_LS_OUT = `3 instance(s) on Example Ltd:
   workshop-demo                    release 0.6.2  updated 2026-08-30`;
 
 const DESTROY = `voidbase destroy workshop-demo`;
+
+const UPDATE = `voidbase update`;
 
 export default function DocsNpm() {
   return (
@@ -137,6 +141,19 @@ export default function DocsNpm() {
           </p>
         </div>
       </div>
+
+      <Updating command={UPDATE}>
+        <p>
+          A global install reinstalls itself at the newest published version. Your local instances are directories of
+          data and configuration, not copies of the program, so they are all on the new version the next time you
+          start one. Nothing is migrated and nothing is lost.
+        </p>
+        <p>
+          Instances in your Cloudflare account are the other case. Those run a copy of voidbase that was uploaded
+          when you created them, so updating the CLI changes what the next deploy would carry, not what is answering
+          requests. <code>voidbase deploy</code> from the same directory puts the new version live.
+        </p>
+      </Updating>
 
       <h2>When this stops being enough</h2>
       <p>

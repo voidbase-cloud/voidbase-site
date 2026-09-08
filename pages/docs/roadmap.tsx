@@ -95,8 +95,8 @@ export default function DocsRoadmap() {
 
       <h2>Where we are taking it</h2>
       <p>
-        Two changes to the core that nobody pointed at. They are the shape we want voidbase to have, and the second
-        one is what the whole section after it stands on.
+        Three changes to the core that nobody pointed at. They are the shape we want voidbase to have, and the last
+        of them is what the whole section after it stands on.
       </p>
 
       <h3 className="why-group">Auth</h3>
@@ -106,6 +106,15 @@ export default function DocsRoadmap() {
         now="Authentication is PocketBase's: auth collections, its token format, its OAuth flow and the SDK's authStore. That is the right default, because wire compatibility is the point of the project and every existing client expects it."
         plan="Better Auth as a first-class option beside it, over the same user records rather than a second set of them. The stack's pages and the instance's API then agree on who is signed in, one session covers both, and Better Auth's own plugins for organisations, passkeys and two-factor become available without us writing each one again. PocketBase's auth stays exactly where it is, because the compatibility depends on it."
         size="Large. The hard part is one identity behind two token formats, not two auth systems living side by side."
+      />
+
+      <h3 className="why-group">Upgrading a running instance</h3>
+      <Item
+        title="Moving an instance onto a newer release, in place"
+        from="Every way of running voidbase can be updated except the one that was meant to be the easiest. A CLI install runs one command; a cloud instance waits for us."
+        now="voidbase update covers the executable, a global install and a project's dependency, and a deploy puts the new version live. voidbase cloud provisions from the release it holds, so instances that already exist stay on the release they were created with."
+        plan="An upgrade for an instance the control plane owns: re-deploy it onto the active release, run the migrations the new version brings, and keep its database, its files, its custom domains and its secrets exactly where they are. Roll it per instance rather than to everyone at once, and make it reversible, because an upgrade you cannot undo is one nobody presses."
+        size="Medium. Provisioning already writes a Worker from a release; the work is doing it to an instance that has data, and proving the rollback."
       />
 
       <h3 className="why-group">Plugins</h3>

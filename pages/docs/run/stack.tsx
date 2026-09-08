@@ -1,5 +1,7 @@
 // The stack path: one application, site and backend, from an empty directory.
 import { Link } from "@void/react";
+import Updating from "@/components/Updating";
+import "@/scss/updating.scss";
 import CodeBlock from "@/components/CodeBlock";
 import { DOCS_NAV } from "@/lib/docsNav";
 
@@ -34,6 +36,8 @@ const BUILD = `bun run build                                  # or: bunx --bun v
 bun .voidbase/main.ts --http 127.0.0.1:8090    # site at /, API at /api, panel at /_/`;
 
 const DEPLOY = `cd .voidbase && voidbase deploy`;
+
+const UPDATE = `voidbase update`;
 
 const IGNORE = `.voidbase/
 vb_secrets/secrets.json`;
@@ -96,6 +100,18 @@ export default function DocsStack() {
         the same deploy. To have a push do it instead, so the site and its backend ship together on every commit,{" "}
         <Link href="/docs/deploy/pipeline">Deploy on every push</Link> is two commands and one dashboard step.
       </p>
+
+      <Updating command={UPDATE}>
+        <p>
+          Run it in the project, the same as anywhere else: the <code>@voidbase-cloud/voidbase</code> dependency is
+          bumped and installed, and the caret or pin you had is kept. Void and the rest of the toolchain are separate
+          dependencies with their own versions, and this leaves them alone.
+        </p>
+        <p>
+          A stack app is one Worker, so the backend and the site go live together. Build it first and look at it
+          locally before you deploy, because a voidbase upgrade and your own application ship in the same artifact.
+        </p>
+      </Updating>
 
       <h2>Two things that are different</h2>
       <p>

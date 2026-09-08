@@ -1,6 +1,8 @@
 // The project path: a backend you keep in a repository and extend. This page is the shape and the loop; the
 // directories get a page each.
 import { Link } from "@void/react";
+import Updating from "@/components/Updating";
+import "@/scss/updating.scss";
 import CodeBlock from "@/components/CodeBlock";
 import { DOCS_NAV } from "@/lib/docsNav";
 
@@ -24,6 +26,8 @@ const DEV = `voidbase serve --dev`;
 const DEPLOY = `voidbase deploy`;
 
 const SYNC = `voidbase sync`;
+
+const UPDATE = `voidbase update`;
 
 export default function DocsProject() {
   const section = DOCS_NAV.find((s) => s.href === "/docs/run/project");
@@ -117,6 +121,15 @@ export default function DocsProject() {
           </p>
         </div>
       </div>
+
+      <Updating command={UPDATE}>
+        <p>
+          Run it in the project. The dependency in <code>package.json</code> is bumped to the newest published
+          version and installed, keeping the caret or the exact pin you already had, so a project that deliberately
+          pins stays pinned. The change is a diff in <code>package.json</code> and your lockfile: review it and
+          commit it like any other dependency bump.
+        </p>
+      </Updating>
 
       <h2>When this stops being enough</h2>
       <p>

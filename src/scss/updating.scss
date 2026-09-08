@@ -1,0 +1,11 @@
+// The shared "Updating" section. The trailing note is quieter than the prose above it: it is the part you read once
+// and then never again, so it should not compete with the command.
+.updating {
+    margin-bottom: 10px;
+}
+
+.updating .updating-notice {
+    color: var(--txtHintColor);
+    font-size: 15px;
+    line-height: 23px;
+}

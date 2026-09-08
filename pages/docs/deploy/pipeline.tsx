@@ -35,6 +35,19 @@ git push`;
 
 const DRY = `voidbase sync --dry-run`;
 
+const CHECK = `name: voidbase update
+on:
+  schedule: [{ cron: "0 9 * * 1" }]   # Monday morning
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: ./node_modules/.bin/voidbase update --check`;
+
 export default function DocsPipeline() {
   return (
     <>
@@ -153,6 +166,31 @@ export default function DocsPipeline() {
           </p>
         </div>
       </div>
+
+      <h2>Updating voidbase, tracked like everything else</h2>
+      <p>
+        A build installs what <code>package.json</code> says, so that file is what decides which voidbase a deploy
+        carries. That is the useful property: an upgrade is a commit, it shows up in the diff, it deploys through the
+        same pipeline as your own code, and reverting it is reverting a commit. Run{" "}
+        <code>voidbase update</code> on your machine, look at the change to <code>package.json</code> and your
+        lockfile, and push it.
+      </p>
+      <p>
+        A pinned version never changes underneath you. A caret range picks up a new version on the next install,
+        which is convenient until a build behaves differently from the one before it for a reason that is not in any
+        commit. Pin it if that matters to you, and let the update commit be the only thing that moves it.
+      </p>
+      <p>
+        To be told when there is something to update, add a step that asks. <code>--check</code> changes nothing and
+        exits <code>1</code> when you are behind, so a scheduled job fails and notifies you exactly when a release is
+        out.
+      </p>
+      <CodeBlock language="yaml" title=".github/workflows/voidbase-update.yml" content={CHECK} />
+      <p>
+        Nothing in the check needs a token or an account: it reads your lockfile and the public registry. It exits{" "}
+        <code>2</code> if it could not reach the registry, so a network problem is distinguishable from being out of
+        date and you can decide which of the two should fail a build.
+      </p>
 
       <h2>Next</h2>
       <p>

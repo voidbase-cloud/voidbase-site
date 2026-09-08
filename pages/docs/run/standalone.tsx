@@ -1,5 +1,7 @@
 // The shortest path to a running instance: one file, no toolchain. Real commands, copy-paste-able.
 import CodeBlock from "@/components/CodeBlock";
+import Updating from "@/components/Updating";
+import "@/scss/updating.scss";
 
 const LINUX = `# pick the build for this machine: linux_amd64, linux_arm64, or linux_amd64_musl on Alpine
 VERSION=0.7.0
@@ -13,6 +15,8 @@ curl -LO https://github.com/voidbase-cloud/voidbase/releases/download/v\${VERSIO
 unzip voidbase_\${VERSION}_darwin_arm64.zip
 chmod +x voidbase
 xattr -d com.apple.quarantine voidbase   # macOS blocks downloaded binaries until you say otherwise`;
+
+const UPDATE = `./voidbase update --backup`;
 
 const START = `./voidbase superuser upsert you@example.com your-password
 ./voidbase serve`;
@@ -103,12 +107,18 @@ export default function DocsStandalone() {
       <CodeBlock language="bash" content={SERVICE} />
       <CodeBlock language="bash" content={ENABLE} />
 
-      <h2>Updating</h2>
-      <p>
-        <code>./voidbase update</code> fetches the newest release for this platform, checks it against the published
-        checksum and replaces the executable in place. <code>--backup</code> zips <code>pb_data</code> first, which is
-        worth the second it costs.
-      </p>
+      <Updating command={UPDATE}>
+        <p>
+          This fetches the newest release for your platform, checks it against the published checksum and replaces
+          the executable in place. The old one is kept beside it until the new one is written, so a download that
+          fails partway leaves you with the binary you had. <code>--backup</code> zips <code>pb_data</code> first,
+          which is worth the second it costs.
+        </p>
+        <p>
+          Your data is not touched. Everything the instance owns is in <code>pb_data/</code>, and an update replaces
+          only the program that reads it. Restart the server and you are on the new version.
+        </p>
+      </Updating>
 
       <h2>Adding your own behaviour</h2>
       <p>
