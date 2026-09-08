@@ -5,10 +5,11 @@
 # `voidbase secrets push` from .voidbase/); its vars are set by every deploy from the declared defaults and the
 # build's environment. So the build needs only the deploy token, VOIDBASE_DEPLOY_CF_API_KEY, and VB_ADMIN_EMAILS
 # (the deploy target is declared with defaults), both on the master trigger of the Cloudflare
-# project (dashboard: Workers > voidbase-site > Settings > Builds). The variables and the secret below point
-# at that project: CF_ACCOUNT_ID, CF_CI_TRIGGER_MASTER,
-# CF_CI_TRIGGER_BRANCHES (Settings > Secrets and variables > Actions > Variables) and CLOUDFLARE_BUILDS_TOKEN (a user
-# API token with Workers Builds Configuration: Edit). Until they exist the job is skipped, and a fork deploys from its
+# project (dashboard: Workers > voidbase-site > Settings > Builds). The variable and the secret below point at that
+# account: CF_ACCOUNT_ID (Settings > Secrets and variables > Actions > Variables) and CLOUDFLARE_BUILDS_TOKEN (a user
+# API token with Workers Builds Configuration: Edit and Workers Scripts: Read). The trigger itself is looked up at run
+# time by the Worker's name and the branch rather than kept as a uuid: renaming the Worker once gave it new triggers,
+# and the stored uuid pointed at nothing. Until the variable exists the job is skipped, and a fork deploys from its
 # owner's machine with `bun run deploy`.
 name: cloudflare
 on:
@@ -22,19 +23,31 @@ jobs:
     timeout-minutes: 30
     env:
       API: https://api.cloudflare.com/client/v4/accounts/${{ vars.CF_ACCOUNT_ID }}/builds
+      SCRIPTS: https://api.cloudflare.com/client/v4/accounts/${{ vars.CF_ACCOUNT_ID }}/workers/scripts
       TOKEN: ${{ secrets.CLOUDFLARE_BUILDS_TOKEN }}
       COMMIT: ${{ github.sha }}
       BRANCH: ${{ github.ref_name }}
-      # master deploys; every other branch is checked and built on the branches trigger
-      TRIGGER: ${{ github.ref_name == 'master' && vars.CF_CI_TRIGGER_MASTER || vars.CF_CI_TRIGGER_BRANCHES }}
       WAIT: ${{ vars.CF_BUILDS_WAIT }}
       WORKER: voidbase-site
     steps:
+      # master deploys; every other branch is checked and built on the branches trigger. The Builds API names a
+      # Worker by its script tag, so the name is resolved first; a trigger naming the branch beats one taking "*".
+      - name: Find the trigger for this branch
+        run: |
+          auth=(-H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json")
+          tag=$(curl -sS "$SCRIPTS" "${auth[@]}" | jq -r --arg w "$WORKER" '.result[]? | select(.id == $w) | .tag // empty')
+          [ -n "$tag" ] || { echo "no Worker called $WORKER on this account, or the token cannot read scripts"; exit 1; }
+          triggers=$(curl -sS "$API/workers/$tag/triggers" "${auth[@]}")
+          trigger=$(printf '%s' "$triggers" | jq -r --arg b "$BRANCH" '
+            [.result[]? | select(((.branch_includes // []) | index($b) or index("*")) and (((.branch_excludes // []) | index($b)) == null))]
+            | sort_by((.branch_includes // []) | index($b) == null) | .[0].trigger_uuid // empty')
+          [ -n "$trigger" ] || { echo "no build trigger of $WORKER takes branch $BRANCH; triggers: $(printf '%s' "$triggers" | jq -c '[.result[]? | {trigger_name, branch_includes, branch_excludes}]')"; exit 1; }
+          echo "cloudflare: trigger $trigger ($(printf '%s' "$triggers" | jq -r --arg t "$trigger" '.result[] | select(.trigger_uuid == $t) | .trigger_name')) takes $BRANCH"
+          echo "trigger=$trigger" >> "$GITHUB_ENV"
       - name: Start the build
         run: |
-          [ -n "$TRIGGER" ] || { echo "no trigger uuid in the repository variables"; exit 1; }
           body=$(printf '{"commit_hash":"%s","branch":"%s"}' "$COMMIT" "$BRANCH")
-          res=$(curl -sS "$API/triggers/$TRIGGER/builds" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$body")
+          res=$(curl -sS "$API/triggers/$trigger/builds" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$body")
           uuid=$(printf '%s' "$res" | jq -r '.result.build_uuid // empty')
           [ -n "$uuid" ] || { echo "no build started: $res"; exit 1; }
           echo "cloudflare: build $uuid ($(printf '%s' "$res" | jq -r '.result.status // "queued"')) of $COMMIT on $BRANCH"
