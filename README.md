@@ -45,7 +45,7 @@ bun run token                 # the dashboard link that creates VOIDBASE_DEPLOY_
 bun run deploy                # build, then voidbase deploy from .voidbase/: D1, R2, queue, hub, the Worker 
 ```
 
-One Worker serves everything. `VOIDBASE_DEPLOY_DOMAIN` lists its hostnames (`voidbase.cloud,www.voidbase.cloud,api.voidbase.cloud`),
+One Worker serves everything. `VOIDBASE_DEPLOY_DOMAIN` lists its hostnames (`voidbase.cloud,www.voidbase.cloud`),
 and `public/_redirects` gives each one its role: `www` redirects to the apex, and the root of the API hostname opens
 the admin panel. Writing those host rules needs `Zone > Single Redirect > Edit` on the deploy token. Details:
 `voidbase/docs/deploy.md` and `voidbase/docs/adapter.md`.

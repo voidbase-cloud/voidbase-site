@@ -13,8 +13,8 @@ import { browser, defineSecrets, local, secret, server, boolean, number, string,
 export default defineSecrets({
   // ---- local: the deploy itself
   VOIDBASE_DEPLOY_CF_API_KEY: local(string().optional(), "the deploy token (`voidbase token` prints the link that creates it)"),
-  VOIDBASE_DEPLOY_NAME: local(string().default("voidbase-site-backend"), "the Worker this project deploys to"),
-  VOIDBASE_DEPLOY_DOMAIN: local(string().default("voidbase.cloud,www.voidbase.cloud,api.voidbase.cloud"), "its hostnames"),
+  VOIDBASE_DEPLOY_NAME: local(string().default("voidbase-site"), "the Worker this project deploys to"),
+  VOIDBASE_DEPLOY_DOMAIN: local(string().default("voidbase.cloud,www.voidbase.cloud"), "its hostnames"),
   VOIDBASE_DEPLOY_CRON: local(boolean().default(false), "whether the Worker gets a cron trigger (Workers Free allows five per account)"),
   CLOUDFLARE_BUILDS_TOKEN: local(string().optional(), "a user API token with Workers Builds Configuration: Edit, for `voidbase sync` to connect this repository's pipeline"),
 

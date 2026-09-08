@@ -5,7 +5,7 @@
 # `voidbase secrets push` from .voidbase/); its vars are set by every deploy from the declared defaults and the
 # build's environment. So the build needs only the deploy token, VOIDBASE_DEPLOY_CF_API_KEY, and VB_ADMIN_EMAILS
 # (the deploy target is declared with defaults), both on the master trigger of the Cloudflare
-# project (dashboard: Workers > voidbase-site-backend > Settings > Builds). The variables and the secret below point
+# project (dashboard: Workers > voidbase-site > Settings > Builds). The variables and the secret below point
 # at that project: CF_ACCOUNT_ID, CF_CI_TRIGGER_MASTER,
 # CF_CI_TRIGGER_BRANCHES (Settings > Secrets and variables > Actions > Variables) and CLOUDFLARE_BUILDS_TOKEN (a user
 # API token with Workers Builds Configuration: Edit). Until they exist the job is skipped, and a fork deploys from its
@@ -28,7 +28,7 @@ jobs:
       # master deploys; every other branch is checked and built on the branches trigger
       TRIGGER: ${{ github.ref_name == 'master' && vars.CF_CI_TRIGGER_MASTER || vars.CF_CI_TRIGGER_BRANCHES }}
       WAIT: ${{ vars.CF_BUILDS_WAIT }}
-      WORKER: voidbase-site-backend
+      WORKER: voidbase-site
     steps:
       - name: Start the build
         run: |

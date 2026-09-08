@@ -20,7 +20,7 @@ procs.push(Bun.spawn(["bun", resolve(import.meta.dir, "gh-mock.ts"), String(GH_P
 const env = {
   ...process.env, VOIDBASE_SUPERUSER_EMAIL: "root@example.com", VOIDBASE_SUPERUSER_PASSWORD: "root-password-1", VOIDBASE_USER_EMAIL: "", VOIDBASE_USER_PASSWORD: "",
   CF_OAUTH_CLIENT_ID: "cf-test-client", CF_OAUTH_CLIENT_SECRET: "cf-s3cret", CF_OAUTH_AUTH_URL: `${OIDC}/authorize`, CF_OAUTH_TOKEN_URL: `${OIDC}/token`, CF_OAUTH_USERINFO_URL: `${OIDC}/userinfo`,
-  CLOUDFLARE_API_BASE: CF, VOIDBASE_WORKER_NAME: "voidbase-site-backend", VOIDBASE_ACCOUNT_ID: "acc123", VB_ADMIN_EMAILS: "owner@example.com", VB_INSTANCE_PREFIX: "vb-", VB_MAX_INSTANCES_PER_USER: "2",
+  CLOUDFLARE_API_BASE: CF, VOIDBASE_WORKER_NAME: "voidbase-site", VOIDBASE_ACCOUNT_ID: "acc123", VB_ADMIN_EMAILS: "owner@example.com", VB_INSTANCE_PREFIX: "vb-", VB_MAX_INSTANCES_PER_USER: "2",
   VOIDBASE_LOG_MIN_LEVEL: "8",
   VOIDBASE_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef", VB_ALLOW_SELF_DELETE: "1",
   VOIDBASE_HOOKS_DIR: resolve(import.meta.dir, "../.voidbase/pb_hooks"), VOIDBASE_MIGRATIONS_DIR: resolve(import.meta.dir, "../.voidbase/pb_migrations"),
@@ -76,7 +76,7 @@ try {
   check("login creates the user from Cloudflare's /user (email, name)", login.status === 200 && login.json.record?.email === "owner@example.com" && login.json.record?.name === "Test Owner" && login.json.meta?.accessToken === "cf-test-token", JSON.stringify(login.json.record));
   const U = String(login.json.token);
   const me = await api("GET", "/api/vbcloud/me", undefined, U);
-  check("me: connected, granted accounts stored, admin by email, self worker known", me.json.connected === true && me.json.connection?.accounts?.[0]?.id === "acc123" && me.json.admin === true && me.json.self?.worker === "voidbase-site-backend" && me.json.providerConfigured === true, JSON.stringify(me.json));
+  check("me: connected, granted accounts stored, admin by email, self worker known", me.json.connected === true && me.json.connection?.accounts?.[0]?.id === "acc123" && me.json.admin === true && me.json.self?.worker === "voidbase-site" && me.json.providerConfigured === true, JSON.stringify(me.json));
   const meAnon = await api("GET", "/api/vbcloud/me");
   check("me needs auth", meAnon.status === 401);
 
@@ -151,12 +151,12 @@ try {
   check("the admin sees the system instance as linkable, others' instances are not offered", !!sysInst && sysInst.canLink === true && sysInst.self === true, JSON.stringify(allInst.json).slice(0, 200));
   const dog = await api("GET", "/api/vbcloud/repos", undefined, U);
   const site = (dog.json.repos ?? []).find((r: Record<string, unknown>) => r.fullName === "voidbase-cloud/voidbase-site");
-  check("the site's own repository is listed to the admin as a system row wired to this backend, live-checked connected", dog.status === 200 && !!site && site.system === true && site.canUnlink === false && site.instanceName === "voidbase-site-backend" && site.templateName === "voidbase-site" && site.live?.connected === true, JSON.stringify(dog.json).slice(0, 300));
+  check("the site's own repository is listed to the admin as a system row wired to this backend, live-checked connected", dog.status === 200 && !!site && site.system === true && site.canUnlink === false && site.instanceName === "voidbase-site" && site.templateName === "voidbase-site" && site.live?.connected === true, JSON.stringify(dog.json).slice(0, 300));
   const noUnlink = await api("DELETE", `/api/vbcloud/repos/${site?.id}`, undefined, U);
   check("the site's own repository cannot be unlinked", noUnlink.status === 403, JSON.stringify(noUnlink.json));
   const dogfood = await api("POST", "/api/vbcloud/repos", { template: "voidbase-site", name: "dogfood", instance: sysInst?.id }, U);
   const ghsD = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-  check("an admin creates a repository from the template wired to the site's own backend", dogfood.status === 200 && dogfood.json.repo?.instanceName === "voidbase-site-backend" && ghsD.variables["octo-tester/dogfood"]?.PB_VB_URL === VB, JSON.stringify(dogfood.json).slice(0, 200));
+  check("an admin creates a repository from the template wired to the site's own backend", dogfood.status === 200 && dogfood.json.repo?.instanceName === "voidbase-site" && ghsD.variables["octo-tester/dogfood"]?.PB_VB_URL === VB, JSON.stringify(dogfood.json).slice(0, 200));
   const linkMissing = await api("POST", "/api/vbcloud/repos/link", { fullName: "octo-tester/nope", instance: inst.id }, U);
   check("linking a repository GitHub does not know is refused", linkMissing.status === 400 && /not found on GitHub/.test(linkMissing.json.message ?? ""), JSON.stringify(linkMissing.json));
   const linked = await api("POST", "/api/vbcloud/repos/link", { fullName: "https://github.com/Octo-Tester/existing.git", instance: inst.id }, U);
@@ -184,13 +184,13 @@ try {
   check("deleting a removed instance is a 404", delAgain.status === 404);
 
   // dogfood: the site's own backend, deployed earlier, is destroyed from the site by the admin
-  await fetch(`${CF}/accounts/acc123/d1/database`, { method: "POST", headers: { authorization: "Bearer cf-test-token", "content-type": "application/json" }, body: JSON.stringify({ name: "voidbase-site-backend-db" }) });
-  await fetch(`${CF}/accounts/acc123/r2/buckets`, { method: "POST", headers: { authorization: "Bearer cf-test-token", "content-type": "application/json" }, body: JSON.stringify({ name: "voidbase-site-backend-storage" }) });
+  await fetch(`${CF}/accounts/acc123/d1/database`, { method: "POST", headers: { authorization: "Bearer cf-test-token", "content-type": "application/json" }, body: JSON.stringify({ name: "voidbase-site-db" }) });
+  await fetch(`${CF}/accounts/acc123/r2/buckets`, { method: "POST", headers: { authorization: "Bearer cf-test-token", "content-type": "application/json" }, body: JSON.stringify({ name: "voidbase-site-storage" }) });
   const form = new FormData(); form.append("metadata", new Blob([JSON.stringify({ main_module: "index.js" })], { type: "application/json" }), "metadata.json"); form.append("index.js", new Blob(["export default {}"], { type: "application/javascript+module" }), "index.js");
-  await fetch(`${CF}/accounts/acc123/workers/scripts/voidbase-site-backend`, { method: "PUT", headers: { authorization: "Bearer cf-test-token" }, body: form });
+  await fetch(`${CF}/accounts/acc123/workers/scripts/voidbase-site`, { method: "PUT", headers: { authorization: "Bearer cf-test-token" }, body: form });
   const selfDel = await api("DELETE", `/api/vbcloud/instances/${self0.id}`, undefined, U);
   const st3 = await cfState();
-  check("admin deletes the site's own backend: worker, D1 and bucket removed on Cloudflare", selfDel.status === 200 && selfDel.json.self === true && selfDel.json.deleted.length === 3 && !st3.scripts["voidbase-site-backend"] && st3.d1.every((d: string[]) => d[0] !== "voidbase-site-backend-db"), JSON.stringify([selfDel.json, Object.keys(st3.scripts)]));
+  check("admin deletes the site's own backend: worker, D1 and bucket removed on Cloudflare", selfDel.status === 200 && selfDel.json.self === true && selfDel.json.deleted.length === 3 && !st3.scripts["voidbase-site"] && st3.d1.every((d: string[]) => d[0] !== "voidbase-site-db"), JSON.stringify([selfDel.json, Object.keys(st3.scripts)]));
 } catch (e) { fail++; console.log("FAIL  unexpected error", e); console.log(serverLog.join("").slice(-3000)); }
 finally { for (const p of procs) p.kill(); rmSync(data, { recursive: true, force: true }); rmSync(fake, { recursive: true, force: true }); }
 if (fail) console.log("--- server log tail ---\n" + serverLog.join("").slice(-4000));
