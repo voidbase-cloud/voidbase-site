@@ -30,6 +30,7 @@
     }
 }
 
+.thanks .thanks-pb,
 .thanks .thanks-list {
     list-style: none;
     padding: 0;
@@ -105,4 +106,11 @@
         gap: var(--smSpacing);
     }
     .thanks-team-mark img { width: 76px; height: 76px; }
+}
+
+// inside a major section the list sits under prose rather than under a heading, so it needs its own top gap
+.thanks .thanks-pb {
+    margin-top: 4px;
+
+    > li:first-child { padding-top: 0; }
 }

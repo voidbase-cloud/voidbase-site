@@ -3,6 +3,7 @@
 // The list is taken from the package's NOTICE file, the site's dependencies and the fonts actually served from
 // public/fonts, rather than from memory, because a credits page that is wrong is worse than none.
 import { Link } from "@void/react";
+import { SITE } from "@/lib/env";
 import "@/scss/thanks.scss";
 
 interface Credit {
@@ -38,7 +39,7 @@ const RUNTIME: Credit[] = [
   { name: "bcryptjs", url: "https://github.com/dcodeIO/bcrypt.js", licence: "MIT", what: "Password hashing." },
 ];
 
-const SITE: Credit[] = [
+const SITE_CREDITS: Credit[] = [
   { name: "React", url: "https://react.dev", licence: "MIT", what: "The pages you are reading." },
   { name: "Vite", url: "https://vite.dev", licence: "MIT", what: "The build, through Void's plugin." },
   { name: "Sass", url: "https://sass-lang.com", licence: "MIT", what: "The stylesheets." },
@@ -77,9 +78,43 @@ export default function DocsAcknowledgments() {
         <p>
           <a href="https://pocketbase.io" target="_blank" rel="noreferrer noopener">PocketBase</a> is Gani Georgiev's,
           MIT licensed, and it is the reason this project exists. voidbase reimplements its HTTP API, its filter and
-          rule language, its email templates and its JavaScript hook surface. The admin panel served at{" "}
-          <code>/_/</code> is PocketBase's own build, copied in unmodified and still under its licence.
+          rule language, its email templates and its JavaScript hook surface.
         </p>
+        <p>
+          Two pieces of it are not reimplemented at all. They are PocketBase's own code, running as they were
+          written, and they are what makes the compatibility real rather than claimed.
+        </p>
+        <ul className="thanks-pb">
+          <li>
+            <a href="https://github.com/pocketbase/pocketbase/tree/master/ui" target="_blank" rel="noreferrer noopener">
+              The admin panel
+            </a>
+            <span className="thanks-licence">MIT</span>
+            <span className="thanks-what">
+              Served at <code>/_/</code> on every voidbase instance. It is PocketBase's own prebuilt{" "}
+              <code>ui/dist</code>, copied in from a pinned release and unmodified. We did not write a line of it and
+              have not changed one, so when the panel asks voidbase for something it cannot answer, that is our bug
+              rather than the panel's.
+            </span>
+          </li>
+          <li>
+            <a href={SITE.jsSdkUrl} target="_blank" rel="noreferrer noopener">The JavaScript SDK</a>
+            <span className="thanks-licence">MIT</span>
+            <span className="thanks-what">
+              We ship no client of our own. <Link href="/docs/connect/sdk">Our documentation points at theirs</Link>,
+              because it works against a voidbase instance unchanged, and the day it stops doing so we have broken
+              something rather than they have.
+            </span>
+          </li>
+          <li>
+            <a href={SITE.dartSdkUrl} target="_blank" rel="noreferrer noopener">The Dart SDK</a>
+            <span className="thanks-licence">MIT</span>
+            <span className="thanks-what">
+              The same, for Flutter. Also theirs, also unchanged, and the reason a mobile app written against
+              PocketBase can be pointed at voidbase by editing one address.
+            </span>
+          </li>
+        </ul>
         <p>
           <strong>This website is a fork of PocketBase's.</strong> Not an homage to it and not a design inspired by
           it: the site you are reading started as{" "}
@@ -144,7 +179,7 @@ export default function DocsAcknowledgments() {
       <Credits
         title="What this site is made of"
         lead="Everything above, plus the pieces that only the site uses."
-        items={SITE}
+        items={SITE_CREDITS}
       />
 
       <h2>And everyone who reports something</h2>
