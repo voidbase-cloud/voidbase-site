@@ -69,12 +69,38 @@
             border-top: 0;
             user-select: none;
         }
-        .content {
+        // The demo used to be two buttons floating over the middle of the screenshot, where a light dashboard ate
+        // the primary button whole. It is a label on the frame now: the picture is the product, and this says the
+        // picture is real and you can go and press it.
+        .preview-demo {
             position: absolute;
             z-index: 2;
-            left: 50%;
-            top: 52%;
-            transform: translate(-50%, -50%);
+            top: -42px;
+            right: calc(50% - 570px);
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            height: 32px;
+            padding: 0 13px;
+            border-radius: 30px;
+            font-size: var(--smFontSize);
+            font-weight: 600;
+            text-decoration: none;
+            color: #1c1c1c;
+            background: rgba(255, 255, 255, 0.86);
+            backdrop-filter: blur(6px);
+            transition: background var(--baseAnimationSpeed), transform var(--baseAnimationSpeed);
+
+            i { font-size: 15px; }
+            &:hover { background: #fff; transform: translateY(-1px); }
+            &:focus-visible { outline: 2px solid var(--infoColor); outline-offset: 3px; }
+
+            @media only screen and (max-width: 1180px) {
+                right: 16px;
+            }
+            @media only screen and (max-width: 800px) {
+                top: -38px;
+            }
         }
         .gopher-proximity-hover {
             position: absolute;
@@ -171,6 +197,104 @@
         }
     }
 
+    // The joke, and the site's whole argument in one word: four backends called the same thing, three of them
+    // crossed out. It is built from the header logo, so the prefixes wear the regular weight and "base" the bold
+    // one, and it is set below the headline's size because the colour is what carries it.
+    //
+    // Each generation is painted in one of the site's own semantic colours rather than a borrowed brand hex, which
+    // is why it cannot drift from the theme: danger, success and info happen to be the three names' own colours.
+    .hero-lineage {
+        display: block;
+        margin: 0 0 26px;
+        font-size: clamp(27px, 5vw, 34px);
+        line-height: 1.15;
+        letter-spacing: -0.022em;
+        white-space: nowrap;
+
+        // the four names run together into one word, so nothing between them may add a gap
+        > span {
+            display: inline;
+        }
+
+        .gen {
+            position: relative;
+            color: inherit;
+            text-decoration: none;
+            transition: opacity var(--baseAnimationSpeed);
+            border-radius: 3px;
+
+            &:focus-visible {
+                outline: 2px solid currentColor;
+                outline-offset: 3px;
+            }
+        }
+
+        // A struck name is history, so it sits back until you go looking at it.
+        s {
+            position: relative;
+            text-decoration: none;
+            opacity: 0.72;
+            transition: opacity var(--baseAnimationSpeed);
+        }
+        .gen:hover s,
+        .gen:focus-visible s {
+            opacity: 1;
+        }
+
+        // The deletion. Not text-decoration: that draws one identical hairline through every word, and this is three
+        // people crossing out a name on three different days. Each rule takes the colour of what it cancels,
+        // overshoots the word by its own amount, and sits a fraction off level.
+        s:after {
+            content: "";
+            position: absolute;
+            top: 54%;
+            height: 0.09em;
+            background: currentColor;
+            border-radius: 2px;
+            transform-origin: left center;
+            transform: scaleX(0) rotate(var(--tilt));
+        }
+
+        .gen-fire { color: var(--dangerColor); s:after { left: -4%; width: 111%; --tilt: -1.1deg; } }
+        .gen-supa { color: var(--successColor); s:after { left: -6%; width: 108%; --tilt: 0.9deg; } }
+        .gen-pocket { color: var(--infoColor); s:after { left: -3%; width: 106%; --tilt: -0.5deg; } }
+
+        // the survivor: grey prefix, white constant, exactly as the logo sets it
+        .gen-void {
+            color: var(--txtHintColor);
+            strong { color: var(--txtPrimaryColor); font-weight: bold; }
+            &:hover { color: var(--txtPrimaryColor); }
+        }
+
+        // Read the absurd word whole for a beat, then watch three generations get crossed off in order. It runs
+        // once, on the class the gopher's entrance already waits for.
+        .loaded & s:after {
+            transition: transform 0.34s cubic-bezier(0.5, 0, 0.2, 1);
+            transform: scaleX(1) rotate(var(--tilt));
+        }
+        .loaded & .gen-fire s:after { transition-delay: 0.45s; }
+        .loaded & .gen-supa s:after { transition-delay: 0.59s; }
+        .loaded & .gen-pocket s:after { transition-delay: 0.73s; }
+    }
+
+    // Two ways on: the one for someone who wants it running, and the one for someone still deciding.
+    .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        margin: 0 0 var(--heroSpacing);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .hero-lineage s:after,
+        .loaded & .hero-lineage s:after {
+            transform: scaleX(1) rotate(var(--tilt));
+            transition: none;
+        }
+    }
+
     .hero-checks {
         @include shadowize();
         display: inline-flex;
@@ -218,7 +342,7 @@
     }
 
     @media only screen and (min-width: 1180px) {
-        height: 723px; /* minimize flickering */
+        height: 900px; /* reserved so the preview does not jump; the lineage and the buttons added 177px */
     }
 
     @media only screen and (max-width: 800px) {

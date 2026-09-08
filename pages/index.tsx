@@ -304,6 +304,11 @@ export default function Landing() {
 
   const [preference, setPreference] = useCodePreference(); // the default group preference
 
+  const fireRef = useTooltip<HTMLSpanElement>("Compared to Firebase");
+  const supaRef = useTooltip<HTMLSpanElement>("Compared to Supabase");
+  const pocketRef = useTooltip<HTMLSpanElement>("Compared to PocketBase");
+  const whyRef = useTooltip<HTMLSpanElement>("Why another one?");
+
   const dartSdkRef = useTooltip<HTMLAnchorElement>("View Dart SDK");
   const svelteSdkRef = useTooltip<HTMLAnchorElement>("View JavaScript SDK");
   const vueSdkRef = useTooltip<HTMLAnchorElement>("View JavaScript SDK");
@@ -359,6 +364,22 @@ export default function Landing() {
             </div>
           </div>
 
+          <p className="hero-lineage">
+            <span ref={fireRef}><Link href="/docs/why/firebase" className="gen gen-fire" aria-label="Compared to Firebase"><s>Fire</s></Link></span>
+            <span ref={supaRef}><Link href="/docs/why/supabase" className="gen gen-supa" aria-label="Compared to Supabase"><s>Supa</s></Link></span>
+            <span ref={pocketRef}><Link href="/docs/why/pocketbase" className="gen gen-pocket" aria-label="Compared to PocketBase"><s>Pocket</s></Link></span>
+            <span ref={whyRef}><Link href="/docs/why" className="gen gen-void" aria-label="Why another backend?"><span>Void</span><strong>base</strong></Link></span>
+          </p>
+
+          <div className="hero-actions">
+            <Link href="/docs/start" prefetch="hover" className="btn btn-lg btn-primary">
+              <span className="txt">Get started</span>
+            </Link>
+            <Link href="/docs/why" prefetch="hover" className="btn btn-lg btn-outline">
+              <span className="txt">Why voidbase</span>
+            </Link>
+          </div>
+
           <div className="hero-checks">
             <div className="check-item">
               <i className="ri-check-line" />
@@ -405,20 +426,15 @@ export default function Landing() {
               className="preview"
             />
 
-            <div className="content">
-              <a
-                href="https://demo.voidbase.cloud/"
-                className="btn btn-lg btn-primary btn-expanded"
-                target="_blank"
-                rel="noreferrer noopener"
-              >
-                <span className="txt">Live demo</span>
-              </a>
-              <div className="clearfix m-b-sm" />
-              <Link href="/docs" className="btn btn-lg btn-outline btn-expanded">
-                <span className="txt">Read the documentation</span>
-              </Link>
-            </div>
+            <a
+              href="https://demo.voidbase.cloud/"
+              className="preview-demo"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              <i className="ri-external-link-line" />
+              <span className="txt">Live demo</span>
+            </a>
           </figure>
         </div>
       </div>
