@@ -80,7 +80,7 @@ export default function DocsRoadmap() {
         title="A typed client, and a client that takes plugins"
         from="Convex types the whole path from schema to component, so a rename breaks the build. Ours breaks at the call instead."
         now="The PocketBase SDK is typed, but it knows nothing about your collections: a record is a bag of fields, and a renamed field is a runtime surprise. It is also closed to extension, so anything you want around a request you wrap by hand, once per project."
-        plan="Generate a typed client from the collections the instance actually has, the way the schema already generates the API. A command writes it, the build refreshes it, and a rename becomes a compile error. The collection definitions are already data on the server, so nothing new has to be described. Then give that client the same thing the server is getting: a plugin surface. A client plugin sits in the request path, can add methods, and can hold state of its own, which is what turns the next item from a feature we would have to build into something that can be written by us or by anyone else. Caching, retries, telemetry and offline are all the same shape once that exists."
+        plan="Generate a typed client from the instance's own OpenAPI description rather than from a second reading of the collections, so the client and the documentation cannot disagree about what the API is. A command writes it, the build refreshes it, and a rename becomes a compile error. The collection definitions are already data on the server, so nothing new has to be described. Then give that client the same thing the server is getting: a plugin surface. A client plugin sits in the request path, can add methods, and can hold state of its own, which is what turns the next item from a feature we would have to build into something that can be written by us or by anyone else. Caching, retries, telemetry and offline are all the same shape once that exists."
         size="Medium for the generator, medium again for the plugin surface, and neither touches the server."
       />
 
@@ -196,12 +196,21 @@ export default function DocsRoadmap() {
         size="Large, and it lands after the plugin loader, because it is the one that exercises every part of it."
       />
 
+      <h3 className="why-group">A description of the API, generated and scoped</h3>
+      <Item
+        title="OpenAPI, Scalar and a stateless MCP server, from the collections you have"
+        from="Every instance already knows its own shape: the collections, their fields, the rules that decide who may read and write each one. Nothing exposes that in a form other tools can read, so anything that wants to understand a voidbase instance has to be told separately, by hand, and go stale."
+        now="The API is PocketBase's and is documented as PocketBase's, which is accurate and generic. Your instance's own endpoints, its own fields and its own permissions are not described anywhere a machine can consume."
+        plan="Generate an OpenAPI document from the collections an instance actually has, and scope it to the caller. A document fetched with no token describes what an anonymous request can do; one fetched as a user describes what that user can do; one fetched as a superuser describes everything. That scoping is the part that matters, because an API description that lists what you may not call is a description that lies to you. Serve Scalar over the same document so there is a page to read and try requests on, and a stateless MCP server over it too, so an agent can discover an instance rather than be told about it. Stateless because a voidbase instance is a Worker: no session to keep, each call carrying its own auth, which is the only shape that survives being run at the edge."
+        size="Medium, and it is worth doing early for what it feeds rather than for itself. The typed client generates from the same description instead of inventing its own view of the schema, the AI plugins get a tool list they did not have to be handed, and anybody writing a client in a language we will never ship gets a generator's worth of help for free."
+      />
+
       <h3 className="why-group">AI</h3>
       <Item
         title="Workers AI and Think, as official plugins"
         from="The instance already runs on the network that serves the models, and it already runs a Durable Object for realtime. Calling a third-party API to add a chat box is the long way round."
         now="Nothing. A hook can call Workers AI because a hook can call anything, and that is the whole of the support."
-        plan="Plugins built on Cloudflare's Think harness, which is a chat agent over Durable Object SQLite with Workers AI behind it. One puts a chat in the admin panel that can read the instance's own schema, records and logs, so finding where something lives is a question rather than a search. One does the same inside a preview environment, where the thing worth asking about is the change under review. And because a Think agent can be driven as a sub-agent over RPC, the third is a chat your own app mounts, scoped to the collections you let it read."
+        plan="Plugins built on Cloudflare's Think harness, which is a chat agent over Durable Object SQLite with Workers AI behind it. One puts a chat in the admin panel that can read the instance's own schema, records and logs, so finding where something lives is a question rather than a search. One does the same inside a preview environment, where the thing worth asking about is the change under review. And because a Think agent can be driven as a sub-agent over RPC, the third is a chat your own app mounts, scoped to the collections you let it read. None of them needs a hand-written tool list: the MCP server above already describes the instance, scoped to whoever is asking, which is the same scoping these three need anyway."
         size="Medium each, and all three want the plugin loader first."
       />
 
