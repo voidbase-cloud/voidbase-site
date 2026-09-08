@@ -6,6 +6,7 @@ import "@/scss/beta.scss";
 import BetaBanner from "@/components/BetaBanner";
 import PageFooter from "@/components/PageFooter";
 import PageHeader from "@/components/PageHeader";
+import ScrollOnNavigate from "@/components/ScrollOnNavigate";
 import ScrollToTop from "@/components/ScrollToTop";
 
 export default function Layout({ children }: { children: ReactNode }) {
@@ -24,6 +25,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   return (
     <>
+      <ScrollOnNavigate />
       <BetaBanner />
       <PageHeader compact />
       <main className="wrapper wrapper-lg page-content-wrapper">{children}</main>

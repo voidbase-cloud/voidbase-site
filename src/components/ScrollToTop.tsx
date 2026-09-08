@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
+import { pageScroller, scrollPageToTop } from "@/lib/pageScroll";
 
 export default function ScrollToTop() {
   const [active, setActive] = useState(false);
 
+  // the document does not scroll on this site, so window.scrollY is 0 everywhere and this button never appeared
   useEffect(() => {
-    const onScroll = () => setActive(window.scrollY > 200);
+    const box = pageScroller();
+    const onScroll = () => setActive(box.scrollTop > 200);
     onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    box.addEventListener("scroll", onScroll, { passive: true });
+    return () => box.removeEventListener("scroll", onScroll);
   }, []);
 
   return (
@@ -15,7 +18,7 @@ export default function ScrollToTop() {
       type="button"
       className={`btn btn-lg btn-circle btn-secondary scroll-to-top${active ? " scroll-top-active" : ""}`}
       aria-label="Go to top"
-      onClick={() => { if (document.documentElement) document.documentElement.scrollTop = 0; }}
+      onClick={() => scrollPageToTop("smooth")}
     >
       <i className="ri-arrow-up-line" />
     </button>
