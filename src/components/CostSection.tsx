@@ -38,7 +38,7 @@ export default function CostSection({ product }: { product: string }) {
         <Card
           title="voidbase, on your own Cloudflare account"
           mark="voidbase"
-          sub={`${ours.total === 0 ? "Workers Free" : "Workers Paid"}, D1, R2, Durable Objects`}
+          sub="Workers Paid, D1, R2, Durable Objects"
           estimate={ours}
           stacked
         />
@@ -74,6 +74,13 @@ export default function CostSection({ product }: { product: string }) {
           database and {CF_FREE.r2StorageGb}GB of files. The first of those to run out moves the account to Workers
           Paid, and the whole bill starts there.{" "}
           <Link href="/docs/pricing#calculator">The pricing page</Link> draws how much room is left in each.
+        </p>
+        <p>
+          The same applies on the other side wherever the vendor has a free plan, because pricing a small app at
+          their paid rate while ours is free would be the same error pointed the other way. Their allowances come
+          off the page linked below, and both columns say $0 at the smallest settings on these sliders. Two of them
+          pause a free project after a week without traffic, which is not the same thing as an allowance that
+          resets, so the column says so where it applies.
         </p>
         <p>
           Rates as of 8 September 2026, from{" "}

@@ -99,7 +99,7 @@ export default function CloudflareCost() {
         <Card
           title="Your Cloudflare account"
           mark="cloudflare"
-          sub={`${fits ? "Workers Free" : "Workers Paid"}, D1, R2, Durable Objects`}
+          sub="Workers Paid, D1, R2, Durable Objects"
           estimate={bill}
           stacked
         />

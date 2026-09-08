@@ -30,6 +30,8 @@ export interface Estimate {
   lines: Line[];
   /** what this model leaves out, whichever way it cuts */
   caveat: string;
+  /** the plan this figure is on, where it is not the paid one the page names */
+  plan?: string;
 }
 
 export interface Source {
@@ -131,6 +133,7 @@ export function voidbaseCost(u: Usage): Estimate {
     const room = (a: Allowance) => `${Math.round((a.used / a.allowed) * 100)}% of the free allowance`;
     return {
       total: 0,
+      plan: "Workers Free, D1, R2, Durable Objects",
       lines: [
         { label: "Workers Free", detail: "no account minimum", amount: 0 },
         ...free.allowances.map((a) => ({ label: a.label, detail: room(a), amount: 0 })),
@@ -188,6 +191,31 @@ export function voidbaseCost(u: Usage): Estimate {
   };
 }
 
+// ---- free tiers --------------------------------------------------------------------------------------------------
+//
+// Most of these products have one, and pricing a side project at $25 against a voidbase that costs nothing would be
+// the same error in the other direction. So each vendor's free allowances are modelled the way Cloudflare's are,
+// read off the same pricing page as their paid rates on 8 September 2026, and an app that fits inside them costs
+// nothing here too. At the smallest slider settings that is what happens to all of them at once.
+//
+// Two of them pause a free project after a week of inactivity, which is a real difference from an allowance that
+// simply resets, so the plan says so rather than leaving $0 to speak for itself.
+
+/** $0 when every allowance holds, and null when one does not, so the caller falls through to its paid model */
+function freeTier(plan: string, allowances: Allowance[], caveat: string): Estimate | null {
+  if (!allowances.every((a) => a.used <= a.allowed)) return null;
+  const room = (a: Allowance) => `${Math.round((a.used / a.allowed) * 100)}% of the free allowance`;
+  return {
+    total: 0,
+    plan,
+    lines: [
+      { label: plan, detail: "no charge", amount: 0 },
+      ...allowances.map((a) => ({ label: a.label, detail: room(a), amount: 0 })),
+    ],
+    caveat,
+  };
+}
+
 // ---- the rivals ------------------------------------------------------------------------------------------------
 export interface Rival {
   name: string;
@@ -216,6 +244,19 @@ export const RIVALS: Record<string, Rival> = {
     estimate: (u) => {
       const messages = u.realtime * ASSUME.pushesPerConnectionPerDay * 30;
       const dbGb = ((u.writes * ASSUME.rowsPerWrite) / 1_000_000) * ASSUME.dbGbPerMillionRows;
+      const free = freeTier(
+        "Free",
+        [
+          { label: "Monthly active users", used: u.mau, allowed: 50_000, per: "a month" },
+          { label: "Database", used: dbGb, allowed: 0.5, per: "in total", unit: "GB" },
+          { label: "File storage", used: u.storage, allowed: 1, per: "in total", unit: "GB" },
+          { label: "Egress", used: gbOut(u), allowed: 5, per: "a month", unit: "GB" },
+          { label: "Realtime connections", used: u.realtime, allowed: 200, per: "at peak" },
+          { label: "Realtime messages", used: messages, allowed: 2_000_000, per: "a month" },
+        ],
+        "Free on Supabase's own terms: two active projects, and a project is paused after a week without traffic. An app that has to stay up through a quiet week is on Pro whatever the numbers say.",
+      );
+      if (free) return free;
       const lines: Line[] = [
         { label: "Pro base", detail: "one project, one instance", amount: 25 },
         { label: "Monthly active users", detail: `${(u.mau / 1000).toFixed(0)}k, 100k included`, amount: round(over(u.mau, 100_000) * 0.00325) },
@@ -246,6 +287,17 @@ export const RIVALS: Record<string, Rival> = {
       const calls = u.reads + u.writes + pushes;
       const dbGb = ((u.writes * ASSUME.rowsPerWrite) / 1_000_000) * ASSUME.dbGbPerMillionRows;
       const egress = gbOut(u);
+      const free = freeTier(
+        "Free",
+        [
+          { label: "Function calls", used: calls, allowed: 1_000_000, per: "a month" },
+          { label: "Database storage", used: dbGb, allowed: 0.5, per: "in total", unit: "GB" },
+          { label: "File storage", used: u.storage, allowed: 1, per: "in total", unit: "GB" },
+          { label: "Data egress", used: egress, allowed: 1, per: "a month", unit: "GB" },
+        ],
+        "The reactive re-runs above count against the free million calls as well, which is what a subscription costs here whether or not anything is being paid.",
+      );
+      if (free) return free;
       const lines: Line[] = [
         { label: "Professional base", detail: "one developer", amount: 25 },
         { label: "Function calls", detail: `${(calls / 1_000_000).toFixed(1)}M including ${(pushes / 1_000_000).toFixed(1)}M reactive re-runs, 25M included`, amount: round((over(calls, 25_000_000) / 1_000_000) * 2) },
@@ -273,6 +325,20 @@ export const RIVALS: Record<string, Rival> = {
       // realtime is not metered separately on the plan, but what it pushes is bandwidth like anything else
       const pushes = u.realtime * ASSUME.pushesPerConnectionPerDay * 30;
       const bandwidth = gbOut(u) + (pushes * 1) / 1_000_000; // ~1KB a push
+      const free = freeTier(
+        "Free",
+        [
+          { label: "Monthly active users", used: u.mau, allowed: 75_000, per: "a month" },
+          { label: "Reads", used: u.reads, allowed: 500_000, per: "a month" },
+          { label: "Writes", used: u.writes, allowed: 250_000, per: "a month" },
+          { label: "Storage", used: u.storage, allowed: 2, per: "in total", unit: "GB" },
+          { label: "Bandwidth", used: bandwidth, allowed: 5, per: "a month", unit: "GB" },
+          { label: "Realtime connections", used: u.realtime, allowed: 250, per: "at peak" },
+          { label: "Realtime messages", used: pushes, allowed: 2_000_000, per: "a month" },
+        ],
+        "Free on Appwrite's own terms: two projects, one database and one bucket each, and a project is paused after a week without traffic.",
+      );
+      if (free) return free;
       const lines: Line[] = [
         { label: "Pro base", detail: "one member, $10 of database credit", amount: 25 },
         { label: "Monthly active users", detail: `${(u.mau / 1000).toFixed(0)}k, 200k included`, amount: round((over(u.mau, 200_000) / 1000) * 3) },
@@ -299,6 +365,9 @@ export const RIVALS: Record<string, Rival> = {
     shapeNote: "Your own AWS or GCP region, so the same single-region trade.",
     realtime: "None to a browser. Pub/sub is between services; this is yours to build",
     estimate: (u) => {
+      // Encore's Starter plan is free forever and gives you two dev environments and a million trace events. It
+      // does not give you a production environment, which is the $99 line below and the thing this app needs, so
+      // there is no size of app on these sliders that it makes free.
       const events = (u.reads + u.writes) / 1_000_000;
       const lines: Line[] = [
         { label: "Pro base", detail: "one member", amount: 49 },
@@ -310,7 +379,7 @@ export const RIVALS: Record<string, Rival> = {
         total: round(lines.reduce((a, l) => a + l.amount, 0)),
         lines,
         caveat:
-          "There is no realtime line because there is no realtime product: pushing to a browser is something you would build and run on your own infrastructure. This is Encore's platform fee only. The infrastructure runs in your own AWS or GCP account and that cloud bills you directly for compute, storage and data transfer, which is not modelled here and is usually the larger half. The voidbase column, by contrast, is the whole bill.",
+          "Their Starter plan is free forever, but it covers development: two dev environments and a million trace events, not the production environment this one prices. There is no realtime line because there is no realtime product: pushing to a browser is something you would build and run on your own infrastructure. This is Encore's platform fee only. The infrastructure runs in your own AWS or GCP account and that cloud bills you directly for compute, storage and data transfer, which is not modelled here and is usually the larger half. The voidbase column, by contrast, is the whole bill.",
       };
     },
   },

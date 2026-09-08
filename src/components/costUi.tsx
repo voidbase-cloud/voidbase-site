@@ -22,9 +22,14 @@ export const STEPS = {
 };
 export type Index = { reads: number; writes: number; storage: number; realtime: number; mau: number };
 
-// three shapes of app, so the first thing anyone does is not drag five sliders
+// Three shapes of app, so the first thing anyone does is not drag five sliders.
+//
+// The first one used to hold 10GB of files, which is more than three of these vendors give away and was therefore
+// doing all the work in the comparison on its own: one slider decided the answer and the label said "side project".
+// It is the smallest app the sliders can describe now, which is what the name claims, and every column that has a
+// free plan reads $0 there.
 export const PRESETS: { name: string; at: Index }[] = [
-  { name: "Side project", at: { reads: 1, writes: 1, storage: 1, realtime: 1, mau: 1 } },
+  { name: "Side project", at: { reads: 0, writes: 0, storage: 0, realtime: 1, mau: 0 } },
   { name: "Growing startup", at: { reads: 3, writes: 2, storage: 2, realtime: 2, mau: 2 } },
   { name: "A million users", at: { reads: 4, writes: 3, storage: 4, realtime: 3, mau: 3 } },
 ];
@@ -83,7 +88,7 @@ export function Card({ title, mark, sub, estimate, compare, stacked }: {
     <div className="cost-card">
       <p className="cost-card-title">{mark && <ProductMark id={mark} size={18} />}{title}</p>
       <p className="cost-total">{money(estimate.total)}<small>/month</small></p>
-      <p className="cost-card-sub">{sub}</p>
+      <p className="cost-card-sub">{estimate.plan ?? sub}</p>
       {ratio && ratio > 1.05 && <p className="cost-ratio">{ratio.toFixed(1)}× the voidbase bill</p>}
       {ratio && ratio < 0.95 && <p className="cost-ratio is-cheaper">{(1 / ratio).toFixed(1)}× cheaper than voidbase</p>}
       {freeAgainst && <p className="cost-ratio">voidbase is free at this size</p>}
