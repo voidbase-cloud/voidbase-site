@@ -26,9 +26,9 @@ export default defineSecrets({
   CF_OAUTH_CLIENT_SECRET: secret(string(), "its client secret"),
   GH_OAUTH_CLIENT_ID: secret(string(), "the GitHub OAuth app behind the template marketplace"),
   GH_OAUTH_CLIENT_SECRET: secret(string(), "its client secret"),
-  // VB_GITHUB_TOKEN is read but not declared: a fine-grained GitHub token with Actions write on the builder repository,
-  // optional, so a queued instance build starts now rather than on the builder's schedule. A declared secret has to have
-  // a value for a deploy to go through, and this one may not, so it is stored on the Worker directly (wrangler secret put).
+  // Optional, and declared as such: since voidbase 0.9.0-beta.11 a deploy goes through without a value for it, which
+  // is what this site's own deploy proves. Stored on the Worker directly (wrangler secret put) or through secrets.json.
+  VB_GITHUB_TOKEN: secret(string().optional(), "a fine-grained GitHub token with Actions write on the builder repository, so a queued instance build starts now rather than on the builder's schedule"),
 
   // ---- server: hooks and routes only (src/shared/config.ts reads them)
   VB_ADMIN_EMAILS: server(string(), "who counts as an admin of this site (comma separated)"),
