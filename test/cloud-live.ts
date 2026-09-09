@@ -67,8 +67,10 @@ try {
     if (!state && rel !== inst.release) final = v.json;
   }
   check("the builder built a release for this instance and the control plane deployed it", !!final && final.build === "" && String(final.instance?.release).startsWith(`${inst.release}-vb-${NAME}.`), JSON.stringify(final).slice(0, 300));
+  // the instance is deployed before the job that deployed it finishes its last steps, so wait for the run itself
+  sh(["timeout", "300", "gh", "run", "watch", runId, "-R", "voidbase-cloud/voidbase", "--interval", "10"]);
   const wf = sh(["gh", "run", "view", runId, "-R", "voidbase-cloud/voidbase", "--json", "conclusion", "-q", ".conclusion"]).out;
-  check("the workflow run succeeded", wf === "success", wf);
+  check("the workflow run succeeded", wf === "success", wf || "(still running)");
   const echo = await fetch(`${inst.url}/api/echo`, { headers: ua });
   check("the plugin answers on the instance", echo.status === 200 && (await echo.text()) === "echo", String(echo.status));
   if (instSu) {
