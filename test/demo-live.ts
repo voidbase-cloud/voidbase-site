@@ -1,6 +1,7 @@
 // The demo, for real: demo.voidbase.cloud runs the latest release with two installed plugins, one from our
 // marketplace and one from a throwaway one, and its superuser is public (the demo page prints it).
 //   bun test/demo-live.ts [--demo https://demo.voidbase.cloud]
+export {};
 const args = process.argv.slice(2);
 const DEMO = (args[args.indexOf("--demo") + 1] && args.includes("--demo") ? args[args.indexOf("--demo") + 1]! : "https://demo.voidbase.cloud").replace(/\/+$/, "");
 const ua = { "user-agent": "voidbase-demo-live/1" };
