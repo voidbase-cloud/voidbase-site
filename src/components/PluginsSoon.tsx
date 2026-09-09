@@ -1,9 +1,9 @@
-// The "plugins are coming" section, on every page that tells you how to run an instance.
+// The plugins section, on every page that tells you how to run an instance.
 //
 // It repeats across five pages because the answer genuinely differs by shape: an executable keeps its plugins beside
 // itself, a project commits them, a stack app builds them into one Worker, and a cloud instance has none of that
-// because you do not hold the filesystem. What must not differ is the part underneath, which is that none of it
-// exists yet and every command below is a proposal.
+// because you do not hold the filesystem. What must not differ is the part underneath: the same lockfile, the same
+// verification, the same marketplaces. Three shapes work today; the other two say so.
 import { Link } from "@void/react";
 import CodeBlock from "@/components/CodeBlock";
 import { hl } from "@/lib/hl";
@@ -13,34 +13,36 @@ export type Shape = "standalone" | "npm" | "cloud" | "project" | "stack";
 const COMMANDS: Record<Shape, { code: ReturnType<typeof hl.bash>; dir: string | null }> = {
   standalone: {
     dir: null,
-    code: hl.bash`./voidbase plugins                  # what this instance has
-./voidbase plugins add backups-r2    # install by name
+    code: hl.bash`./voidbase plugins                  # what this instance runs, and where each plugin came from
+./voidbase plugins add echo          # install by name: into pb_plugins/echo, pinned in voidbase.lock
 ./voidbase plugins update            # bring them all up to date
-./voidbase plugins remove backups-r2`,
+./voidbase plugins remove echo       # remove it; for a plugin voidbase ships, turn it off`,
   },
   npm: {
     dir: null,
-    code: hl.bash`voidbase plugins --name blog             # what a local instance has
-voidbase plugins add backups-r2 --name blog
+    code: hl.bash`voidbase plugins --name blog             # what a local instance runs
+voidbase plugins add echo --name blog
 voidbase plugins update --name blog
-voidbase plugins remove backups-r2 --name blog`,
+voidbase plugins remove echo --name blog`,
   },
   cloud: {
     dir: null,
-    code: hl.bash`# nothing to run: you do not hold the filesystem of a cloud instance.
-# installing is a button in the dashboard; the instance is rebuilt and redeployed
-# around the plugin, which takes minutes, and the dashboard shows it happening.`,
+    code: hl.bash`# not built yet: you do not hold the filesystem of a cloud instance, so there is
+# nothing to run. Installing will be a button in the dashboard; the instance is
+# rebuilt and redeployed around the plugin, and the dashboard shows it happening.`,
   },
   project: {
     dir: "pb_plugins/",
-    code: hl.bash`voidbase plugins add backups-r2   # writes pb_plugins/ and the lock entry
+    code: hl.bash`voidbase plugins add echo         # writes pb_plugins/echo and the lock entry
 git add pb_plugins voidbase.lock  # the install is a commit, like any dependency
-voidbase deploy                   # and the deploy is what puts it live`,
+voidbase deploy                   # and the deploy is what puts it live (or push, if a pipeline deploys)`,
   },
   stack: {
-    dir: "vb_plugins/",
-    code: hl.bash`voidbase plugins add backups-r2   # writes vb_plugins/ and the lock entry
-git add vb_plugins voidbase.lock
+    dir: "pb_plugins/",
+    code: hl.bash`# not wired yet: the adapter does not carry pb_plugins into the generated app.
+# The shape it will take:
+voidbase plugins add echo         # writes pb_plugins/echo and the lock entry
+git add pb_plugins voidbase.lock
 bun run build && cd .voidbase && voidbase deploy`,
   },
 };
@@ -59,27 +61,32 @@ const SPLIT: Record<Shape, string> = {
     "Both, and unpackaged is at its most natural here: the plugin joins the same build as your pages and routes, which is the closest this design gets to a plugin being ordinary code.",
 };
 
-const REGISTRY = hl.bash`# our marketplace is the default; any registry serving the same shape works
-voidbase plugins add backups-r2 --registry https://marketplace.example.com
-VOIDBASE_PLUGIN_REGISTRY=https://marketplace.example.com voidbase plugins add backups-r2`;
+const REGISTRY = hl.bash`# our marketplace is the default; any marketplace serving the registry protocol works
+voidbase plugins add echo --marketplace https://marketplace.example.com
+VOIDBASE_PLUGIN_MARKETPLACES=https://a.example.com,https://b.example.com voidbase plugins add echo
+# a name served by two of them is refused until --marketplace says which; voidbase.lock keeps the list`;
 
 export default function PluginsSoon({ shape }: { shape: Shape }) {
   const { code, dir } = COMMANDS[shape];
   return (
     <section className="soon">
       <h2>
-        Plugins <span className="label label-warning">Not built yet</span>
+        Plugins{" "}
+        {shape === "cloud" || shape === "stack" ? (
+          <span className="label label-warning">Not for this shape yet</span>
+        ) : (
+          <span className="label label-success">Since 0.9.0-beta.7</span>
+        )}
       </h2>
       <p>
-        <code>pb_plugins</code> does not exist yet. The loader and the manifest do, inside voidbase, and backups, realtime
-        and the request limits are the first features to arrive through them (a superuser can read what an instance loaded at{" "}
-        <code>/api/plugins</code>), and each of the three is also a package, <code>@voidbase-cloud/plugin-*</code> on GitHub
-        Packages, <a href="https://marketplace.voidbase.cloud/plugins">listed on the marketplace</a> and served from it as
-        audited, hashed releases under <code>/registry/v1/</code>; but there is nothing to install and no command, so every
-        command
-        in this section is a proposal rather than something you can run today. It is written down because the shape
-        of it is being decided now and <Link href="/docs/plugins">the design is worth arguing with</Link> before
-        the rest is built.
+        <code>voidbase plugins add &lt;name&gt;</code> installs a plugin from a marketplace: the bundle lands in{" "}
+        <code>pb_plugins/&lt;name&gt;</code>, verified against the hash the marketplace promised, and{" "}
+        <code>voidbase.lock</code> pins the marketplace, the version, the hash and the commit it was built from. The
+        instance loads it beside the plugins voidbase ships (backups, realtime and the request limits, each also{" "}
+        <a href="https://marketplace.voidbase.cloud/plugins">a release on the marketplace</a>), verifies the bytes
+        again every time it starts, and a superuser can read where each plugin came from at <code>/api/plugins</code>.
+        Removing a shipped plugin turns it off for the project; installing one with its name takes its place.{" "}
+        <Link href="/docs/plugins">The design page</Link> is what this was built from.
       </p>
 
       <CodeBlock {...code} />
@@ -102,28 +109,34 @@ export default function PluginsSoon({ shape }: { shape: Shape }) {
       <h3>Which of the two ways this shape can do</h3>
       <p>
         A plugin arrives <Link href="/docs/plugins">unpackaged or packaged</Link>: source that joins a repository you
-        already have, or a built artifact that installs into any instance without you writing a line.{" "}
+        already have, or a built artifact that installs into any instance without you writing a line. Today only the
+        packaged way exists, as the bundle a marketplace built and audited; the rest of this paragraph is the design.{" "}
         {SPLIT[shape]}
       </p>
 
       <h3>Somewhere other than our marketplace</h3>
       <p>
-        A registry is a listing anyone can serve. Ours is{" "}
+        A marketplace is three GETs anyone can serve, and static files are enough:{" "}
+        <a href="https://github.com/voidbase-cloud/voidbase/blob/master/docs/registry.md" target="_blank" rel="noreferrer noopener">the registry protocol</a>{" "}
+        is defined in voidbase, which is the consumer, so nothing about ours is privileged. Ours is{" "}
         <a href="https://marketplace.voidbase.cloud" target="_blank" rel="noreferrer noopener">the default</a>, not a
-        requirement: a company that wants its own private set should be able to point at its own, and nothing about
-        that path should be worse than the default one.
+        requirement: the demo runs one plugin from it and one from{" "}
+        <a href="https://github.com/voidbase-cloud/voidbase-throwaway-marketplace" target="_blank" rel="noreferrer noopener">a throwaway marketplace</a>{" "}
+        that is a repository of static files, and an instance verifies both the same way.
       </p>
       {shape === "cloud" ? (
         <p>
-          For a cloud instance that means naming the registry once in its settings, after which its plugin list is
-          drawn from there rather than from ours. There is no command, for the same reason as above.
+          For a cloud instance that will mean naming the marketplace once in its settings, after which its plugin list
+          is drawn from there rather than from ours. There is no command, for the same reason as above.
         </p>
       ) : (
         <CodeBlock {...REGISTRY} />
       )}
       <p className="txt-hint">
-        Progress is on <Link href="/docs/roadmap">the roadmap</Link>. If you would build a plugin,{" "}
-        <Link href="/docs/marketplace/plugins">register it now</Link>: the answers shape the format.
+        Progress is on <Link href="/docs/roadmap">the roadmap</Link>. To publish a plugin, a repository with a{" "}
+        <code>plugin.json</code> is enough:{" "}
+        <a href="https://github.com/voidbase-cloud/voidbase-marketplace/blob/master/SUBMISSION.md" target="_blank" rel="noreferrer noopener">submit it</a>{" "}
+        and the marketplace builds, audits and serves it.
       </p>
     </section>
   );
