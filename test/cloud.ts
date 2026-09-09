@@ -98,6 +98,52 @@ try {
   check("the same password went to the worker as a secret", secret?.text === once.superuserPassword);
   const creds = await api("GET", `/api/vbcloud/instances/${inst.id}/credentials`, undefined, U);
   check("credentials afterwards: url, email and panel, never the password", creds.status === 200 && creds.json.superuserEmail === "owner@example.com" && creds.json.superuserPassword === undefined && creds.json.panel === "https://vb-my-shop.testsub.workers.dev/_/", JSON.stringify(creds.json));
+
+  // ---- plugins on a cloud instance: recorded, built elsewhere, deployed from the release the builder pushes ------------
+  // a marketplace of this test's own: the registry protocol is three GETs, and Bun serving three strings is one
+  const echo = 'const manifest = { name: "echo", version: "0.1.0", tier: "community", voidbase: "*" };\nexport default { manifest, apply(ctx) { ctx.app.get("/api/echo", (c) => c.text("echo")); } };\n';
+  const echoBytes = new TextEncoder().encode(echo);
+  const integrity = `sha256-${btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest("SHA-256", echoBytes))))}`;
+  const record = { version: "0.1.0", manifest: { name: "echo", version: "0.1.0", tier: "community", voidbase: "*" }, integrity, bundle: "plugins/echo/0.1.0/bundle.js", bytes: echoBytes.length, source: { repository: "example/voidbase-plugin-echo", commit: "0123456789abcdef0123456789abcdef01234567" }, publishedOn: "2026-09-09" };
+  const index = { schemaVersion: 1, marketplace: { name: "test", url: "http://test.invalid" }, generatedOn: "2026-09-09", plugins: [{ name: "echo", repository: "example/voidbase-plugin-echo", title: "Echo", summary: "Answers /api/echo.", latest: "0.1.0", versions: [record] }], templates: [] };
+  const market = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch: (req) => { const p = new URL(req.url).pathname; if (p === "/registry/v1/index.json") return Response.json(index); if (p === "/registry/v1/plugins/echo/0.1.0.json") return Response.json(record); if (p === "/registry/v1/plugins/echo/0.1.0/bundle.js") return new Response(echoBytes); return new Response("not found", { status: 404 }); } });
+  const MARKET = `http://127.0.0.1:${market.port}`;
+  try {
+    const nothingQueued = await api("GET", "/api/vbcloud/builds/next", undefined, SU);
+    check("builds/next with nothing queued is 204", nothingQueued.status === 204, String(nothingQueued.status));
+    const offered = await api("GET", `/api/vbcloud/instances/${inst.id}/plugins?marketplace=${encodeURIComponent(MARKET)}`, undefined, U);
+    const fromTest = (offered.json.available ?? []).find((m: { marketplace: string }) => m.marketplace === MARKET);
+    check("plugins: the instance's set is empty, and a named marketplace's releases are offered beside the official one", offered.status === 200 && Array.isArray(offered.json.plugins) && offered.json.plugins.length === 0 && fromTest?.plugins?.[0]?.name === "echo" && (offered.json.available ?? []).length === 2, JSON.stringify(offered.json).slice(0, 300));
+    const notServed = await api("POST", `/api/vbcloud/instances/${inst.id}/plugins`, { add: [{ name: "nothing", marketplace: MARKET }] }, U);
+    check("a plugin the marketplace does not serve is refused, nothing recorded", notServed.status === 400 && /not served by/.test(notServed.json.message ?? ""), JSON.stringify(notServed.json));
+    const added = await api("POST", `/api/vbcloud/instances/${inst.id}/plugins`, { add: [{ name: "echo", marketplace: MARKET }] }, U);
+    check("installing records the plugin as voidbase.lock would (version, marketplace, integrity, source) and queues a build", added.status === 200 && added.json.build === "queued" && added.json.plugins?.[0]?.name === "echo" && added.json.plugins[0].integrity === integrity && added.json.plugins[0].marketplace === MARKET && added.json.plugins[0].source?.commit?.length === 40, JSON.stringify(added.json).slice(0, 300));
+    const someoneElse = await api("GET", "/api/vbcloud/builds/next", undefined, U);
+    check("claiming a build takes a superuser (the builder), not an owner", someoneElse.status === 401 || someoneElse.status === 403, String(someoneElse.status));
+    const claimed = await api("GET", "/api/vbcloud/builds/next", undefined, SU);
+    check("the builder claims the queued build: instance, base release and the plugin set", claimed.status === 200 && claimed.json.id === inst.id && claimed.json.name === "vb-my-shop" && claimed.json.base === manifest.version && claimed.json.plugins?.[0]?.integrity === integrity, JSON.stringify(claimed.json));
+    const again = await api("GET", "/api/vbcloud/builds/next", undefined, SU);
+    check("a claimed build is not handed out twice", again.status === 204, String(again.status));
+    const midway = await api("GET", `/api/vbcloud/instances/${inst.id}/plugins`, undefined, U);
+    check("while it builds, the owner sees the state and cannot change the set", midway.json.build === "building" && (await api("POST", `/api/vbcloud/instances/${inst.id}/plugins`, { remove: ["echo"] }, U)).status === 400, JSON.stringify(midway.json).slice(0, 200));
+    // the builder pushes the release it made for this instance (the same files here), without making it the default
+    const built = `${manifest.version}-vb-my-shop.t1`;
+    let pushedBuilt = 0; for (const f of files) { const r = await fetch(`${VB}/api/vbcloud/releases/${built}/files?path=${encodeURIComponent(f)}`, { method: "POST", headers: { authorization: SU, "content-type": "application/octet-stream" }, body: await Bun.file(`${releaseDir}/${f}`).arrayBuffer() }); if (r.ok) pushedBuilt++; }
+    const stillCurrent = await api("GET", "/api/vbcloud/release", undefined, SU);
+    check("the per-instance release is pushed without becoming the default", pushedBuilt === files.length && stillCurrent.json.current === manifest.version, `${pushedBuilt}/${files.length} ${stillCurrent.json.current}`);
+    const uploadsBefore = (await cfState()).scripts["vb-my-shop"]?.uploads ?? 0;
+    const done = await api("POST", `/api/vbcloud/builds/${inst.id}/done`, { version: built }, SU);
+    const after = await cfState();
+    check("done: the instance is deployed from that release, secrets inherited, and runs it", done.status === 200 && done.json.instance?.release === built && done.json.instance?.build === "" && !!after.scripts["vb-my-shop"] && (after.scripts["vb-my-shop"].uploads ?? uploadsBefore + 1) > uploadsBefore, JSON.stringify(done.json).slice(0, 300));
+    const upgradeWithPlugins = await api("POST", `/api/vbcloud/instances/${inst.id}/upgrade`, undefined, U);
+    check("an upgrade of an instance with plugins is a rebuild on the base, not a bare re-provision", upgradeWithPlugins.status === 200 && upgradeWithPlugins.json.upgraded === false && (upgradeWithPlugins.json.queued === true || /Already built/.test(upgradeWithPlugins.json.message ?? "")), JSON.stringify(upgradeWithPlugins.json).slice(0, 200));
+    const reclaim = await api("GET", "/api/vbcloud/builds/next", undefined, SU);
+    if (reclaim.status !== 200) await api("POST", `/api/vbcloud/instances/${inst.id}/plugins`, { remove: ["echo"] }, U);
+    const claim2 = reclaim.status === 200 ? reclaim : await api("GET", "/api/vbcloud/builds/next", undefined, SU);
+    const failed = await api("POST", `/api/vbcloud/builds/${inst.id}/failed`, { error: "the bundler said no" }, SU);
+    const seen = await api("GET", `/api/vbcloud/instances/${inst.id}/plugins`, undefined, U);
+    check("a failed build is reported with its reason, and the instance keeps the release it runs", claim2.status === 200 && failed.status === 200 && seen.json.build === "failed" && seen.json.buildError === "the bundler said no" && seen.json.instance?.release === built, JSON.stringify(seen.json).slice(0, 300));
+  } finally { market.stop(true); }
   {
     const { Database } = await import("bun:sqlite");
     const db = new Database(`${data}/pb_data/data.db`, { readonly: true });

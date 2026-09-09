@@ -10,7 +10,7 @@
 import { defineHandler } from "void";
 import { authOf, pb } from "@voidbase-cloud/voidbase/adapter";
 import { provisionInstance, workerExists } from "@voidbase-cloud/voidbase/cloud";
-import { connectionFor, instanceJSON, isAdmin, releaseSource, requireAuth, userId } from "@/shared";
+import { connectionFor, instanceJSON, isAdmin, pluginsOf, releaseSource, requireAuth, userId } from "@/shared";
 
 /** carried over rather than resupplied: everything the instance was given when it was created */
 const INHERITED = ["VOIDBASE_SUPERUSER_EMAIL", "VOIDBASE_SUPERUSER_PASSWORD"];
@@ -27,6 +27,13 @@ export const POST = defineHandler(requireAuth("users"), async (c) => {
   const release = await releaseSource(c);
   const from = row.getString("release");
   const to = release.manifest.version;
+  // an instance with plugins runs a release built for it on top of the base; provisioning the bare base would drop
+  // them, so the upgrade is a rebuild on the new base, which the builder picks up
+  if (pluginsOf(row).length) {
+    if (from.startsWith(`${to}-`) && !row.getString("build")) return { instance: instanceJSON(row, auth), upgraded: false, from, to, message: `Already built on ${to}.` };
+    row.set("build", "queued"); row.set("build_error", ""); await pb.$app.save(row);
+    return { instance: instanceJSON(row, auth), upgraded: false, queued: true, from, to, message: `Queued a build on ${to} with this instance's plugins; it takes minutes.` };
+  }
   if (from === to) return { instance: instanceJSON(row, auth), upgraded: false, from, to, message: `Already on ${to}.` };
 
   const { cf } = await connectionFor(uid);

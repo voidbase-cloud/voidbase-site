@@ -36,7 +36,7 @@ export async function ensureSelf(origin?: string) {
 }
 
 /** One instance as the /cloud page is shown it. */
-export const instanceJSON = (r: HookRecord, viewer: HookRecord | null) => ({ id: r.id, name: r.getString("name"), url: r.getString("url"), status: r.getString("status"), error: r.getString("error"), release: r.getString("release"), account: { id: r.getString("account_id"), name: r.getString("account_name") }, owner: r.getString("owner"), system: r.getBool("system"), superuserEmail: r.getString("superuser_email"), created: String(r.get("created") ?? ""), updated: String(r.get("updated") ?? ""), canDelete: !!viewer && (r.getString("owner") === viewer.id || (r.getBool("system") && isAdmin(viewer))), canLink: !!viewer && (r.getString("owner") === viewer.id || (r.getBool("system") && isAdmin(viewer))), self: !!cfg().worker && r.getString("name") === cfg().worker });
+export const instanceJSON = (r: HookRecord, viewer: HookRecord | null) => ({ id: r.id, name: r.getString("name"), url: r.getString("url"), status: r.getString("status"), error: r.getString("error"), release: r.getString("release"), plugins: pluginsOf(r), build: r.getString("build"), buildError: r.getString("build_error"), account: { id: r.getString("account_id"), name: r.getString("account_name") }, owner: r.getString("owner"), system: r.getBool("system"), superuserEmail: r.getString("superuser_email"), created: String(r.get("created") ?? ""), updated: String(r.get("updated") ?? ""), canDelete: !!viewer && (r.getString("owner") === viewer.id || (r.getBool("system") && isAdmin(viewer))), canLink: !!viewer && (r.getString("owner") === viewer.id || (r.getBool("system") && isAdmin(viewer))), self: !!cfg().worker && r.getString("name") === cfg().worker });
 
 /** The instance a repository may be wired to: the visitor's own, or this site's backend for admins (dogfooding). */
 export async function linkableInstance(c: Context, uid: string, instId: string): Promise<HookRecord> {
@@ -45,4 +45,12 @@ export async function linkableInstance(c: Context, uid: string, instId: string):
   if (!(inst.getString("owner") === uid || (inst.getBool("system") && isAdmin(authOf(c))))) throw new pb.ForbiddenError("That instance is not yours.");
   if (inst.getString("status") !== "live" || !inst.getString("url")) throw new pb.BadRequestError("The instance is not live yet.");
   return inst;
+}
+
+/** the plugin set an instance should run, as recorded when its owner installed or removed one (cloud shape) */
+export interface InstancePlugin { name: string; version: string; marketplace: string; integrity: string; source: { repository: string; commit: string } }
+export function pluginsOf(r: HookRecord): InstancePlugin[] {
+  const raw = r.get("plugins");
+  const list = typeof raw === "string" ? (raw ? (JSON.parse(raw) as unknown) : []) : raw;
+  return Array.isArray(list) ? (list as InstancePlugin[]) : [];
 }

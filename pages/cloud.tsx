@@ -30,6 +30,9 @@ interface Release {
 interface Instance {
   id: string;
   name: string;
+  plugins?: { name: string; version: string; marketplace: string }[];
+  build?: string;
+  buildError?: string;
   /** "live" | "creating" | "deleting" | "error" */
   status: string;
   account: CfAccount;
@@ -119,6 +122,114 @@ const wiredText: Record<WiredState, string> = {
   yes: "wired",
   no: "points elsewhere",
 };
+
+type CloudFn = <T>(method: string, path: string, body?: unknown) => Promise<T>;
+interface PluginsView {
+  plugins: { name: string; version: string; marketplace: string }[];
+  build: string;
+  buildError: string;
+  available: { marketplace: string; plugins: { name: string; title: string; summary: string; latest: string }[]; error?: string }[];
+}
+
+/**
+ * The plugins of one cloud instance. Installing records the set and queues a build, because a cloud instance's
+ * plugins are fixed when its Worker is built and the builder runs every few minutes; the panel says so, and polls
+ * while a build is queued or running rather than pretending the click was the install.
+ */
+function PluginsPanel({ inst, cloud, onChange }: { inst: Instance; cloud: CloudFn; onChange: () => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+  const [view, setView] = useState<PluginsView | null>(null);
+  const [marketplace, setMarketplace] = useState("");
+  const [working, setWorking] = useState("");
+  const [error, setError] = useState("");
+  const path = `/api/vbcloud/instances/${inst.id}/plugins`;
+
+  async function refresh(extra = marketplace) {
+    const q = extra.trim() ? `?marketplace=${encodeURIComponent(extra.trim())}` : "";
+    setView(await cloud<PluginsView>("GET", path + q));
+  }
+  useEffect(() => {
+    if (!open) return;
+    refresh().catch((e) => setError(e instanceof Error ? e.message : String(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+  useEffect(() => {
+    if (!open || !view || !["queued", "building"].includes(view.build)) return;
+    const t = setInterval(() => { refresh().catch(() => undefined); onChange().catch(() => undefined); }, 15000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, view?.build]);
+
+  async function change(body: { add?: { name: string; marketplace?: string }[]; remove?: string[] }, step: string) {
+    setWorking(step); setError("");
+    try { await cloud("POST", path, body); await refresh(); await onChange(); }
+    catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    finally { setWorking(""); }
+  }
+
+  const installed = new Set((view?.plugins ?? inst.plugins ?? []).map((p) => p.name));
+  const state = view?.build ?? inst.build ?? "";
+  return (
+    <div className="node-plugins">
+      <button type="button" className="btn btn-xs btn-secondary" aria-expanded={open} onClick={() => setOpen(!open)}>
+        {open ? "Hide plugins" : `Plugins${installed.size ? ` (${installed.size})` : ""}`}
+      </button>
+      {state && (
+        <span className={`label label-sm build-${state}`}>
+          {state === "queued" ? "build queued: a builder picks it up within minutes" : state === "building" ? "building…" : state === "failed" ? "last build failed" : state}
+        </span>
+      )}
+      {open && (
+        <div className="plugins-panel">
+          {(view?.buildError || inst.buildError) && state === "failed" && <p className="node-error">{view?.buildError || inst.buildError}</p>}
+          {error && <p className="node-error">{error}</p>}
+          <p className="txt-hint">
+            A cloud instance's plugins are fixed when its Worker is built, so installing one queues a build on the
+            current release, and the instance keeps running what it has until the new Worker is deployed.
+          </p>
+          <ul className="plugins-installed">
+            {(view?.plugins ?? inst.plugins ?? []).map((p) => (
+              <li key={p.name}>
+                <code>{p.name}</code> {p.version} <span className="txt-hint">{p.marketplace}</span>{" "}
+                <button type="button" className="btn btn-xs btn-secondary btn-danger" disabled={!!working || state === "building"} onClick={() => change({ remove: [p.name] }, "remove:" + p.name)}>
+                  {working === "remove:" + p.name ? "Removing…" : "Remove"}
+                </button>
+              </li>
+            ))}
+            {!(view?.plugins ?? inst.plugins ?? []).length && <li className="txt-hint">nothing installed beyond what voidbase ships</li>}
+          </ul>
+          {view?.available.map((m) => (
+            <div key={m.marketplace} className="plugins-available">
+              <h4>
+                <a href={m.marketplace} target="_blank" rel="noopener noreferrer">{m.marketplace.replace(/^https?:\/\//, "")}</a>
+              </h4>
+              {m.error && <p className="node-error">{m.error}</p>}
+              <ul>
+                {m.plugins.map((p) => (
+                  <li key={p.name}>
+                    <code>{p.name}</code> {p.latest} <span className="txt-hint">{p.summary}</span>{" "}
+                    {installed.has(p.name) ? (
+                      <span className="label label-sm">installed</span>
+                    ) : (
+                      <button type="button" className="btn btn-xs btn-outline" disabled={!!working || state === "building"} onClick={() => change({ add: [{ name: p.name, marketplace: m.marketplace }] }, "add:" + p.name)}>
+                        {working === "add:" + p.name ? "Queuing…" : "Install"}
+                      </button>
+                    )}
+                  </li>
+                ))}
+                {!m.plugins.length && !m.error && <li className="txt-hint">nothing served yet</li>}
+              </ul>
+            </div>
+          ))}
+          <form className="plugins-marketplace" onSubmit={(e) => { e.preventDefault(); refresh().catch((err) => setError(String(err))); }}>
+            <input type="url" placeholder="another marketplace: https://…" value={marketplace} onChange={(e) => setMarketplace(e.target.value)} />
+            <button type="submit" className="btn btn-xs btn-secondary">Read it</button>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Cloud() {
   const [ready, setReady] = useState(false);
@@ -657,6 +768,9 @@ export default function Cloud() {
                     </div>
                   </div>
                   {inst.error && <p className="node-error">{inst.error}</p>}
+                  {!me?.user?.superuser && inst.status === "live" && (
+                    <PluginsPanel inst={inst} cloud={cloud} onChange={load} />
+                  )}
                   {creds[inst.id] && (
                     <p className="node-creds">
                       Superuser <code>{creds[inst.id].superuserEmail}</code> at{" "}
