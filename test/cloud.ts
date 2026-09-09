@@ -7,6 +7,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { assetHash, contentTypeFor, type ReleaseManifest } from "@voidbase-cloud/voidbase/cloud";
 const VOIDBASE = resolve(import.meta.dir, "../node_modules/@voidbase-cloud/voidbase");
+// The npm package ships no test/; the mocks come from a sibling voidbase checkout when the package lacks them.
+const MOCKS = [`${VOIDBASE}/test`, resolve(import.meta.dir, "../../voidbase/test")].find((d) => existsSync(`${d}/cf-mock.ts`)) ?? `${VOIDBASE}/test`;
 const freePort = () => { const s = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch: () => new Response() }); const p = s.port; s.stop(true); return p; };
 const OIDC_PORT = freePort(), CF_PORT = freePort(), VB_PORT = freePort(), GH_PORT = freePort();
 const OIDC = `http://127.0.0.1:${OIDC_PORT}`, CF = `http://127.0.0.1:${CF_PORT}`, VB = `http://127.0.0.1:${VB_PORT}`, GH = `http://127.0.0.1:${GH_PORT}`;
@@ -14,8 +16,8 @@ let pass = 0, fail = 0; const check = (l: string, ok: boolean, d = "") => { ok ?
 const waitFor = async (url: string, tries = 100) => { for (let i = 0; i < tries; i++) { try { const r = await fetch(url); if (r.status < 500) return; } catch { /* not up */ } await Bun.sleep(150); } throw new Error(`${url} did not come up`); };
 const data = mkdtempSync(join(tmpdir(), "vb-cloud-")); mkdirSync(`${data}/pb_data`, { recursive: true });
 const procs: ReturnType<typeof Bun.spawn>[] = [];
-procs.push(Bun.spawn(["bun", `${VOIDBASE}/test/mock-oidc.ts`, String(OIDC_PORT)], { stdout: "ignore", stderr: "inherit" }));
-procs.push(Bun.spawn(["bun", `${VOIDBASE}/test/cf-mock.ts`, String(CF_PORT)], { stdout: "ignore", stderr: "inherit" }));
+procs.push(Bun.spawn(["bun", `${MOCKS}/mock-oidc.ts`, String(OIDC_PORT)], { stdout: "ignore", stderr: "inherit" }));
+procs.push(Bun.spawn(["bun", `${MOCKS}/cf-mock.ts`, String(CF_PORT)], { stdout: "ignore", stderr: "inherit" }));
 procs.push(Bun.spawn(["bun", resolve(import.meta.dir, "gh-mock.ts"), String(GH_PORT)], { stdout: "ignore", stderr: "inherit" }));
 const env = {
   ...process.env, VOIDBASE_SUPERUSER_EMAIL: "root@example.com", VOIDBASE_SUPERUSER_PASSWORD: "root-password-1", VOIDBASE_USER_EMAIL: "", VOIDBASE_USER_PASSWORD: "",

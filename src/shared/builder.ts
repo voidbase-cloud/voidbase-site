@@ -8,7 +8,7 @@
 // VB_BUILDS_TOKEN is a user API token (Workers Builds Configuration: Edit, Workers Scripts: Read); without it nothing
 // is started, the dashboard says so, and a maintainer starts builds by hand (`bun scripts/cf-builds.ts build`).
 // Never a failure of the request that queued the build.
-import { env } from "./pb";
+import { env, pb } from "./pb";
 import { cfg } from "./config";
 
 const API = "https://api.cloudflare.com/client/v4";
@@ -52,3 +52,28 @@ export async function startBuild(worker: string, trigger: string, reason: string
 
 /** the instance builder: claims every queued build (scripts/instance-build.ts in voidbase) */
 export const dispatchBuilder = (reason: string) => startBuild(env("VB_BUILDER_WORKER", "voidbase-builder"), env("VB_BUILDER_TRIGGER", "voidbase-builder (instance-build)"), reason);
+
+// ---- the durable run around a build (workflows/instance-build.ts)
+type Ctx = { env: unknown };
+interface BuildRuns { create(o: { id: string; params: { instanceId: string; reason: string } }): Promise<unknown>; get(id: string): Promise<{ sendEvent(e: { type: string; payload: unknown }): Promise<unknown> }> }
+const runsOf = (c: Ctx): BuildRuns | undefined => { const w = (c.env as Record<string, unknown> | undefined)?.WORKFLOW_INSTANCE_BUILD as BuildRuns | undefined; return w && typeof w.create === "function" ? w : undefined; };
+
+/**
+ * A build was queued on this row: start its run. With the Workflow bound (Cloudflare), the run starts the builder,
+ * waits for the report and fails the build when none comes; without it (Bun, the mocked suite) the builder is
+ * started here and nothing watches the clock. Never a failure of the request that queued the build.
+ */
+export async function startBuildRun(c: Ctx, row: { id: string; set(k: string, v: unknown): void }, reason: string): Promise<"workflow" | "started" | "no-token" | "failed"> {
+  const runs = runsOf(c);
+  if (!runs) return dispatchBuilder(reason);
+  const id = `${row.id}-${Date.now().toString(36)}`;
+  try { await runs.create({ id, params: { instanceId: row.id, reason } }); row.set("build_run", id); await pb.$app.save(row as never); return "workflow"; }
+  catch (err) { console.warn("vbcloud: build run", reason, err instanceof Error ? err.message : err); return dispatchBuilder(reason); }
+}
+
+/** the builder reported: tell the run, which may already be over (a late report is nobody's error) */
+export async function reportBuild(c: Ctx, row: { getString(k: string): string }, report: { version?: string; error?: string }): Promise<void> {
+  const runs = runsOf(c); const id = row.getString("build_run");
+  if (!runs || !id) return;
+  try { await (await runs.get(id)).sendEvent({ type: "built", payload: report }); } catch (err) { console.warn("vbcloud: build report", id, err instanceof Error ? err.message : err); }
+}

@@ -8,14 +8,14 @@
 //   local()     voidbase's own tooling on this machine or in CI: never stored on the Worker, never in a build
 // Values live in vb_secrets/secrets.json on a maintainer's machine (git-ignored; the deploy token too) and, once
 // deployed, on the Worker. `voidbase secrets` (from .voidbase/) shows each key, its tier and where its value is.
-import { browser, defineSecrets, local, secret, server, boolean, number, string, url } from "@voidbase-cloud/voidbase/secrets";
+import { browser, defineSecrets, flag, local, secret, server, boolean, number, string, url } from "@voidbase-cloud/voidbase/secrets";
 
 export default defineSecrets({
   // ---- local: the deploy itself
   VOIDBASE_DEPLOY_CF_API_KEY: local(string().optional(), "the deploy token (`voidbase token` prints the link that creates it)"),
   VOIDBASE_DEPLOY_NAME: local(string().default("voidbase-site"), "the Worker this project deploys to"),
   VOIDBASE_DEPLOY_DOMAIN: local(string().default("voidbase.cloud,www.voidbase.cloud"), "its hostnames"),
-  VOIDBASE_DEPLOY_CRON: local(boolean().default(true), "whether the Worker gets a cron trigger: the keeper (crons/keeper.ts) needs one (Workers Free allows five per account)"),
+  VOIDBASE_DEPLOY_CRON: local(boolean().default(true), "whether the Worker gets a cron trigger, for the hourly maintenance tick (Workers Free allows five per account)"),
   CLOUDFLARE_BUILDS_TOKEN: local(string().optional(), "a user API token with Workers Builds Configuration: Edit, for `voidbase sync` to connect this repository's pipeline"),
 
   // ---- secrets: hooks and routes only
@@ -34,19 +34,19 @@ export default defineSecrets({
   VB_ADMIN_EMAILS: server(string(), "who counts as an admin of this site (comma separated)"),
   VB_INSTANCE_PREFIX: server(string().default("vb-"), "prefix of every instance's Worker name"),
   VB_MAX_INSTANCES_PER_USER: server(number().default(5)),
-  VB_ALLOW_SELF_DELETE: server(boolean().default(false), "whether a user may delete their own instances"),
+  VB_ALLOW_SELF_DELETE: flag(boolean().default(false), "whether a user may delete their own instances: a feature flag, changed in Flagship without a deploy"),
   CF_OAUTH_SCOPES: server(string().optional(), "overrides the Cloudflare OAuth scopes (space separated)"),
   GH_OAUTH_SCOPES: server(string().optional(), "overrides the GitHub OAuth scopes"),
   VB_SITE_URL: server(url().optional(), "where the GitHub callback sends the browser back (defaults per runtime)"),
   VB_SITE_REPO: server(string().optional(), "this site's own repository, owner/name"),
-  // the builds the control plane starts (src/shared/builder.ts, crons/keeper.ts): found by name, never kept as uuids
+  // the builds the control plane starts (src/shared/builder.ts, workflows/instance-build.ts): found by name, never kept as uuids
   VB_BUILDS_ACCOUNT: server(string().optional(), "the account the builds run on (defaults to this Worker's own)"),
   VB_BUILDER_WORKER: server(string().default("voidbase-builder"), "the Worker whose trigger builds cloud instances"),
   VB_BUILDER_TRIGGER: server(string().default("voidbase-builder (instance-build)"), "that trigger's name"),
   // the landing page's live cursors (voidbase/docs/deploy.md): the newest three visitors hold a slot and may send
   // their cursor, everyone else watches over the connection they already have. Nothing is written to the database.
   // Set VOIDBASE_PRESENCE to 0 and the page falls back to a canned animation at no cost.
-  VOIDBASE_PRESENCE: server(boolean().default(true), "the landing page's live cursors"),
+  VOIDBASE_PRESENCE: flag(boolean().default(true), "the landing page's live cursors: a feature flag, so they can be turned off for everyone or for a share of visitors without a deploy"),
   VOIDBASE_PRESENCE_MAX: server(number().default(3), "how many visitors hold a cursor slot at once"),
   VOIDBASE_PRESENCE_TTL: server(number().default(12), "seconds a slot survives without a beat"),
 
