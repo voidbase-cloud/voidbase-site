@@ -142,8 +142,7 @@ export default function DocsPlugins() {
         </li>
         <li>
           <strong>Three tiers, differing in what happens if you do nothing.</strong> A core plugin is on by default
-          because the instance is not usable without it (auth will be the first; it is still built in, so the core
-          list is empty). An official plugin is ours, versioned with voidbase, and you can turn it off or replace it:
+          because the instance is not usable without it (auth is the first: since 0.9.0-beta.14 it is a plugin of tier core providing auth@1, and an instance without it says so). An official plugin is ours, versioned with voidbase, and you can turn it off or replace it:
           removing a shipped plugin turns it off for the project, and installing one with its name takes its place.
           A community plugin is somebody else's, from the marketplace or a marketplace of your own.
         </li>
