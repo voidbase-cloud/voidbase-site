@@ -1,4 +1,6 @@
-# GitHub only starts builds; Cloudflare Workers Builds runs them. Every push builds the project (`bun run build`,
+# GitHub only makes sure a build runs; Cloudflare Workers Builds runs it. A push Cloudflare hears about through its
+# repository connection is built without this job starting anything (the script adopts that build); one Cloudflare
+# did not hear about is started here. Every push builds the project (`bun run build`,
 # then `bun run check`, which extends the generated .voidbase/tsconfig.json); a push to master also deploys the Worker (`bun run deploy:ci`: `voidbase deploy` from .voidbase/,
 # which serves the site at /, the API at /api and the admin panel at /_/). The app's configuration is declared in
 # vb_secrets/main.ts: its secrets are the Worker's own, stored once from a maintainer's machine (`bun run deploy`, or
