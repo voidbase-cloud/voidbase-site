@@ -30,4 +30,7 @@ jobs:
           VB_LIVE_SUPERUSER_PASSWORD: ${{ secrets.VB_LIVE_SUPERUSER_PASSWORD }}
           VOIDBASE_DEPLOY_CF_API_KEY: ${{ secrets.VOIDBASE_DEPLOY_CF_API_KEY }}
           VOIDBASE_ENCRYPTION_KEY: ${{ secrets.VOIDBASE_ENCRYPTION_KEY }}
-        run: bun test/cloud-live.ts --no-dispatch
+          # optional: a fine-grained token with Actions write on voidbase-cloud/voidbase starts the builder at once;
+          # without it the test waits for the builder's schedule, which GitHub runs when it gets to it
+          GH_TOKEN: ${{ secrets.VB_GITHUB_TOKEN }}
+        run: if [ -n "$GH_TOKEN" ]; then bun test/cloud-live.ts; else bun test/cloud-live.ts --no-dispatch; fi
