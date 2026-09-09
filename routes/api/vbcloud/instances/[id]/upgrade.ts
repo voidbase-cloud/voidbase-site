@@ -22,6 +22,8 @@ export const POST = defineHandler(requireAuth("users"), async (c) => {
   if (!row) throw new pb.NotFoundError();
   if (!(row.getString("owner") === uid || (row.getBool("system") && isAdmin(auth)))) throw new pb.ForbiddenError();
   if (row.getString("status") === "creating") throw new pb.BadRequestError("This instance is still being created.");
+  // the site's own backend is built from its repository, not from a release: a re-provision would replace this very Worker
+  if (row.getBool("system")) throw new pb.BadRequestError("This is the site's own backend, built and deployed from its repository; upgrade it by deploying that.");
 
   const name = row.getString("name");
   const release = await releaseSource(c);

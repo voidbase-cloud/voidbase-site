@@ -109,6 +109,9 @@ try {
   const market = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch: (req) => { const p = new URL(req.url).pathname; if (p === "/registry/v1/index.json") return Response.json(index); if (p === "/registry/v1/plugins/echo/0.1.0.json") return Response.json(record); if (p === "/registry/v1/plugins/echo/0.1.0/bundle.js") return new Response(echoBytes); return new Response("not found", { status: 404 }); } });
   const MARKET = `http://127.0.0.1:${market.port}`;
   try {
+    const selfUpgrade = await api("POST", `/api/vbcloud/instances/${self0.id}/upgrade`, undefined, U);
+    const selfPlugins = await api("POST", `/api/vbcloud/instances/${self0.id}/plugins`, { add: [{ name: "echo", marketplace: MARKET }] }, U);
+    check("the site's own backend is never re-provisioned from a release: upgrade and plugins refuse the system row", selfUpgrade.status === 400 && /its repository/.test(selfUpgrade.json.message ?? "") && selfPlugins.status === 400 && /its repository/.test(selfPlugins.json.message ?? ""), `${selfUpgrade.status} ${selfPlugins.status}`);
     const nothingQueued = await api("GET", "/api/vbcloud/builds/next", undefined, SU);
     check("builds/next with nothing queued is 204", nothingQueued.status === 204, String(nothingQueued.status));
     const offered = await api("GET", `/api/vbcloud/instances/${inst.id}/plugins?marketplace=${encodeURIComponent(MARKET)}`, undefined, U);

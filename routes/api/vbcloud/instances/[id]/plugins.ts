@@ -38,6 +38,7 @@ export const GET = defineHandler(requireAuth("users"), async (c) => {
 
 export const POST = defineHandler(requireAuth("users"), async (c) => {
   const { auth, row } = await owned(c);
+  if (row.getBool("system")) throw new pb.BadRequestError("This is the site's own backend, built from its repository: install plugins there (voidbase plugins add) and deploy it.");
   if (row.getString("status") !== "live") throw new pb.BadRequestError(`This instance is ${row.getString("status")}; plugins change when it is live.`);
   if (row.getString("build") === "building") throw new pb.BadRequestError("A build for this instance is running; wait for it to finish.");
   const body = await readBody(c);
