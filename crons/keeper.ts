@@ -4,16 +4,12 @@
 //     before it claimed anything) gets the builder started again
 //   - a build claimed forty-five minutes ago and never reported is failed with a reason, so the dashboard stops
 //     saying "building" and the owner can try again (a build takes about three minutes)
-//   - the nightly proof: the `voidbase-live (nightly)` build, started at 03:30 UTC and again at 04:30
-//     (test/cloud-live.ts --phase nightly: the first run creates the instance and asks for the plugin, the second
-//     sees the builder's release deployed and deletes everything), because the account runs one build at a time and
-//     a build that waited for the builder would wait for itself
 //
 // The Worker's cron trigger fires every minute (voidbase runs each job whose expression matches), so this needs
 // VOIDBASE_DEPLOY_CRON on, which vb_secrets/main.ts defaults to. Nothing here throws: a tick that fails logs why.
 import { defineScheduled } from "void";
 import { pb } from "@voidbase-cloud/voidbase/adapter";
-import { dispatchBuilder, env, pbDate, startBuild, type HookRecord } from "@/shared";
+import { dispatchBuilder, pbDate, type HookRecord } from "@/shared";
 
 export const cron = "*/5 * * * *";
 
@@ -32,8 +28,4 @@ export default defineScheduled(async () => {
       console.warn(`keeper: ${row.getString("name")}: build claimed and never reported; marked failed`);
     }
   } catch (err) { console.warn("keeper: silent builds", err instanceof Error ? err.message : err); }
-  // the nightly proof, keyed on the clock: the cron fires on the five-minute mark, so the half hour is one tick
-  const now = new Date(); const h = now.getUTCHours(), m = now.getUTCMinutes();
-  const live = env("VB_LIVE_WORKER", "voidbase-live");
-  if ((h === 3 || h === 4) && m >= 30 && m < 35) console.log(`keeper: nightly proof, ${h === 3 ? "first" : "second"} run: ${await startBuild(live, env("VB_LIVE_TRIGGER", `${live} (nightly)`), `nightly proof, ${h === 3 ? "first" : "second"} run`)}`);
 });

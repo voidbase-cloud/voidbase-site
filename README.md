@@ -23,29 +23,13 @@ writes the whole voidbase app into `.voidbase/` in PocketBase's layout — `main
 
 ## Testing against production
 
-voidbase.cloud and demo.voidbase.cloud are the testbeds: they run the newest release on purpose, and they are
-exercised for real, on Cloudflare, with no GitHub Actions anywhere.
-
-- **Every deploy of this site checks itself.** After `voidbase deploy`, the build runs
-  `bun test/cloud-live.ts --phase smoke`: an instance is created on the account, answers, asks for a plugin (a
-  build is queued and the builder started) and is deleted. A deploy that cannot provision fails its build.
-- **The whole plugin loop runs every night** as two short builds the control plane's keeper cron
-  (`crons/keeper.ts`) starts an hour apart, both of the `voidbase-live (nightly)` trigger: the first creates the
-  nightly instance and asks for `echo` from the throwaway marketplace, the builder (a Cloudflare build the control
-  plane starts) builds and deploys it in between, and the second sees the release deployed, the plugin answering
-  and an upgrade queued as a rebuild, then deletes everything (`test/cloud-live.ts --phase nightly` tells the two
-  apart from the control plane). Two builds rather than one because the account runs one build at a time, and a
-  build that waited for the builder would wait for itself; on a Worker of its own, `voidbase-live` (a placeholder
-  that serves nothing), because a Worker takes two triggers at most and only one per branch configuration.
-- **The demo's own deploy runs its smoke** (`test/live.ts` in voidbase-demo).
-- **From a maintainer's machine**, `bun test/cloud-live.ts` runs start, the wait and check in one process against
-  voidbase.cloud (`--cloud` for another control plane), with the credentials from this checkout's files
-  (`.voidbase/pb_data/.superuser-credentials`, `vb_secrets/secrets.json`); a build carries them as
-  `VB_LIVE_SUPERUSER_EMAIL`, `VB_LIVE_SUPERUSER_PASSWORD`, `VOIDBASE_DEPLOY_CF_API_KEY` and `VOIDBASE_ENCRYPTION_KEY`.
-
-`bun scripts/cf-triggers.ts` declares the three triggers (this Worker's master and branches, `voidbase-live`'s
-nightly) and their variables through the Builds API, so the dashboard holds no logic. `bun run test` is the mocked
-suite.
+voidbase.cloud and demo.voidbase.cloud are the testbeds: they run the newest voidbase release on purpose (the
+release build in voidbase pins it here and pushes), and they are meant to be exercised for real. `bun run live`
+runs `test/cloud-live.ts` against voidbase.cloud from a maintainer's machine: a throwaway user with a Cloudflare
+connection, an instance created on the account, `echo` installed from the throwaway marketplace, the builder's
+release deployed by the control plane, the plugin answering on the instance, and everything deleted again. The
+credentials come from this checkout's files (`.voidbase/pb_data/.superuser-credentials`, `vb_secrets/secrets.json`).
+`bun run test` is the mocked suite. Nothing runs in CI: a push builds and syncs, and that is all.
 
 ## Run it
 
@@ -67,8 +51,9 @@ backend), and `bun test` runs the control-plane suite.
 ## Deploy
 
 ```bash
-bun run token                 # the dashboard link that creates VOIDBASE_DEPLOY_CF_API_KEY
-bun run deploy                # build, then voidbase deploy from .voidbase/: D1, R2, queue, hub, the Worker 
+bunx voidbase token           # the dashboard link that creates VOIDBASE_DEPLOY_CF_API_KEY
+bun run build                 # the project -> .voidbase/
+bun run deploy                # voidbase sync: D1, R2, queue, hub, the Worker, its hostnames
 ```
 
 One Worker serves everything. `VOIDBASE_DEPLOY_DOMAIN` lists its hostnames (`voidbase.cloud,www.voidbase.cloud`),
@@ -76,22 +61,11 @@ and `public/_redirects` gives each one its role: `www` redirects to the apex, an
 the admin panel. Writing those host rules needs `Zone > Single Redirect > Edit` on the deploy token. Details:
 `voidbase/docs/deploy.md` and `voidbase/docs/adapter.md`.
 
-CI is Cloudflare Workers Builds. Both this project and voidbase's own answer the same three commands, with the
-root directory `/`:
-
-```
-Build command     bun run build      the site into .voidbase/, then the typecheck
-Deploy command    bun run deploy     this instance, from the generated app
-Version command   bun run version    a branch build: the configuration it would deploy with, read back, changing nothing
-```
-
-Nothing in the dashboard decides what those mean. `scripts/pipeline.ts` reads it from the environment
-(`scripts/environment.ts`) as granular controls rather than a named environment, which is what twelve-factor asks
-for: whether a Cloudflare build is running this, which branch it is for, which branch is production. A deploy off
-the production branch does nothing rather than taking production's place, and a person running `bun run deploy`
-gets a build first, because nothing else has done one. The app's secrets are declared in `vb_secrets/main.ts` and
-valued in the git-ignored `vb_secrets/secrets.json`; the master trigger holds only the deploy token and
-`VB_ADMIN_EMAILS`.
+CI is Cloudflare Workers Builds through the repository connection, and it is deliberately nothing more than the two
+lines above: a push to master runs `bun run build` and then `bun run deploy`, root directory `/`. No typecheck, no
+tests, no branch builds; `bun run check` and `bun run test` are for a machine. The app's secrets are declared in
+`vb_secrets/main.ts` and valued in the git-ignored `vb_secrets/secrets.json`; the master trigger holds the deploy
+token, `VB_ADMIN_EMAILS` and `VOIDBASE_DEPLOY_CRON=1` for the keeper cron.
 
 ## Set up your own copy
 

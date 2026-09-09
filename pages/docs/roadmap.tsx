@@ -117,6 +117,15 @@ export default function DocsRoadmap() {
         size="Medium each, and they are independent. The typed collections are the one that changes how the stack feels."
       />
 
+      <h3 className="why-group">Three ways to run it, two modes, one CLI</h3>
+      <Item
+        title="Three ways to run an instance, two modes for each, and a CLI that moves data between them"
+        from="Where an instance runs should be a choice about a machine, not a choice of product. Today the standalone executable, the npm package and Cloudflare each work, and each is a slightly different world with its own way in and no way across."
+        now="An instance runs three ways: the standalone executable on your own machine, the npm package on your own machine (on Bun today), and on Cloudflare through wrangler, the voidbase CLI or voidbase cloud. Two modes exist in shape: an empty directory and the executable is a vanilla instance with no project at all, and a voidbase project wraps one in pb_ folders you version on GitHub and deploy from CI. The adapter builds a stack app into that project shape, so a stack app runs on a machine or on Cloudflare, and voidbase sync connects a project's repository to its Cloudflare pipeline and deploys it. Missing: the npm package on miniflare, so the Workers code runs on your machine exactly as it runs deployed; an instance on your machine put on the internet in a minute; and data that moves between the three."
+        plan="The three ways, each of which is a vanilla instance or a voidbase project, treated as one thing by the CLI. voidbase serve --tunnel puts a machine on the internet through a try.cloudflare.com quick tunnel, for the executable and the npm package alike. The npm package runs on miniflare. A project is synced between GitHub and Cloudflare with one command, so its CI/CD exists the moment the project does. And data migrates between the executable, an npm instance and a cloud instance in either direction with one command, so choosing where to run is never a final choice."
+        size="Medium, and mostly CLI work: the runtimes exist, the tunnel is a download, and a migration is a backup taken on one side and restored on the other, which the backups plugin already knows how to do."
+      />
+
       <h3 className="why-group">voidbase cloud</h3>
       <Item
         title="A dashboard for the life of an instance, not its first minute"

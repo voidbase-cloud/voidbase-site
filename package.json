@@ -20,14 +20,13 @@
   "name": "voidbase-site-refactor",
   "scripts": {
     "dev": "bunx --bun vite",
-    "build": "bun scripts/pipeline.ts build",
+    "build": "bunx --bun vite build",
     "preview": "bun .voidbase/main.ts --http 127.0.0.1:8090",
     "serve": "bun .voidbase/main.ts --http 0.0.0.0:8090",
     "check": "bunx tsc --noEmit -p tsconfig.json && bunx tsc --noEmit -p tsconfig.server.json",
-    "deploy": "bun scripts/pipeline.ts deploy",
+    "deploy": "bunx voidbase sync --name voidbase-site --domain voidbase.cloud,www.voidbase.cloud",
     "test": "bun test/cursor-playback.ts && bun test/cloud.ts",
-    "version": "bun scripts/pipeline.ts version",
-    "build:site": "bunx --bun vite build"
+    "live": "bun test/cloud-live.ts"
   },
   "type": "module"
 }

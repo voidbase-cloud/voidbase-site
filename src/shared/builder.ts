@@ -2,10 +2,9 @@
 //
 // The builder is the `voidbase-builder (instance-build)` trigger, on a Worker of its own in voidbase's account
 // (voidbase/docs/ci.md; a Worker takes two triggers at most): a push never starts it, this does, the moment a build
-// is queued, and the keeper cron (crons/keeper.ts) does again for a build nobody claimed. The nightly proof is the
-// one trigger of the `voidbase-live` Worker, `voidbase-live (nightly)`, which the keeper starts twice an hour apart
-// (scripts/cf-triggers.ts creates it). A trigger is found by the Worker's name and its own, never kept as a uuid:
-// a Worker rename gave the site new triggers once, and a stored uuid pointed at nothing.
+// is queued, and the keeper cron (crons/keeper.ts) does again for a build nobody claimed. A trigger is found by
+// the Worker's name and its own, never kept as a uuid: a Worker rename gave the site new triggers once, and a
+// stored uuid pointed at nothing.
 // VB_BUILDS_TOKEN is a user API token (Workers Builds Configuration: Edit, Workers Scripts: Read); without it nothing
 // is started, the dashboard says so, and a maintainer starts builds by hand (`bun scripts/cf-builds.ts build`).
 // Never a failure of the request that queued the build.

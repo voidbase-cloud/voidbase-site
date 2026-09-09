@@ -1,41 +1,24 @@
 // The cloud control plane, for real, on the deployed site: this is what voidbase.cloud is for.
 //
-//   bun test/cloud-live.ts [--cloud https://voidbase.cloud] [--phase all|smoke|start|check|nightly] [--keep]
+//   bun test/cloud-live.ts [--cloud https://voidbase.cloud] [--keep]      (bun run live)
 //
 // A throwaway user with a Cloudflare connection is made the way the sign-in would make one (the deploy key, sealed
 // with the site's encryption key), a `users` session is minted for it through PocketBase's impersonation endpoint,
-// and the loop runs against real Cloudflare: an instance is created in the account, `echo` is installed from the
-// throwaway marketplace, the control plane starts the builder's Cloudflare build, the instance is watched until
+// and the whole loop runs against real Cloudflare: an instance is created in the account, `echo` is installed from
+// the throwaway marketplace, the control plane starts the builder's Cloudflare build, the instance is watched until
 // that release is deployed, the plugin is asked to answer on the instance itself, and everything is deleted again.
-// Nothing here is a mock; a failure is a real one.
-//
-// The phases exist because the account runs one Cloudflare build at a time and the builder is one of them: a build
-// that waited for the builder would wait for itself.
-//   smoke   an instance is created, answers, takes a plugin (a build is queued and the builder started) and is
-//           deleted: what this site's deploy runs on itself (scripts/pipeline.ts)
-//   start   the nightly instance is created and asks for the plugin, then is left for the builder
-//   check   an hour later: the builder's release is deployed, the plugin answers, an upgrade is a rebuild; then
-//           everything is deleted
-//   nightly start or check, decided from the control plane: check when the instance a start left is there and
-//           younger than three hours, else start (a stale one is deleted first). One trigger, `voidbase-live
-//           (nightly)`, which the keeper cron (crons/keeper.ts) starts at 03:30 and 04:30 UTC: a Worker refuses two
-//           triggers with the same branch configuration, so the phase cannot be the trigger's to know
-//   all     start, the wait and check in one process: a maintainer's machine (the default)
-//
-// Credentials: this checkout's files on a maintainer's machine (.voidbase/pb_data/.superuser-credentials, which a
-// deploy from here writes, and vb_secrets/secrets.json), or the environment in a build (VB_LIVE_SUPERUSER_EMAIL,
+// Nothing here is a mock; a failure is a real one. Run it by hand from a maintainer's machine after a change to
+// anything cloud-shaped; the credentials come from this checkout's files (.voidbase/pb_data/.superuser-credentials,
+// which a deploy from here writes, and vb_secrets/secrets.json) or from the environment (VB_LIVE_SUPERUSER_EMAIL,
 // VB_LIVE_SUPERUSER_PASSWORD, VOIDBASE_DEPLOY_CF_API_KEY, VOIDBASE_ENCRYPTION_KEY).
 import { sealSecret } from "@voidbase-cloud/voidbase/cloud";
 
 const args = process.argv.slice(2);
 const flag = (n: string) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined; };
 const CP = (flag("cloud") ?? "https://voidbase.cloud").replace(/\/+$/, "");
-let PHASE = flag("phase") ?? "all";
-if (!["all", "smoke", "start", "check", "nightly"].includes(PHASE)) { console.error("--phase all|smoke|start|check|nightly"); process.exit(2); }
 const KEEP = args.includes("--keep");
 const MARKET = "https://raw.githubusercontent.com/voidbase-cloud/voidbase-throwaway-marketplace/master";
-// the smoke and the nightly proof use different names, so a deploy's smoke never touches what the nightly left for the builder
-const NAME = PHASE === "smoke" ? "smoke-test" : "plugin-test";
+const NAME = "plugin-test";
 const ua = { "user-agent": "voidbase-cloud-live/2" };
 const readJson = async (path: string) => ((await Bun.file(path).exists()) ? (JSON.parse(await Bun.file(path).text()) as Record<string, string>) : {});
 const secretsFile = await readJson("vb_secrets/secrets.json");
@@ -57,11 +40,9 @@ let user = await findUser();
 if (!user) { const password = crypto.randomUUID() + crypto.randomUUID(); user = (await api("POST", "/api/collections/users/records", { email, password, passwordConfirm: password, name: NAME, verified: true }, SU)).json; }
 const connectionOf = async () => (await api("GET", `/api/collections/cf_connections/records?filter=${encodeURIComponent(`user='${user.id}'`)}&fields=id`, undefined, SU)).json.items?.[0];
 const existing = await connectionOf();
-if (PHASE !== "check" || !existing) {
-  const conn = { user: user.id, cf_user_id: NAME, email, name: NAME, access_token: await sealSecret(secrets.VOIDBASE_DEPLOY_CF_API_KEY, secrets.VOIDBASE_ENCRYPTION_KEY), refresh_token: "", expiry: "2030-01-01 00:00:00.000Z", scopes: "deploy key", accounts: [{ id: account, name: "deploy key" }] };
-  const stored = existing ? await api("PATCH", `/api/collections/cf_connections/records/${existing.id}`, conn, SU) : await api("POST", "/api/collections/cf_connections/records", conn, SU);
-  check("a user with a Cloudflare connection exists, the way the sign-in would have made it", stored.status === 200 && !!user.id, JSON.stringify(stored.json).slice(0, 200));
-}
+const conn = { user: user.id, cf_user_id: NAME, email, name: NAME, access_token: await sealSecret(secrets.VOIDBASE_DEPLOY_CF_API_KEY, secrets.VOIDBASE_ENCRYPTION_KEY), refresh_token: "", expiry: "2030-01-01 00:00:00.000Z", scopes: "deploy key", accounts: [{ id: account, name: "deploy key" }] };
+const stored = existing ? await api("PATCH", `/api/collections/cf_connections/records/${existing.id}`, conn, SU) : await api("POST", "/api/collections/cf_connections/records", conn, SU);
+check("a user with a Cloudflare connection exists, the way the sign-in would have made it", stored.status === 200 && !!user.id, JSON.stringify(stored.json).slice(0, 200));
 const U = (await api("POST", `/api/collections/users/impersonate/${user.id}`, { duration: 3600 }, SU)).json.token as string;
 const me = await api("GET", "/api/vbcloud/me", undefined, U);
 check("impersonated session sees the connection", me.status === 200 && me.json.connected === true, JSON.stringify(me.json).slice(0, 200));
@@ -124,22 +105,11 @@ async function cleanup() {
   }
 }
 
-if (PHASE === "nightly") {
-  const left = (await instances()).find((i) => i.name === `vb-${NAME}`);
-  const born = left?.created ? new Date(String(left.created).replace(" ", "T")).getTime() : 0;
-  PHASE = left && Date.now() - born < 3 * 3600_000 ? "check" : "start";
-  console.log(`nightly: ${left ? `vb-${NAME} exists (${Math.round((Date.now() - born) / 60_000)} minutes old)` : `no vb-${NAME}`}, so this is the ${PHASE} phase`);
-}
 try {
-  if (PHASE === "smoke") await create();
-  else if (PHASE === "start") { await create(); console.log(`left vb-${NAME} and its user for the builder; --phase check verifies and deletes them`); }
-  else if (PHASE === "check") {
-    inst = (await instances()).find((i) => i.name === `vb-${NAME}`) ?? null;
-    check("the nightly instance from the start phase is there", !!inst, "nothing named vb-plugin-test: did the start phase run?");
-    if (inst) await verify(await outcome(9)); // the builder had an hour; three more minutes of patience
-  } else { await create(); await verify(await outcome(90)); }
+  await create();
+  await verify(await outcome(90));
 } finally {
-  if (PHASE !== "start") await cleanup();
-  console.log(`\n${pass} passed, ${fail} failed${KEEP || PHASE === "start" ? " (kept: the instance and the test user)" : ""}`);
+  await cleanup();
+  console.log(`\n${pass} passed, ${fail} failed${KEEP ? " (kept: the instance and the test user)" : ""}`);
 }
 process.exit(fail ? 1 : 0);
