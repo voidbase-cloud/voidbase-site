@@ -195,10 +195,19 @@ export default function DocsPlugins() {
       </p>
       <CodeBlock {...TEST} />
       <p>
+        A plugin that brings its own table names it in the manifest (<code>collections</code>) and creates it at
+        bootstrap: <code>onBootstrap</code> from <code>/kernel</code> registers work run once per isolate with the
+        bindings, after voidbase's own bootstrap, and <code>ensureCollections</code> from{" "}
+        <code>/plugins/collections</code> creates what is missing with the definition the collections API takes. A
+        name the manifest does not own is refused before the database is touched, which is the ownership rule doing
+        its job. Since 0.9.0-beta.15.
+      </p>
+      <p>
         Then <a href="https://github.com/voidbase-cloud/voidbase-marketplace/blob/master/SUBMISSION.md" target="_blank" rel="noreferrer noopener">submit it</a>:
         a form with the repository, a title, a line, a category and tags. A maintainer approves, the marketplace
-        builds and audits it, and anyone can install it by name. The three plugins voidbase ships went through the
+        builds and audits it, and anyone can install it by name. The four plugins voidbase ships went through the
         same door (
+        <a href="https://github.com/voidbase-cloud/voidbase-plugin-auth" target="_blank" rel="noreferrer noopener">auth</a>,{" "}
         <a href="https://github.com/voidbase-cloud/voidbase-plugin-backups" target="_blank" rel="noreferrer noopener">backups</a>,{" "}
         <a href="https://github.com/voidbase-cloud/voidbase-plugin-realtime" target="_blank" rel="noreferrer noopener">realtime</a>,{" "}
         <a href="https://github.com/voidbase-cloud/voidbase-plugin-hardening" target="_blank" rel="noreferrer noopener">hardening</a>
