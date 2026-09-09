@@ -57,7 +57,9 @@ try {
   inst = created.json.instance; instSu = created.json.credentials ? { email: created.json.credentials.superuserEmail, password: created.json.credentials.superuserPassword } : null;
   check("one click: an instance is created on the real account, live, on the active release", created.status === 200 && inst?.status === "live" && !!inst?.url && !!inst?.release, JSON.stringify(created.json).slice(0, 400));
   if (!inst?.url) throw new Error("no instance");
-  check("the instance answers", (await fetch(`${inst.url}/api/health`, { headers: ua })).status === 200);
+  // a new workers.dev hostname can take a little while to answer after the upload; the instance is live before its name is
+  let healthy = 0; for (let i = 0; i < 12 && healthy !== 200; i++) { healthy = (await fetch(`${inst.url}/api/health`, { headers: ua }).then((r) => r.status).catch(() => 0)); if (healthy !== 200) await Bun.sleep(5000); }
+  check("the instance answers", healthy === 200, String(healthy));
   check("its /api/echo is a 404 before the plugin", (await fetch(`${inst.url}/api/echo`, { headers: ua })).status === 404);
   const added = await api("POST", `/api/vbcloud/instances/${inst.id}/plugins`, { add: [{ name: "echo", marketplace: MARKET }] }, U);
   check("installing echo from a marketplace that is not ours records it and queues a build", added.status === 200 && added.json.build === "queued" && added.json.plugins?.[0]?.name === "echo", JSON.stringify(added.json).slice(0, 300));
