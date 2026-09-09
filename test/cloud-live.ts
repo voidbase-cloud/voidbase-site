@@ -1,6 +1,6 @@
 // The cloud control plane, for real, on the deployed site: this is what voidbase.cloud is for.
 //
-//   bun test/cloud-live.ts [--cloud https://voidbase.cloud] [--keep]
+//   bun test/cloud-live.ts [--cloud https://voidbase.cloud] [--keep] [--no-dispatch]
 //
 // A throwaway user with a Cloudflare connection is made the way the sign-in would make one (the deploy key from
 // vb_secrets/secrets.json, sealed with the site's encryption key), a `users` session is minted for it through
@@ -19,8 +19,15 @@ const KEEP = args.includes("--keep");
 const MARKET = "https://raw.githubusercontent.com/voidbase-cloud/voidbase-throwaway-marketplace/master";
 const NAME = "plugin-test";
 const ua = { "user-agent": "voidbase-cloud-live/1" };
-const secrets = JSON.parse(await Bun.file("vb_secrets/secrets.json").text()) as Record<string, string>;
-const su = JSON.parse(await Bun.file(".voidbase/pb_data/.superuser-credentials").text()) as { email: string; password: string };
+// credentials: this checkout's files on a maintainer's machine, the environment in CI (the live workflow's secrets)
+const readJson = async (path: string) => ((await Bun.file(path).exists()) ? (JSON.parse(await Bun.file(path).text()) as Record<string, string>) : {});
+const secretsFile = await readJson("vb_secrets/secrets.json");
+const secrets = { VOIDBASE_DEPLOY_CF_API_KEY: process.env.VOIDBASE_DEPLOY_CF_API_KEY || secretsFile.VOIDBASE_DEPLOY_CF_API_KEY || "", VOIDBASE_ENCRYPTION_KEY: process.env.VOIDBASE_ENCRYPTION_KEY || secretsFile.VOIDBASE_ENCRYPTION_KEY || "", VOIDBASE_ACCOUNT_ID: process.env.VOIDBASE_ACCOUNT_ID || secretsFile.VOIDBASE_ACCOUNT_ID || "" };
+const suFile = await readJson(".voidbase/pb_data/.superuser-credentials");
+const su = { email: process.env.VB_LIVE_SUPERUSER_EMAIL || suFile.email || "", password: process.env.VB_LIVE_SUPERUSER_PASSWORD || suFile.password || "" };
+for (const [k, v] of Object.entries({ VOIDBASE_DEPLOY_CF_API_KEY: secrets.VOIDBASE_DEPLOY_CF_API_KEY, VOIDBASE_ENCRYPTION_KEY: secrets.VOIDBASE_ENCRYPTION_KEY, superuser: su.email && su.password })) if (!v) { console.error(`${k}: not in this checkout's files and not in the environment`); process.exit(2); }
+// --no-dispatch: do not start the builder's workflow (no gh, no cross-repository token); its schedule picks the build up within minutes
+const DISPATCH = !args.includes("--no-dispatch");
 const account = secrets.VOIDBASE_ACCOUNT_ID || (await accountOf(secrets.VOIDBASE_DEPLOY_CF_API_KEY));
 let pass = 0, fail = 0; const t0 = Date.now();
 const check = (label: string, ok: boolean, detail = "") => { ok ? pass++ : fail++; console.log(`${ok ? "PASS" : "FAIL"}  [${Math.round((Date.now() - t0) / 1000)}s] ${label}${ok ? "" : "  " + detail}`); };
@@ -54,10 +61,12 @@ try {
   check("its /api/echo is a 404 before the plugin", (await fetch(`${inst.url}/api/echo`, { headers: ua })).status === 404);
   const added = await api("POST", `/api/vbcloud/instances/${inst.id}/plugins`, { add: [{ name: "echo", marketplace: MARKET }] }, U);
   check("installing echo from a marketplace that is not ours records it and queues a build", added.status === 200 && added.json.build === "queued" && added.json.plugins?.[0]?.name === "echo", JSON.stringify(added.json).slice(0, 300));
-  const run = sh(["gh", "workflow", "run", "instance-build.yml", "-R", "voidbase-cloud/voidbase"]);
-  check("the builder workflow can be started now rather than on its schedule", run.code === 0, run.out);
-  await Bun.sleep(15000);
-  runId = sh(["gh", "run", "list", "-R", "voidbase-cloud/voidbase", "--workflow", "instance-build", "--limit", "1", "--json", "databaseId", "-q", ".[0].databaseId"]).out;
+  if (DISPATCH) {
+    const run = sh(["gh", "workflow", "run", "instance-build.yml", "-R", "voidbase-cloud/voidbase"]);
+    check("the builder workflow can be started now rather than on its schedule", run.code === 0, run.out);
+    await Bun.sleep(15000);
+    runId = sh(["gh", "run", "list", "-R", "voidbase-cloud/voidbase", "--workflow", "instance-build", "--limit", "1", "--json", "databaseId", "-q", ".[0].databaseId"]).out;
+  } else console.log("waiting for the builder's schedule (every five minutes) rather than starting it");
   let final: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
   for (let i = 0; i < 90 && !final; i++) {
     await Bun.sleep(20000);
@@ -67,10 +76,12 @@ try {
     if (!state && rel !== inst.release) final = v.json;
   }
   check("the builder built a release for this instance and the control plane deployed it", !!final && final.build === "" && String(final.instance?.release).startsWith(`${inst.release}-vb-${NAME}.`), JSON.stringify(final).slice(0, 300));
-  // the instance is deployed before the job that deployed it finishes its last steps, so wait for the run itself
-  sh(["timeout", "300", "gh", "run", "watch", runId, "-R", "voidbase-cloud/voidbase", "--interval", "10"]);
-  const wf = sh(["gh", "run", "view", runId, "-R", "voidbase-cloud/voidbase", "--json", "conclusion", "-q", ".conclusion"]).out;
-  check("the workflow run succeeded", wf === "success", wf || "(still running)");
+  if (DISPATCH) {
+    // the instance is deployed before the job that deployed it finishes its last steps, so wait for the run itself
+    sh(["timeout", "300", "gh", "run", "watch", runId, "-R", "voidbase-cloud/voidbase", "--interval", "10"]);
+    const wf = sh(["gh", "run", "view", runId, "-R", "voidbase-cloud/voidbase", "--json", "conclusion", "-q", ".conclusion"]).out;
+    check("the workflow run succeeded", wf === "success", wf || "(still running)");
+  }
   const echo = await fetch(`${inst.url}/api/echo`, { headers: ua });
   check("the plugin answers on the instance", echo.status === 200 && (await echo.text()) === "echo", String(echo.status));
   if (instSu) {

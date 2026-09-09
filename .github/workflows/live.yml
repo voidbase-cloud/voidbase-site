@@ -1,0 +1,33 @@
+# The testbeds, exercised for real every night: the cloud control plane on voidbase.cloud (an instance created on
+# the account, a plugin installed, the builder's rebuild deployed, everything deleted) and the demo. Mocks prove the
+# wiring; these prove the product, which is what the two sites are for. Secrets: VB_LIVE_SUPERUSER_EMAIL and
+# VB_LIVE_SUPERUSER_PASSWORD (a superuser on voidbase.cloud made for this), VOIDBASE_DEPLOY_CF_API_KEY and
+# VOIDBASE_ENCRYPTION_KEY (the site's own, so the test can give its throwaway user a Cloudflare connection).
+name: live
+on:
+  schedule:
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun test/demo-live.ts
+  cloud:
+    if: vars.VB_LIVE_DISABLED != '1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - env:
+          VB_LIVE_SUPERUSER_EMAIL: ${{ secrets.VB_LIVE_SUPERUSER_EMAIL }}
+          VB_LIVE_SUPERUSER_PASSWORD: ${{ secrets.VB_LIVE_SUPERUSER_PASSWORD }}
+          VOIDBASE_DEPLOY_CF_API_KEY: ${{ secrets.VOIDBASE_DEPLOY_CF_API_KEY }}
+          VOIDBASE_ENCRYPTION_KEY: ${{ secrets.VOIDBASE_ENCRYPTION_KEY }}
+        run: bun test/cloud-live.ts --no-dispatch
