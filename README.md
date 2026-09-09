@@ -21,6 +21,14 @@ The project root is a plain Void app. `bun run build` runs Vite: Void prerenders
 writes the whole voidbase app into `.voidbase/` in PocketBase's layout — `main.ts`, `package.json`, `pb_hooks/`,
 `pb_migrations/`, `pb_public/`, `pb_data/`. Nothing is generated outside that directory.
 
+## Testing against production
+
+The site and the demo are the live testbeds: mocks prove the wiring, only they prove the product. `bun test/cloud-live.ts`
+runs the cloud control plane for real on voidbase.cloud: a throwaway user with a Cloudflare connection, an instance
+created on the account, a plugin installed from a marketplace that is not ours, the builder run, the rebuilt Worker
+deployed and asked to answer, then everything deleted (`--keep` leaves the instance for a look). It needs this
+checkout's superuser credentials (written by a deploy), `vb_secrets/secrets.json`, and `gh` signed in.
+
 ## Run it
 
 ```bash
