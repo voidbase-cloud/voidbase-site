@@ -4,12 +4,15 @@
 //
 //   build     the site into .voidbase/ (Vite with the voidbase adapter), then the typecheck. The same everywhere.
 //   deploy    this instance, from the generated app. A person gets a build first, because nothing else has done
-//             one; a build already has one. Off the production branch there is nothing to deploy.
+//             one; a build already has one. Off the production branch there is nothing to deploy. A build then
+//             runs the provisioning smoke on what it deployed (test/cloud-live.ts --phase smoke): an instance is
+//             created on the account, answers, takes a plugin and is deleted. A deploy that cannot provision
+//             fails its build. A person opts in with VB_LIVE=1.
 //   version   what a branch build leaves behind: the configuration this branch would deploy with, read back from
 //             the declaration and the Worker. It changes nothing, so a branch cannot touch what is live.
 //
 // Nothing here supervises the commands it runs. A build that hangs or fails is the build platform's to time out and
-// retry -- Cloudflare has a limit and a retry button, and so does GitHub Actions.
+// retry -- Cloudflare has a limit and a retry button.
 import { environment } from "./environment";
 
 const verb = process.argv[2] ?? "";
@@ -37,7 +40,11 @@ switch (verb) {
       if (built !== 0) done(built);
     }
     say("this instance, from the generated app");
-    done(await sh(["bunx", "voidbase", "deploy"], ".voidbase"));
+    const deployed = await sh(["bunx", "voidbase", "deploy"], ".voidbase");
+    if (deployed !== 0) done(deployed);
+    if (!here.automated && process.env.VB_LIVE !== "1") done(0);
+    say("the provisioning smoke, against what was just deployed");
+    done(await sh(["bun", "test/cloud-live.ts", "--phase", "smoke"]));
     break;
   }
   case "version": {

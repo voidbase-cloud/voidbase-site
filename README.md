@@ -23,11 +23,29 @@ writes the whole voidbase app into `.voidbase/` in PocketBase's layout — `main
 
 ## Testing against production
 
-The site and the demo are the live testbeds: mocks prove the wiring, only they prove the product. `bun test/cloud-live.ts`
-runs the cloud control plane for real on voidbase.cloud: a throwaway user with a Cloudflare connection, an instance
-created on the account, a plugin installed from a marketplace that is not ours, the builder run, the rebuilt Worker
-deployed and asked to answer, then everything deleted (`--keep` leaves the instance for a look). It needs this
-checkout's superuser credentials (written by a deploy), `vb_secrets/secrets.json`, and `gh` signed in.
+voidbase.cloud and demo.voidbase.cloud are the testbeds: they run the newest release on purpose, and they are
+exercised for real, on Cloudflare, with no GitHub Actions anywhere.
+
+- **Every deploy of this site checks itself.** After `voidbase deploy`, the build runs
+  `bun test/cloud-live.ts --phase smoke`: an instance is created on the account, answers, asks for a plugin (a
+  build is queued and the builder started) and is deleted. A deploy that cannot provision fails its build.
+- **The whole plugin loop runs every night** as two short builds the control plane's keeper cron
+  (`crons/keeper.ts`) starts an hour apart, both of the `voidbase-live (nightly)` trigger: the first creates the
+  nightly instance and asks for `echo` from the throwaway marketplace, the builder (a Cloudflare build the control
+  plane starts) builds and deploys it in between, and the second sees the release deployed, the plugin answering
+  and an upgrade queued as a rebuild, then deletes everything (`test/cloud-live.ts --phase nightly` tells the two
+  apart from the control plane). Two builds rather than one because the account runs one build at a time, and a
+  build that waited for the builder would wait for itself; on a Worker of its own, `voidbase-live` (a placeholder
+  that serves nothing), because a Worker takes two triggers at most and only one per branch configuration.
+- **The demo's own deploy runs its smoke** (`test/live.ts` in voidbase-demo).
+- **From a maintainer's machine**, `bun test/cloud-live.ts` runs start, the wait and check in one process against
+  voidbase.cloud (`--cloud` for another control plane), with the credentials from this checkout's files
+  (`.voidbase/pb_data/.superuser-credentials`, `vb_secrets/secrets.json`); a build carries them as
+  `VB_LIVE_SUPERUSER_EMAIL`, `VB_LIVE_SUPERUSER_PASSWORD`, `VOIDBASE_DEPLOY_CF_API_KEY` and `VOIDBASE_ENCRYPTION_KEY`.
+
+`bun scripts/cf-triggers.ts` declares the three triggers (this Worker's master and branches, `voidbase-live`'s
+nightly) and their variables through the Builds API, so the dashboard holds no logic. `bun run test` is the mocked
+suite.
 
 ## Run it
 
