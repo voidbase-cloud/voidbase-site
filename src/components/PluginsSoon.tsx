@@ -3,7 +3,7 @@
 // It repeats across five pages because the answer genuinely differs by shape: an executable keeps its plugins beside
 // itself, a project commits them, a stack app builds them into one Worker, and a cloud instance has none of that
 // because you do not hold the filesystem. What must not differ is the part underneath: the same lockfile, the same
-// verification, the same marketplaces. Three shapes work today; the other two say so.
+// verification, the same marketplaces. Every shape works; two of them are a rebuild rather than a restart.
 import { Link } from "@void/react";
 import CodeBlock from "@/components/CodeBlock";
 import { hl } from "@/lib/hl";
@@ -27,9 +27,10 @@ voidbase plugins remove echo --name blog`,
   },
   cloud: {
     dir: null,
-    code: hl.bash`# not built yet: you do not hold the filesystem of a cloud instance, so there is
-# nothing to run. Installing will be a button in the dashboard; the instance is
-# rebuilt and redeployed around the plugin, and the dashboard shows it happening.`,
+    code: hl.bash`# nothing to run: you do not hold the filesystem of a cloud instance. Installing is
+# a button on the cloud page; a builder rebuilds the instance's Worker around the
+# plugin within minutes, the page shows it happening, and the instance keeps serving
+# what it has until the new Worker is deployed.`,
   },
   project: {
     dir: "pb_plugins/",
@@ -39,11 +40,9 @@ voidbase deploy                   # and the deploy is what puts it live (or push
   },
   stack: {
     dir: "pb_plugins/",
-    code: hl.bash`# not wired yet: the adapter does not carry pb_plugins into the generated app.
-# The shape it will take:
-voidbase plugins add echo         # writes pb_plugins/echo and the lock entry
-git add pb_plugins voidbase.lock
-bun run build && cd .voidbase && voidbase deploy`,
+    code: hl.bash`voidbase plugins add echo         # writes pb_plugins/echo and the lock entry, at the project root
+git add pb_plugins voidbase.lock  # the build carries both into the generated app
+bun run build && cd .voidbase && voidbase deploy   # or push, if a pipeline deploys`,
   },
 };
 
@@ -72,11 +71,7 @@ export default function PluginsSoon({ shape }: { shape: Shape }) {
     <section className="soon">
       <h2>
         Plugins{" "}
-        {shape === "cloud" || shape === "stack" ? (
-          <span className="label label-warning">Not for this shape yet</span>
-        ) : (
-          <span className="label label-success">Since 0.9.0-beta.7</span>
-        )}
+        <span className="label label-success">Since {shape === "stack" || shape === "cloud" ? "0.9.0-beta.8" : "0.9.0-beta.7"}</span>
       </h2>
       <p>
         <code>voidbase plugins add &lt;name&gt;</code> installs a plugin from a marketplace: the bundle lands in{" "}
@@ -101,8 +96,10 @@ export default function PluginsSoon({ shape }: { shape: Shape }) {
         </p>
       ) : (
         <p>
-          Nothing lands in a directory you keep. A packaged plugin is compiled into the instance, so installing one
-          replaces what is running rather than adding a file beside it, and the instance restarts on the result.
+          Nothing lands in a directory you keep. The control plane records the plugin set on the instance, a builder
+          installs it the way the command does (verified against the same hashes) and builds the instance's Worker with
+          it baked in, and the instance is deployed from that build with its database, files, domains and superuser
+          untouched. An upgrade of an instance with plugins is the same build on the new release.
         </p>
       )}
 
@@ -126,8 +123,8 @@ export default function PluginsSoon({ shape }: { shape: Shape }) {
       </p>
       {shape === "cloud" ? (
         <p>
-          For a cloud instance that will mean naming the marketplace once in its settings, after which its plugin list
-          is drawn from there rather than from ours. There is no command, for the same reason as above.
+          For a cloud instance the plugins panel offers our marketplace and reads any other by URL; what it installs is
+          verified against that marketplace's hash the same way. There is no command, for the same reason as above.
         </p>
       ) : (
         <CodeBlock {...REGISTRY} />

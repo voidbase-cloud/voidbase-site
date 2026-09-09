@@ -43,7 +43,8 @@ export default function DocsPlugins() {
         end to end: the manifest format, the loader, an open registry protocol, a marketplace that builds and audits
         a plugin from its repository, and <code>voidbase plugins add</code>, which puts the bundle in{" "}
         <code>pb_plugins</code> pinned by hash in <code>voidbase.lock</code>. Backups, realtime and the request limits
-        ship this way. What is not built is named on the run pages: the unpackaged way, stack apps, cloud instances.
+        ship this way, on every shape, a cloud instance included (there it is a rebuild the dashboard shows). What is
+        not built is the unpackaged way: source in <code>pb_plugins</code> rather than a marketplace's bundle.
         This is the design it was built from, kept so it can still be argued with.
       </p>
 
