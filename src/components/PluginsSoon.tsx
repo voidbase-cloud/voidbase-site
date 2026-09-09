@@ -73,7 +73,9 @@ export default function PluginsSoon({ shape }: { shape: Shape }) {
       <p>
         <code>pb_plugins</code> does not exist yet. The loader and the manifest do, inside voidbase, and backups, realtime
         and the request limits are the first features to arrive through them (a superuser can read what an instance loaded at{" "}
-        <code>/api/plugins</code>); but there is nothing to install and no command, so every command
+        <code>/api/plugins</code>), and each of the three is also a package, <code>@voidbase-cloud/plugin-*</code> on GitHub
+        Packages, <a href="https://marketplace.voidbase.cloud/plugins">listed on the marketplace</a>; but there is nothing to
+        install and no command, so every command
         in this section is a proposal rather than something you can run today. It is written down because the shape
         of it is being decided now and <Link href="/docs/plugins">the design is worth arguing with</Link> before
         the rest is built.
