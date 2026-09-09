@@ -29,6 +29,7 @@ jobs:
       WAIT: ${{ vars.CF_BUILDS_WAIT }}
       WORKER: voidbase-site
     steps:
+      - uses: actions/checkout@v4
       # master deploys; every other branch is checked and built on the branches trigger. The Builds API names a
       # Worker by its script tag, so the name is resolved first; a trigger naming the branch beats one taking "*".
       - name: Start the build
