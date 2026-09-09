@@ -23,7 +23,6 @@ jobs:
     timeout-minutes: 30
     env:
       API: https://api.cloudflare.com/client/v4/accounts/${{ vars.CF_ACCOUNT_ID }}/builds
-      SCRIPTS: https://api.cloudflare.com/client/v4/accounts/${{ vars.CF_ACCOUNT_ID }}/workers/scripts
       TOKEN: ${{ secrets.CLOUDFLARE_BUILDS_TOKEN }}
       COMMIT: ${{ github.sha }}
       BRANCH: ${{ github.ref_name }}
@@ -32,26 +31,11 @@ jobs:
     steps:
       # master deploys; every other branch is checked and built on the branches trigger. The Builds API names a
       # Worker by its script tag, so the name is resolved first; a trigger naming the branch beats one taking "*".
-      - name: Find the trigger for this branch
-        run: |
-          auth=(-H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json")
-          tag=$(curl -sS "$SCRIPTS" "${auth[@]}" | jq -r --arg w "$WORKER" '.result[]? | select(.id == $w) | .tag // empty')
-          [ -n "$tag" ] || { echo "no Worker called $WORKER on this account, or the token cannot read scripts"; exit 1; }
-          triggers=$(curl -sS "$API/workers/$tag/triggers" "${auth[@]}")
-          trigger=$(printf '%s' "$triggers" | jq -r --arg b "$BRANCH" '
-            [.result[]? | select(((.branch_includes // []) | index($b) or index("*")) and (((.branch_excludes // []) | index($b)) == null))]
-            | sort_by((.branch_includes // []) | index($b) == null) | .[0].trigger_uuid // empty')
-          [ -n "$trigger" ] || { echo "no build trigger of $WORKER takes branch $BRANCH; triggers: $(printf '%s' "$triggers" | jq -c '[.result[]? | {trigger_name, branch_includes, branch_excludes}]')"; exit 1; }
-          echo "cloudflare: trigger $trigger ($(printf '%s' "$triggers" | jq -r --arg t "$trigger" '.result[] | select(.trigger_uuid == $t) | .trigger_name')) takes $BRANCH"
-          echo "trigger=$trigger" >> "$GITHUB_ENV"
       - name: Start the build
-        run: |
-          body=$(printf '{"commit_hash":"%s","branch":"%s"}' "$COMMIT" "$BRANCH")
-          res=$(curl -sS "$API/triggers/$trigger/builds" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$body")
-          uuid=$(printf '%s' "$res" | jq -r '.result.build_uuid // empty')
-          [ -n "$uuid" ] || { echo "no build started: $res"; exit 1; }
-          echo "cloudflare: build $uuid ($(printf '%s' "$res" | jq -r '.result.status // "queued"')) of $COMMIT on $BRANCH"
-          echo "uuid=$uuid" >> "$GITHUB_ENV"
+        env:
+          CLOUDFLARE_BUILDS_TOKEN: ${{ secrets.CLOUDFLARE_BUILDS_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+        run: scripts/cf-build.sh "$BRANCH" "$COMMIT"
       # A build Cloudflare declines to run comes back "skipped", which is not "fail", so the job would go green
       # while nothing deployed: one commit went out that way before this step existed. Only the outcome is
       # trustworthy here, not a reason for it, so this reports the fact and points at the dashboard.
