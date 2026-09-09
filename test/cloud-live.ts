@@ -87,6 +87,9 @@ async function verify(final: any) { // eslint-disable-line @typescript-eslint/no
     const tok = ((await login.json()) as { token?: string }).token ?? "";
     const plugins = (await (await fetch(`${inst.url}/api/plugins`, { headers: { ...ua, authorization: tok } })).json()) as { names?: string[]; origins?: Record<string, string> };
     check("the instance says where echo came from", plugins.names?.includes("echo") === true && String(plugins.origins?.echo).startsWith(MARKET), JSON.stringify(plugins).slice(0, 300));
+    // echo 0.2.0 owns the echoes collection and creates it at bootstrap: the built instance has the table, made by the plugin
+    const owned = await fetch(`${inst.url}/api/collections/echoes`, { headers: { ...ua, authorization: tok } });
+    check("the collection the plugin owns exists on the instance, created by the plugin", owned.status === 200 && ((await owned.json()) as { name?: string }).name === "echoes", String(owned.status));
   }
   const up = await api("POST", `/api/vbcloud/instances/${inst.id}/upgrade`, undefined, U);
   check("an upgrade of an instance with plugins is a rebuild, not a bare re-provision", up.status === 200 && up.json.upgraded === false && (up.json.queued === true || /Already built/.test(up.json.message ?? "")), JSON.stringify(up.json).slice(0, 200));
