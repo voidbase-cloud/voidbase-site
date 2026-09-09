@@ -26,6 +26,7 @@ export default defineSecrets({
   CF_OAUTH_CLIENT_SECRET: secret(string(), "its client secret"),
   GH_OAUTH_CLIENT_ID: secret(string(), "the GitHub OAuth app behind the template marketplace"),
   GH_OAUTH_CLIENT_SECRET: secret(string(), "its client secret"),
+  VB_GITHUB_TOKEN: secret(string(), "optional: a fine-grained GitHub token with Actions write on the builder repository, so a queued instance build starts now rather than on the builder's schedule"),
 
   // ---- server: hooks and routes only (src/shared/config.ts reads them)
   VB_ADMIN_EMAILS: server(string(), "who counts as an admin of this site (comma separated)"),

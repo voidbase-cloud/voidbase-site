@@ -7,7 +7,7 @@
 import { defineHandler } from "void";
 import { authOf, pb } from "@voidbase-cloud/voidbase/adapter";
 import { fetchIndex, pick, type PluginVersion } from "@voidbase-cloud/voidbase/registry";
-import { instanceJSON, isAdmin, pluginsOf, readBody, requireAuth, userId, type InstancePlugin } from "@/shared";
+import { dispatchBuilder, instanceJSON, isAdmin, pluginsOf, readBody, requireAuth, userId, type InstancePlugin } from "@/shared";
 
 const OFFICIAL = "https://marketplace.voidbase.cloud";
 const NAME = /^[a-z][a-z0-9-]*$/;
@@ -61,5 +61,6 @@ export const POST = defineHandler(requireAuth("users"), async (c) => {
   row.set("plugins", JSON.stringify([...set.values()]));
   row.set("build", "queued"); row.set("build_error", "");
   await pb.$app.save(row);
-  return { instance: instanceJSON(row, auth), plugins: [...set.values()], build: "queued", message: "Queued a build with these plugins; it takes minutes, and the instance keeps running the version it has until the new one is deployed." };
+  const started = (await dispatchBuilder(`plugins of ${row.getString("name")}`)) === "started";
+  return { instance: instanceJSON(row, auth), plugins: [...set.values()], build: "queued", builderStarted: started, message: `Queued a build with these plugins${started ? " and started the builder" : ""}; it takes minutes, and the instance keeps running the version it has until the new one is deployed.` };
 });
