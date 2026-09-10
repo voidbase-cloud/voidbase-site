@@ -34,24 +34,42 @@ async function triggerOf(token: string, account: string, worker: string, name: s
 }
 
 /** start a build of master on a named trigger of a named Worker */
-export async function startBuild(worker: string, trigger: string, reason: string): Promise<"started" | "no-token" | "failed"> {
-  const token = env("VB_BUILDS_TOKEN"); if (!token) return "no-token";
+export type BuildStart = { status: "started" | "no-token" | "failed"; build?: string };
+export async function startBuild(worker: string, trigger: string, reason: string): Promise<BuildStart> {
+  const token = env("VB_BUILDS_TOKEN"); if (!token) return { status: "no-token" };
   const account = env("VB_BUILDS_ACCOUNT") || cfg().account;
-  if (!account) { console.warn("vbcloud: build", reason, "no account to start it on (VB_BUILDS_ACCOUNT)"); return "failed"; }
+  if (!account) { console.warn("vbcloud: build", reason, "no account to start it on (VB_BUILDS_ACCOUNT)"); return { status: "failed" }; }
   try {
     const uuid = await triggerOf(token, account, worker, trigger);
     const r = await cf<{ build_uuid?: string; status?: string }>(token, `/accounts/${account}/builds/triggers/${uuid}/builds`, { branch: env("VB_BUILDS_BRANCH", "master") });
     console.log(`vbcloud: build ${r.build_uuid ?? "?"} ${r.status ?? "queued"} on ${worker} "${trigger}": ${reason}`);
-    return "started";
+    return { status: "started", build: r.build_uuid };
   } catch (err) {
     uuids.clear(); // a trigger that was renamed or recreated is looked up again next time
     console.warn("vbcloud: build", reason, err instanceof Error ? err.message : err);
-    return "failed";
+    return { status: "failed" };
   }
 }
 
 /** the instance builder: claims every queued build (scripts/instance-build.ts in voidbase) */
 export const dispatchBuilder = (reason: string) => startBuild(env("VB_BUILDER_WORKER", "voidbase-builder"), env("VB_BUILDER_TRIGGER", "voidbase-builder (instance-build)"), reason);
+
+/**
+ * Where a Cloudflare build stands: "running" while it is queued, initializing or running, "success" once it
+ * finished well, otherwise the failure Cloudflare names (failed, terminated, canceled ...). A build that cannot be
+ * read is "unknown", which is not a death.
+ */
+export async function buildState(build: string): Promise<string> {
+  const token = env("VB_BUILDS_TOKEN"); const account = env("VB_BUILDS_ACCOUNT") || cfg().account;
+  if (!token || !account) return "unknown";
+  try {
+    const b = await cf<{ status?: string; build_outcome?: string }>(token, `/accounts/${account}/builds/builds/${build}`);
+    const st = b.status ?? "";
+    if (st === "stopped") return b.build_outcome === "success" ? "success" : b.build_outcome || "stopped";
+    if (["success", "failure", "failed", "canceled", "cancelled", "terminated", "timed_out", "error"].includes(st)) return st === "failure" ? "failed" : st;
+    return "running";
+  } catch (err) { console.warn("vbcloud: build state", build, err instanceof Error ? err.message : err); return "unknown"; }
+}
 
 // ---- the durable run around a build (workflows/instance-build.ts)
 type Ctx = { env: unknown };
@@ -65,10 +83,10 @@ const runsOf = (c: Ctx): BuildRuns | undefined => { const w = (c.env as Record<s
  */
 export async function startBuildRun(c: Ctx, row: { id: string; set(k: string, v: unknown): void }, reason: string): Promise<"workflow" | "started" | "no-token" | "failed"> {
   const runs = runsOf(c);
-  if (!runs) return dispatchBuilder(reason);
+  if (!runs) return (await dispatchBuilder(reason)).status;
   const id = `${row.id}-${Date.now().toString(36)}`;
   try { await runs.create({ id, params: { instanceId: row.id, reason } }); row.set("build_run", id); await pb.$app.save(row as never); return "workflow"; }
-  catch (err) { console.warn("vbcloud: build run", reason, err instanceof Error ? err.message : err); return dispatchBuilder(reason); }
+  catch (err) { console.warn("vbcloud: build run", reason, err instanceof Error ? err.message : err); return (await dispatchBuilder(reason)).status; }
 }
 
 /** the builder reported: tell the run, which may already be over (a late report is nobody's error) */
