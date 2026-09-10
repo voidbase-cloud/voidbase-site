@@ -45,6 +45,7 @@ const until = async (what: () => Promise<boolean>) => { for (let i = 0; i < 20; 
 async function change(label: string, fn: () => Promise<Record<string, unknown>>, live: () => Promise<boolean>) {
   console.log(`\n${label}`);
   const r = await fn(); const c = r.committed as { sha?: string; url?: string } | undefined;
+  if (r.unchanged) { check("nothing to change: the repository already has it", true); return; }
   check(`the instance commits it to ${DEMO_REPO} (${c?.sha?.slice(0, 12) ?? "?"})`, r.applied === "repository" && !!c?.sha, JSON.stringify(r).slice(0, 300));
   if (!c?.sha) return;
   const t = Date.now(); const outcome = await buildOf(c.sha);
