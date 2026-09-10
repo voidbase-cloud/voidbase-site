@@ -93,12 +93,13 @@ try {
   await change("install an older version", { add: [{ name: "echo", version: "0.1.0", marketplace: MARKET }] }, async () => (await get("/api/echo")).status === 200 && String((await origins()).echo).startsWith(MARKET));
   await change("update", { add: [{ name: "echo", marketplace: MARKET }] }, async () => (await get("/api/echo")).status === 200);
   const final = await api("GET", `/api/vbcloud/instances/${demo.id}/plugins`, undefined, A);
-  check("the control plane records echo 0.2.0 from the throwaway marketplace, and the last commit", final.json.plugins?.[0]?.name === "echo" && final.json.plugins[0].version === "0.2.0" && final.json.plugins[0].marketplace === MARKET && !!final.json.commit, JSON.stringify(final.json).slice(0, 300));
+  const echoRow = (final.json.plugins ?? []).find((p: { name: string }) => p.name === "echo");
+  check("the control plane lists the repository's set (echo 0.2.0 from the throwaway marketplace among them), and the last commit", echoRow?.version === "0.2.0" && echoRow.marketplace === MARKET && !!final.json.commit, JSON.stringify(final.json).slice(0, 300));
   const log = (await (await fetch(`https://api.github.com/repos/${DEMO_REPO}/commits?per_page=3`, { headers: { accept: "application/vnd.github+json", ...ua } })).json()) as { commit: { message: string } }[];
   check("the repository's last three commits are the three changes, as `voidbase plugins` would have named them", Array.isArray(log) && log.map((c) => c.commit.message.split("\n")[0]).join(" | ") === "plugins: add echo 0.2.0 | plugins: add echo 0.1.0 | plugins: remove echo", JSON.stringify(log.map?.((c) => c.commit?.message)));
 } finally {
   const now = await api("GET", `/api/vbcloud/instances/${demo.id}/plugins`, undefined, A);
-  if (now.json.plugins?.[0]?.version !== "0.2.0") { console.log("\nputting the demo back"); await change("restore echo 0.2.0", { add: [{ name: "echo", marketplace: MARKET }] }, async () => (await get("/api/echo")).status === 200); }
+  if ((now.json.plugins ?? []).find((p: { name: string }) => p.name === "echo")?.version !== "0.2.0") { console.log("\nputting the demo back"); await change("restore echo 0.2.0", { add: [{ name: "echo", marketplace: MARKET }] }, async () => (await get("/api/echo")).status === 200); }
   console.log(`\n${pass} passed, ${fail} failed (${since()})`);
   process.exit(fail ? 1 : 0);
 }
