@@ -7,7 +7,7 @@
 // Tokens are sealed at rest like the Cloudflare ones. Everything is plain fetch, so it runs on Bun and on Workers.
 import type { Context } from "hono";
 import { pb, type HookRecord } from "./pb";
-import { ghCfg } from "./config";
+import { cfg, ghCfg } from "./config";
 import { open } from "./secrets";
 
 export const callbackUrl = (c: Context) => new URL(c.req.raw.url).origin + "/api/vbcloud/github/callback";
@@ -50,6 +50,28 @@ export async function ensureSiteRepo(): Promise<void> {
   const row = new pb.Record(pb.$app.findCollectionByNameOrId("vb_repos"));
   row.set("system", true); row.set("instance", self.id); row.set("template", tpl?.id ?? ""); row.set("full_name", c.siteRepo); row.set("html_url", `https://github.com/${c.siteRepo}`); row.set("private", false); row.set("status", "ready");
   await pb.$app.save(row); console.log(`vbcloud: site repository ${c.siteRepo} registered against ${c.worker}`);
+}
+/**
+ * The system projects (VB_SYSTEM_PROJECTS): a system instance row and a system repository row for each, so an admin
+ * changes their plugins from here and the change is a commit to the repository (project.ts). Idempotent.
+ */
+export async function ensureSystemProjects(): Promise<void> {
+  const c = ghCfg();
+  for (const p of c.systemProjects) {
+    let inst: HookRecord;
+    try { inst = (await pb.$app.findFirstRecordByFilter("vb_instances", "system = true && name = {:n}", { n: p.worker })) as HookRecord; }
+    catch {
+      inst = new pb.Record(pb.$app.findCollectionByNameOrId("vb_instances")) as HookRecord;
+      inst.set("name", p.worker); inst.set("url", p.url); inst.set("account_id", cfg().account || "unknown"); inst.set("status", "live"); inst.set("system", true);
+      await pb.$app.save(inst); console.log(`vbcloud: system project ${p.worker} registered at ${p.url}`);
+    }
+    if ((await pb.$app.findRecordsByFilter("vb_repos", "full_name = {:f}", "", 1, 0, { f: p.repo }) as HookRecord[]).length) continue;
+    let branch = "master";
+    if (c.token) { try { branch = (await gh<{ default_branch?: string }>(c.token, "GET", `/repos/${p.repo}`)).data.default_branch || branch; } catch (err) { console.warn("vbcloud: system project", p.repo, err instanceof Error ? err.message : err); } }
+    const row = new pb.Record(pb.$app.findCollectionByNameOrId("vb_repos"));
+    row.set("system", true); row.set("instance", inst.id); row.set("full_name", p.repo); row.set("html_url", `https://github.com/${p.repo}`); row.set("default_branch", branch); row.set("private", false); row.set("status", "ready");
+    await pb.$app.save(row); console.log(`vbcloud: system repository ${p.repo} registered against ${p.worker}`);
+  }
 }
 export const templateJSON = (t: HookRecord) => ({ id: t.id, name: t.getString("name"), repo: t.getString("repo"), title: t.getString("title"), description: t.getString("description"), url: t.getString("url"), kind: t.getString("kind"), variables: (() => { const v = t.get("variables"); return Array.isArray(v) ? v : typeof v === "string" ? JSON.parse(v || "[]") : []; })() as { name: string; source: string; value?: string }[] });
 

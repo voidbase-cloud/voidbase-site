@@ -28,6 +28,7 @@ export default defineSecrets({
   GH_OAUTH_CLIENT_SECRET: secret(string(), "its client secret"),
   // Optional, and declared as such: a deploy goes through without a value for it (voidbase 0.9.0-beta.11 and later).
   // Without it the control plane starts no builds and says so; a maintainer starts them by hand.
+  VB_GH_TOKEN: secret(string().optional(), "a GitHub token with contents write on the system repositories (this site's, the demo's), so a plugin change on a system instance is committed there"),
   VB_BUILDS_TOKEN: secret(string().optional(), "a user API token with Workers Builds Configuration: Edit and Workers Scripts: Read, so the control plane starts instance builds and the nightly proof on Cloudflare (src/shared/builder.ts)"),
 
   // ---- server: hooks and routes only (src/shared/config.ts reads them)
@@ -39,6 +40,7 @@ export default defineSecrets({
   GH_OAUTH_SCOPES: server(string().optional(), "overrides the GitHub OAuth scopes"),
   VB_SITE_URL: server(url().optional(), "where the GitHub callback sends the browser back (defaults per runtime)"),
   VB_SITE_REPO: server(string().optional(), "this site's own repository, owner/name"),
+  VB_SYSTEM_PROJECTS: server(string().optional(), "repositories this site manages as system instances beside its own, `owner/name=worker@https://url` comma separated (the demo)"),
   // the builds the control plane starts (src/shared/builder.ts, workflows/instance-build.ts): found by name, never kept as uuids
   VB_BUILDS_ACCOUNT: server(string().optional(), "the account the builds run on (defaults to this Worker's own)"),
   VB_BUILDER_WORKER: server(string().default("voidbase-ci"), "the Worker whose trigger builds cloud instances"),

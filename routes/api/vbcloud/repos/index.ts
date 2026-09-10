@@ -1,12 +1,12 @@
 import { defineHandler } from "void";
 import { authOf, pb } from "@voidbase-cloud/voidbase/adapter";
-import { alreadyLinked, ensureSiteRepo, gh, ghConnectionFor, isAdmin, linkableInstance, readBody, repoJSON, requireAuth, setVariable, templateJSON, userId, varValue, type HookRecord } from "@/shared";
+import { alreadyLinked, ensureSiteRepo, ensureSystemProjects, gh, ghConnectionFor, isAdmin, linkableInstance, readBody, repoJSON, requireAuth, setVariable, templateJSON, userId, varValue, type HookRecord } from "@/shared";
 
 export const GET = defineHandler(requireAuth("users"), async (c) => {
   const uid = userId(c);
   const own = (await pb.$app.findRecordsByFilter("vb_repos", "user = {:u}", "-created", 100, 0, { u: uid })) as HookRecord[];
   let system: HookRecord[] = [];
-  if (isAdmin(authOf(c))) { try { await ensureSiteRepo(); } catch (err) { console.warn("vbcloud: site repository", err); } system = (await pb.$app.findRecordsByFilter("vb_repos", "system = true", "-created", 20, 0)) as HookRecord[]; }
+  if (isAdmin(authOf(c))) { try { await ensureSiteRepo(); await ensureSystemProjects(); } catch (err) { console.warn("vbcloud: site repository", err); } system = (await pb.$app.findRecordsByFilter("vb_repos", "system = true", "-created", 20, 0)) as HookRecord[]; }
   const rows = [...own, ...system.filter((r) => !own.some((o) => o.id === r.id))];
   let token = ""; try { token = (await ghConnectionFor(uid)).token; } catch { token = ""; }
   const out = [];

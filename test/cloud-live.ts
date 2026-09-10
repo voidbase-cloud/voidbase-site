@@ -1,118 +1,104 @@
-// The cloud control plane, for real, on the deployed site: this is what voidbase.cloud is for.
-//
-//   bun test/cloud-live.ts [--cloud https://voidbase.cloud] [--keep]      (bun run live)
-//
-// A throwaway user with a Cloudflare connection is made the way the sign-in would make one (the deploy key, sealed
-// with the site's encryption key), a `users` session is minted for it through PocketBase's impersonation endpoint,
-// and the whole loop runs against real Cloudflare: an instance is created in the account, `echo` is installed from
-// the throwaway marketplace, the control plane starts the builder's Cloudflare build, the instance is watched until
-// that release is deployed, the plugin is asked to answer on the instance itself, and everything is deleted again.
-// Nothing here is a mock; a failure is a real one. Run it by hand from a maintainer's machine after a change to
-// anything cloud-shaped; the credentials come from this checkout's files (.voidbase/pb_data/.superuser-credentials,
-// which a deploy from here writes, and vb_secrets/secrets.json) or from the environment (VB_LIVE_SUPERUSER_EMAIL,
-// VB_LIVE_SUPERUSER_PASSWORD, VOIDBASE_DEPLOY_CF_API_KEY, VOIDBASE_ENCRYPTION_KEY).
-import { sealSecret } from "@voidbase-cloud/voidbase/cloud";
-
+// The cloud control plane, for real, on the demo: demo.voidbase.cloud is a system project of voidbase.cloud (its
+// repository is linked to its instance), so a plugin change made here is one commit to voidbase-cloud/voidbase-demo
+// and the demo's own Cloudflare build deploys it. This runs the lifecycle an owner would: uninstall echo, install an
+// older echo, update it; each step is a commit, each commit's build is watched, and the demo is asked to answer.
+//   bun test/cloud-live.ts [--cloud https://voidbase.cloud]      (bun run live)
+// Nothing here is a mock; nothing is created or deleted on Cloudflare; the demo ends where it started (echo 0.2.0),
+// three commits later. Credentials come from this checkout (.voidbase/pb_data/.superuser-credentials, which a deploy
+// from here writes, and vb_secrets/secrets.json: VB_BUILDS_TOKEN watches the builds, VB_ADMIN_EMAILS must list the
+// admin this run acts as, live@voidbase.cloud by default) or from the environment (VB_LIVE_SUPERUSER_EMAIL,
+// VB_LIVE_SUPERUSER_PASSWORD, VB_LIVE_ADMIN_EMAIL).
+export {};
 const args = process.argv.slice(2);
 const flag = (n: string) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined; };
 const CP = (flag("cloud") ?? "https://voidbase.cloud").replace(/\/+$/, "");
-const KEEP = args.includes("--keep");
 const MARKET = "https://raw.githubusercontent.com/voidbase-cloud/voidbase-throwaway-marketplace/master";
-const NAME = "plugin-test";
-const ua = { "user-agent": "voidbase-cloud-live/2" };
+const DEMO_WORKER = "voidbase-demo", DEMO_REPO = "voidbase-cloud/voidbase-demo";
+const ua = { "user-agent": "voidbase-cloud-live/3" };
 const readJson = async (path: string) => ((await Bun.file(path).exists()) ? (JSON.parse(await Bun.file(path).text()) as Record<string, string>) : {});
 const secretsFile = await readJson("vb_secrets/secrets.json");
-const secrets = { VOIDBASE_DEPLOY_CF_API_KEY: process.env.VOIDBASE_DEPLOY_CF_API_KEY || secretsFile.VOIDBASE_DEPLOY_CF_API_KEY || "", VOIDBASE_ENCRYPTION_KEY: process.env.VOIDBASE_ENCRYPTION_KEY || secretsFile.VOIDBASE_ENCRYPTION_KEY || "", VOIDBASE_ACCOUNT_ID: process.env.VOIDBASE_ACCOUNT_ID || secretsFile.VOIDBASE_ACCOUNT_ID || "" };
 const suFile = await readJson(".voidbase/pb_data/.superuser-credentials");
 const su = { email: process.env.VB_LIVE_SUPERUSER_EMAIL || suFile.email || "", password: process.env.VB_LIVE_SUPERUSER_PASSWORD || suFile.password || "" };
-for (const [k, v] of Object.entries({ VOIDBASE_DEPLOY_CF_API_KEY: secrets.VOIDBASE_DEPLOY_CF_API_KEY, VOIDBASE_ENCRYPTION_KEY: secrets.VOIDBASE_ENCRYPTION_KEY, superuser: su.email && su.password })) if (!v) { console.error(`${k}: not in this checkout's files and not in the environment`); process.exit(2); }
+const buildsToken = process.env.VB_BUILDS_TOKEN || secretsFile.VB_BUILDS_TOKEN || "";
+// the admin this run acts as: an address only the superuser can mint a session for (nobody signs in with it), which
+// VB_ADMIN_EMAILS must list; the user row is made here the way the sign-in would have made it
+const admins = (process.env.VB_ADMIN_EMAILS || secretsFile.VB_ADMIN_EMAILS || "").toLowerCase().split(/[\s,]+/).filter(Boolean);
+const adminEmail = process.env.VB_LIVE_ADMIN_EMAIL || "live@voidbase.cloud";
+if (!admins.includes(adminEmail)) { console.error(`${adminEmail} is not in VB_ADMIN_EMAILS (${admins.join(", ")}): add it there (the trigger's variables and vb_secrets/secrets.json) or set VB_LIVE_ADMIN_EMAIL`); process.exit(2); }
+for (const [k, v] of Object.entries({ superuser: su.email && su.password, VB_BUILDS_TOKEN: buildsToken, VB_ADMIN_EMAILS: adminEmail })) if (!v) { console.error(`${k}: not in this checkout's files nor in the environment`); process.exit(2); }
 let pass = 0, fail = 0; const t0 = Date.now();
-const check = (label: string, ok: boolean, detail = "") => { ok ? pass++ : fail++; console.log(`${ok ? "PASS" : "FAIL"}  [${Math.round((Date.now() - t0) / 1000)}s] ${label}${ok ? "" : "  " + detail}`); };
-const api = async (method: string, path: string, body?: unknown, token?: string) => { const r = await fetch(CP + path, { method, headers: { "content-type": "application/json", ...ua, ...(token ? { authorization: token } : {}) }, body: body !== undefined ? JSON.stringify(body) : undefined }); const t = await r.text(); let json: any = {}; try { json = JSON.parse(t); } catch { json = { raw: t.slice(0, 200) }; } return { status: r.status, json }; }; // eslint-disable-line @typescript-eslint/no-explicit-any
-async function accountOf(key: string): Promise<string> { const r = await fetch("https://api.cloudflare.com/client/v4/accounts", { headers: { authorization: `Bearer ${key}` } }); const j = (await r.json()) as { result?: { id: string }[] }; return j.result?.[0]?.id ?? ""; }
-const account = secrets.VOIDBASE_ACCOUNT_ID || (await accountOf(secrets.VOIDBASE_DEPLOY_CF_API_KEY));
+const since = () => `${Math.round((Date.now() - t0) / 1000)}s`;
+const check = (label: string, ok: boolean, detail = "") => { ok ? pass++ : fail++; console.log(`${ok ? "PASS" : "FAIL"}  [${since()}] ${label}${ok ? "" : "  " + detail}`); };
+const api = async (method: string, path: string, body?: unknown, token?: string) => { const r = await fetch(CP + path, { method, headers: { "content-type": "application/json", ...ua, ...(token ? { authorization: token } : {}) }, body: body !== undefined ? JSON.stringify(body) : undefined }); let json: any = {}; try { json = await r.json(); } catch { /* no body */ } return { status: r.status, json }; }; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 const SU = (await api("POST", "/api/collections/_superusers/auth-with-password", { identity: su.email, password: su.password })).json.token as string | undefined;
 if (!SU) { console.error(`cannot sign in to ${CP} as ${su.email}`); process.exit(2); }
-const email = `${NAME}@voidbase.cloud`;
-const findUser = async () => (await api("GET", `/api/collections/users/records?filter=${encodeURIComponent(`email='${email}'`)}&fields=id`, undefined, SU)).json.items?.[0];
-let user = await findUser();
-if (!user) { const password = crypto.randomUUID() + crypto.randomUUID(); user = (await api("POST", "/api/collections/users/records", { email, password, passwordConfirm: password, name: NAME, verified: true }, SU)).json; }
-const connectionOf = async () => (await api("GET", `/api/collections/cf_connections/records?filter=${encodeURIComponent(`user='${user.id}'`)}&fields=id`, undefined, SU)).json.items?.[0];
-const existing = await connectionOf();
-const conn = { user: user.id, cf_user_id: NAME, email, name: NAME, access_token: await sealSecret(secrets.VOIDBASE_DEPLOY_CF_API_KEY, secrets.VOIDBASE_ENCRYPTION_KEY), refresh_token: "", expiry: "2030-01-01 00:00:00.000Z", scopes: "deploy key", accounts: [{ id: account, name: "deploy key" }] };
-const stored = existing ? await api("PATCH", `/api/collections/cf_connections/records/${existing.id}`, conn, SU) : await api("POST", "/api/collections/cf_connections/records", conn, SU);
-check("a user with a Cloudflare connection exists, the way the sign-in would have made it", stored.status === 200 && !!user.id, JSON.stringify(stored.json).slice(0, 200));
-const U = (await api("POST", `/api/collections/users/impersonate/${user.id}`, { duration: 3600 }, SU)).json.token as string;
-const me = await api("GET", "/api/vbcloud/me", undefined, U);
-check("impersonated session sees the connection", me.status === 200 && me.json.connected === true, JSON.stringify(me.json).slice(0, 200));
+let admin = (await api("GET", `/api/collections/users/records?filter=${encodeURIComponent(`email='${adminEmail}'`)}&fields=id,email`, undefined, SU)).json.items?.[0];
+if (!admin) { const password = crypto.randomUUID() + crypto.randomUUID(); admin = (await api("POST", "/api/collections/users/records", { email: adminEmail, password, passwordConfirm: password, name: "live", verified: true }, SU)).json; }
+if (!admin?.id) { console.error(`no user for ${adminEmail} on ${CP}: ${JSON.stringify(admin).slice(0, 200)}`); process.exit(2); }
+const A = (await api("POST", `/api/collections/users/impersonate/${admin.id}`, { duration: 3600 }, SU)).json.token as string;
+check("the admin's session is minted", !!A, adminEmail);
 
-const instances = async () => ((await api("GET", "/api/vbcloud/instances", undefined, U)).json.instances ?? []) as any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
-let inst: any = null; let instSu: { email: string; password: string } | null = null; // eslint-disable-line @typescript-eslint/no-explicit-any
+// ---- the demo as the control plane sees it: a system instance with its repository linked
+const instances = ((await api("GET", "/api/vbcloud/instances", undefined, A)).json.instances ?? []) as any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+const demo = instances.find((i) => i.name === DEMO_WORKER);
+const repos = ((await api("GET", "/api/vbcloud/repos", undefined, A)).json.repos ?? []) as any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+const demoRepo = repos.find((r) => r.fullName === DEMO_REPO);
+check("the demo is a system instance of this control plane, with its repository linked", !!demo && demo.system === true && !!demoRepo && demoRepo.system === true && demoRepo.instanceName === DEMO_WORKER, JSON.stringify({ demo, demoRepo }).slice(0, 300));
+if (!demo || !demoRepo) process.exit(1);
+const DEMO = String(demo.url).replace(/\/+$/, "");
 
-async function create() {
-  const stale = (await instances()).find((i) => i.name === `vb-${NAME}`);
-  if (stale) { await api("DELETE", `/api/vbcloud/instances/${stale.id}`, undefined, U); console.log("removed a stale instance from an earlier run"); }
-  const created = await api("POST", "/api/vbcloud/instances", { name: NAME, account }, U);
-  inst = created.json.instance; instSu = created.json.credentials ? { email: created.json.credentials.superuserEmail, password: created.json.credentials.superuserPassword } : null;
-  check("one click: an instance is created on the real account, live, on the active release", created.status === 200 && inst?.status === "live" && !!inst?.url && !!inst?.release, JSON.stringify(created.json).slice(0, 400));
-  if (!inst?.url) throw new Error("no instance");
-  // a new workers.dev hostname can take a little while to answer after the upload; the instance is live before its name is
-  let healthy = 0; for (let i = 0; i < 12 && healthy !== 200; i++) { healthy = (await fetch(`${inst.url}/api/health`, { headers: ua }).then((r) => r.status).catch(() => 0)); if (healthy !== 200) await Bun.sleep(5000); }
-  check("the instance answers", healthy === 200, String(healthy));
-  check("its /api/echo is a 404 before the plugin", (await fetch(`${inst.url}/api/echo`, { headers: ua })).status === 404);
-  const added = await api("POST", `/api/vbcloud/instances/${inst.id}/plugins`, { add: [{ name: "echo", marketplace: MARKET }] }, U);
-  check("installing echo from a marketplace that is not ours records it and queues a build", added.status === 200 && added.json.build === "queued" && added.json.plugins?.[0]?.name === "echo", JSON.stringify(added.json).slice(0, 300));
-  check("the control plane started the builder's Cloudflare build itself", added.json.builderStarted === true, JSON.stringify(added.json).slice(0, 200));
+// ---- the demo's Cloudflare builds, to know when a commit is live
+async function cf<T>(path: string): Promise<T> { const r = await fetch(`https://api.cloudflare.com/client/v4${path}`, { headers: { authorization: `Bearer ${buildsToken}` } }); const j = (await r.json()) as { result: T; success: boolean; errors: { message: string }[] }; if (!j.success) throw new Error(`${path}: ${j.errors.map((e) => e.message).join("; ")}`); return j.result; }
+const accountId = (await cf<{ id: string }[]>("/accounts"))[0]?.id ?? ""; // the builds token reaches one account
+const tag = (await cf<{ id: string; tag?: string }[]>(`/accounts/${accountId}/workers/scripts`)).find((s) => s.id === DEMO_WORKER)?.tag ?? "";
+check("the demo's Worker and its builds are reachable", !!accountId && !!tag, `${accountId} ${tag}`);
+type Build = { build_uuid: string; status: string; build_outcome?: string; build_trigger_metadata?: { commit_hash?: string } };
+/** the build Cloudflare runs for a commit, followed to its end (a push starts it within seconds) */
+async function buildOf(sha: string): Promise<string> {
+  const FINAL = new Set(["success", "failure", "failed", "canceled", "cancelled", "timed_out", "error"]);
+  for (let i = 0; i < 90; i++) {
+    const builds = await cf<Build[]>(`/accounts/${accountId}/builds/workers/${tag}/builds`);
+    const b = builds.find((x) => (x.build_trigger_metadata?.commit_hash ?? "").startsWith(sha));
+    if (b) { const st = b.status === "stopped" ? (b.build_outcome === "success" ? "success" : b.build_outcome ?? "stopped") : b.status; if (FINAL.has(st)) return st; }
+    await Bun.sleep(4000);
+  }
+  return "not seen within six minutes";
+}
+const get = async (path: string, token?: string) => { const r = await fetch(DEMO + path, { headers: { ...ua, ...(token ? { authorization: token } : {}) } }); const text = await r.text(); let json: any = null; try { json = JSON.parse(text); } catch { /* text */ } return { status: r.status, text, json }; }; // eslint-disable-line @typescript-eslint/no-explicit-any
+const demoSu = async () => { const r = await fetch(`${DEMO}/api/collections/_superusers/auth-with-password`, { method: "POST", headers: { "content-type": "application/json", ...ua }, body: JSON.stringify({ identity: "test@example.com", password: "demo123456" }) }); return ((await r.json()) as { token?: string }).token ?? ""; };
+const origins = async () => ((await get("/api/plugins", await demoSu())).json?.origins ?? {}) as Record<string, string>;
+/** after a build: the new upload answers within seconds; a state is polled for a minute before it is called wrong */
+const until = async (what: () => Promise<boolean>) => { for (let i = 0; i < 20; i++) { if (await what()) return true; await Bun.sleep(3000); } return what(); };
+const shaOf = (commitUrl: string) => (commitUrl.match(/\/commit\/([0-9a-f]{7,40})/)?.[1] ?? "").slice(0, 12);
+
+/** one plugin change through the control plane, its commit, its build, and what the demo says afterwards */
+async function change(label: string, body: Record<string, unknown>, live: () => Promise<boolean>): Promise<void> {
+  console.log(`\n${label}`);
+  const r = await api("POST", `/api/vbcloud/instances/${demo.id}/plugins`, body, A);
+  const sha = shaOf(String(r.json.commit ?? ""));
+  check(`the change is one commit to ${DEMO_REPO} (${sha || "?"})`, r.status === 200 && r.json.build === "" && !!sha && r.json.repo?.fullName === DEMO_REPO, JSON.stringify(r.json).slice(0, 300));
+  if (!sha) return;
+  const t = Date.now(); const outcome = await buildOf(sha);
+  check(`the demo's own build deploys that commit (${Math.round((Date.now() - t) / 1000)}s)`, outcome === "success", outcome);
+  check("the demo answers as the change says", await until(live));
 }
 
-/** the build's outcome: the instance's build state and release, polled until the builder has spoken */
-async function outcome(tries: number) {
-  let final: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
-  for (let i = 0; i < tries && !final; i++) {
-    const v = await api("GET", `/api/vbcloud/instances/${inst.id}/plugins`, undefined, U);
-    const state = v.json.build ?? "";
-    if (state === "failed" || (!state && /-vb-plugin-test\.[a-z0-9]+$/.test(String(v.json.instance?.release ?? "")))) { final = v.json; break; }
-    await Bun.sleep(20000);
-  }
-  return final;
-}
-
-async function verify(final: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-  check("the builder built a release for this instance and the control plane deployed it", !!final && final.build === "" && /-vb-plugin-test\.[a-z0-9]+$/.test(String(final.instance?.release)), JSON.stringify(final).slice(0, 300));
-  const echo = await fetch(`${inst.url}/api/echo`, { headers: ua });
-  check("the plugin answers on the instance", echo.status === 200 && (await echo.text()) === "echo", String(echo.status));
-  if (instSu) {
-    const login = await fetch(`${inst.url}/api/collections/_superusers/auth-with-password`, { method: "POST", headers: { "content-type": "application/json", ...ua }, body: JSON.stringify({ identity: instSu.email, password: instSu.password }) });
-    const tok = ((await login.json()) as { token?: string }).token ?? "";
-    const plugins = (await (await fetch(`${inst.url}/api/plugins`, { headers: { ...ua, authorization: tok } })).json()) as { names?: string[]; origins?: Record<string, string> };
-    check("the instance says where echo came from", plugins.names?.includes("echo") === true && String(plugins.origins?.echo).startsWith(MARKET), JSON.stringify(plugins).slice(0, 300));
-    // echo 0.2.0 owns the echoes collection and creates it at bootstrap: the built instance has the table, made by the plugin
-    const owned = await fetch(`${inst.url}/api/collections/echoes`, { headers: { ...ua, authorization: tok } });
-    check("the collection the plugin owns exists on the instance, created by the plugin", owned.status === 200 && ((await owned.json()) as { name?: string }).name === "echoes", String(owned.status));
-  }
-  const up = await api("POST", `/api/vbcloud/instances/${inst.id}/upgrade`, undefined, U);
-  check("an upgrade of an instance with plugins is a rebuild, not a bare re-provision", up.status === 200 && up.json.upgraded === false && (up.json.queued === true || /Already built/.test(up.json.message ?? "")), JSON.stringify(up.json).slice(0, 200));
-  if (up.json.queued) await api("POST", `/api/vbcloud/builds/${inst.id}/failed`, { error: "cancelled by test/cloud-live.ts before the cleanup" }, SU);
-}
-
-async function cleanup() {
-  if (inst && !KEEP) {
-    const del = await api("DELETE", `/api/vbcloud/instances/${inst.id}`, undefined, U);
-    check("delete: the Worker, its D1, bucket and queue are removed from the account", del.status === 200 && (del.json.errors ?? []).length === 0, JSON.stringify(del.json).slice(0, 300));
-  }
-  if (!KEEP) {
-    const row = await connectionOf();
-    if (row) await api("DELETE", `/api/collections/cf_connections/records/${row.id}`, undefined, SU);
-    await api("DELETE", `/api/collections/users/records/${user.id}`, undefined, SU);
-  }
-}
-
+const start = await get("/api/echo");
+check("the demo starts with echo answering (0.2.0 from the throwaway marketplace)", start.status === 200 && String((await origins()).echo).startsWith(MARKET), `${start.status}`);
 try {
-  await create();
-  await verify(await outcome(90));
+  await change("uninstall", { remove: ["echo"] }, async () => (await get("/api/echo")).status === 404 && !(await origins()).echo);
+  const kept = await get("/api/collections/echoes", await demoSu());
+  check("the collection echo owned stays with its data: uninstalling drops no table", kept.status === 200 && kept.json?.name === "echoes", String(kept.status));
+  await change("install an older version", { add: [{ name: "echo", version: "0.1.0", marketplace: MARKET }] }, async () => (await get("/api/echo")).status === 200 && String((await origins()).echo).startsWith(MARKET));
+  await change("update", { add: [{ name: "echo", marketplace: MARKET }] }, async () => (await get("/api/echo")).status === 200);
+  const final = await api("GET", `/api/vbcloud/instances/${demo.id}/plugins`, undefined, A);
+  check("the control plane records echo 0.2.0 from the throwaway marketplace, and the last commit", final.json.plugins?.[0]?.name === "echo" && final.json.plugins[0].version === "0.2.0" && final.json.plugins[0].marketplace === MARKET && !!final.json.commit, JSON.stringify(final.json).slice(0, 300));
+  const log = (await (await fetch(`https://api.github.com/repos/${DEMO_REPO}/commits?per_page=3`, { headers: { accept: "application/vnd.github+json", ...ua } })).json()) as { commit: { message: string } }[];
+  check("the repository's last three commits are the three changes, as `voidbase plugins` would have named them", Array.isArray(log) && log.map((c) => c.commit.message.split("\n")[0]).join(" | ") === "plugins: add echo 0.2.0 | plugins: add echo 0.1.0 | plugins: remove echo", JSON.stringify(log.map?.((c) => c.commit?.message)));
 } finally {
-  await cleanup();
-  console.log(`\n${pass} passed, ${fail} failed${KEEP ? " (kept: the instance and the test user)" : ""}`);
+  const now = await api("GET", `/api/vbcloud/instances/${demo.id}/plugins`, undefined, A);
+  if (now.json.plugins?.[0]?.version !== "0.2.0") { console.log("\nputting the demo back"); await change("restore echo 0.2.0", { add: [{ name: "echo", marketplace: MARKET }] }, async () => (await get("/api/echo")).status === 200); }
+  console.log(`\n${pass} passed, ${fail} failed (${since()})`);
+  process.exit(fail ? 1 : 0);
 }
-process.exit(fail ? 1 : 0);

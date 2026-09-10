@@ -27,7 +27,8 @@
     "check": "bunx tsc --noEmit -p tsconfig.json && bunx tsc --noEmit -p tsconfig.server.json",
     "deploy": "bunx voidbase sync --name voidbase-site --domain voidbase.cloud,www.voidbase.cloud",
     "test": "bun test/cursor-playback.ts && bun test/cloud.ts",
-    "live": "bun test/cloud-live.ts"
+    "live": "bun test/cloud-live.ts",
+    "provision": "bun test/cloud-provision.ts"
   },
   "type": "module"
 }

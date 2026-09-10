@@ -10,7 +10,7 @@
 import { defineHandler } from "void";
 import { authOf, pb } from "@voidbase-cloud/voidbase/adapter";
 import { provisionInstance, workerExists } from "@voidbase-cloud/voidbase/cloud";
-import { connectionFor, instanceJSON, isAdmin, pluginsOf, releaseSource, requireAuth, startBuildRun, userId } from "@/shared";
+import { connectionFor, instanceJSON, isAdmin, pluginsOf, releaseSource, repoOf, requireAuth, startBuildRun, userId } from "@/shared";
 
 /** carried over rather than resupplied: everything the instance was given when it was created */
 const INHERITED = ["VOIDBASE_SUPERUSER_EMAIL", "VOIDBASE_SUPERUSER_PASSWORD"];
@@ -25,6 +25,8 @@ export const POST = defineHandler(requireAuth("users"), async (c) => {
   // the site's own backend is built from its repository, not from a release: a re-provision would replace this very Worker
   if (row.getBool("system")) throw new pb.BadRequestError("This is the site's own backend, built and deployed from its repository; upgrade it by deploying that.");
 
+  const linked = await repoOf(row);
+  if (linked) throw new pb.BadRequestError(`This instance deploys from ${linked.getString("full_name")}; move voidbase forward there and push.`);
   const name = row.getString("name");
   const release = await releaseSource(c);
   const from = row.getString("release");

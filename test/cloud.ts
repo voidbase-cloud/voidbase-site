@@ -27,6 +27,7 @@ const env = {
   VOIDBASE_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef", VB_ALLOW_SELF_DELETE: "1",
   VOIDBASE_HOOKS_DIR: resolve(import.meta.dir, "../.voidbase/pb_hooks"), VOIDBASE_MIGRATIONS_DIR: resolve(import.meta.dir, "../.voidbase/pb_migrations"),
   GH_OAUTH_CLIENT_ID: "gh-test-client", GH_OAUTH_CLIENT_SECRET: "gh-s3cret", GITHUB_API_BASE: GH, GITHUB_OAUTH_BASE: GH, VB_SITE_URL: "http://site.test",
+  VB_GH_TOKEN: "gh-test-token", VB_SYSTEM_PROJECTS: "voidbase-cloud/voidbase-demo=voidbase-demo@http://demo.test",
 };
 // the app under test is the generated one: `bun run build` (or `voidbase adapt`) writes .voidbase/main.ts
 const server = Bun.spawn(["bun", resolve(import.meta.dir, "../.voidbase/main.ts"), "--http", `127.0.0.1:${VB_PORT}`, "--dir", `${data}/pb_data`], { cwd: resolve(import.meta.dir, "../.voidbase"), env, stdout: "pipe", stderr: "pipe" });
@@ -198,7 +199,7 @@ try {
   await fetch(`${GH}/__seed`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ full_name: "voidbase-cloud/voidbase-site", variables: { PB_VB_URL: VB } }) });
   await fetch(`${GH}/__seed`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ full_name: "octo-tester/existing", private: true }) });
   const allInst = await api("GET", "/api/vbcloud/instances", undefined, U);
-  const sysInst = (allInst.json.instances ?? []).find((i: Record<string, unknown>) => i.system);
+  const sysInst = (allInst.json.instances ?? []).find((i: Record<string, unknown>) => i.system && i.self);
   check("the admin sees the system instance as linkable, others' instances are not offered", !!sysInst && sysInst.canLink === true && sysInst.self === true, JSON.stringify(allInst.json).slice(0, 200));
   const dog = await api("GET", "/api/vbcloud/repos", undefined, U);
   const site = (dog.json.repos ?? []).find((r: Record<string, unknown>) => r.fullName === "voidbase-cloud/voidbase-site");
@@ -215,8 +216,42 @@ try {
   check("an existing repository (given as a URL) is linked: PB_VB_URL written, private flag read from GitHub", linked.status === 200 && linked.json.repo?.fullName === "octo-tester/existing" && linked.json.repo.private === true && linked.json.repo.instanceName === "vb-my-shop" && ghsL.variables["octo-tester/existing"]?.PB_VB_URL === inst.url, JSON.stringify(linked.json).slice(0, 200));
   const relink = await api("POST", "/api/vbcloud/repos/link", { fullName: "octo-tester/existing", instance: inst.id }, U);
   check("a linked repository cannot be linked twice", relink.status === 400 && /already linked/.test(relink.json.message ?? ""), JSON.stringify(relink.json));
+  // ---- project instances: an instance with a repository linked gets its plugins as one commit to that repository,
+  // and the repository's own build deploys it; no builder, no release
+  const market2 = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch: (req) => { const p = new URL(req.url).pathname; if (p === "/registry/v1/index.json") return Response.json(index); if (p === "/registry/v1/plugins/echo/0.1.0.json") return Response.json(record); if (p === "/registry/v1/plugins/echo/0.1.0/bundle.js") return new Response(echoBytes, { headers: { "content-type": "text/javascript" } }); return new Response("no", { status: 404 }); } });
+  const MARKET2 = `http://127.0.0.1:${market2.port}`;
+  try {
+    await fetch(`${GH}/__files`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ full_name: "octo-tester/existing", files: { "pb_hooks/main.pb.js": "// hooks\n", "voidbase.lock": JSON.stringify({ lockfileVersion: 1, marketplaces: ["https://marketplace.voidbase.cloud"], plugins: {}, disabled: ["backups"] }, null, 2) + "\n" } }) });
+    const projAdd = await api("POST", `/api/vbcloud/instances/${inst.id}/plugins`, { add: [{ name: "echo", marketplace: MARKET2 }] }, U);
+    const ghsP = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const headP = ghsP.commits.find((c: { sha: string }) => c.sha === ghsP.heads["octo-tester/existing"]);
+    const filesP = ghsP.files["octo-tester/existing"] ?? {};
+    const lockP = (() => { try { return JSON.parse(filesP["voidbase.lock"] ?? ""); } catch { return null; } })();
+    check("a project instance: installing is one commit to its repository, no build queued", projAdd.status === 200 && projAdd.json.build === "" && String(projAdd.json.commit).includes(headP?.sha ?? "?") && projAdd.json.repo?.fullName === "octo-tester/existing" && /Committed to octo-tester\/existing/.test(projAdd.json.message ?? ""), JSON.stringify(projAdd.json).slice(0, 300));
+    check("the commit is what `voidbase plugins add` writes: bundle.js (the verified bytes), release.json, and the lockfile entry", headP?.message === "plugins: add echo 0.1.0" && filesP["pb_plugins/echo/bundle.js"] === echo && JSON.parse(filesP["pb_plugins/echo/release.json"] ?? "{}").version === "0.1.0" && lockP?.plugins?.echo?.version === "0.1.0" && lockP.plugins.echo.integrity === integrity && lockP.plugins.echo.marketplace === MARKET2 && lockP.plugins.echo.source?.commit === record.source.commit && JSON.stringify(lockP.disabled) === '["backups"]' && filesP["pb_hooks/main.pb.js"] === "// hooks\n", JSON.stringify({ head: headP, lock: lockP }).slice(0, 400));
+    const projGet = await api("GET", `/api/vbcloud/instances/${inst.id}/plugins`, undefined, U);
+    check("the owner sees the set, the repository and the commit", projGet.status === 200 && projGet.json.plugins?.[0]?.name === "echo" && projGet.json.repo?.fullName === "octo-tester/existing" && projGet.json.commit === projAdd.json.commit, JSON.stringify(projGet.json).slice(0, 300));
+    const projUp = await api("POST", `/api/vbcloud/instances/${inst.id}/upgrade`, undefined, U);
+    check("a project instance is never re-provisioned from a release: upgrade says to move voidbase forward in the repository", projUp.status === 400 && /deploys from octo-tester\/existing/.test(projUp.json.message ?? ""), JSON.stringify(projUp.json));
+    const projRm = await api("POST", `/api/vbcloud/instances/${inst.id}/plugins`, { remove: ["echo"] }, U);
+    const ghsR = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const filesR = ghsR.files["octo-tester/existing"] ?? {}; const headR = ghsR.commits.find((c: { sha: string }) => c.sha === ghsR.heads["octo-tester/existing"]);
+    check("removing is the next commit: the plugin's files and its lock entry go, the rest of the lockfile stays", projRm.status === 200 && projRm.json.plugins?.length === 0 && headR?.message === "plugins: remove echo" && headR.parents[0] === headP?.sha && !("pb_plugins/echo/bundle.js" in filesR) && !("pb_plugins/echo/release.json" in filesR) && JSON.stringify(JSON.parse(filesR["voidbase.lock"]).plugins) === "{}" && JSON.stringify(JSON.parse(filesR["voidbase.lock"]).disabled) === '["backups"]', JSON.stringify({ head: headR, files: Object.keys(filesR) }).slice(0, 300));
+    // the system projects (VB_SYSTEM_PROJECTS): the demo is a system instance with its repository, committed to with VB_GH_TOKEN
+    await fetch(`${GH}/__seed`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ full_name: "voidbase-cloud/voidbase-demo" }) });
+    await fetch(`${GH}/__files`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ full_name: "voidbase-cloud/voidbase-demo", files: { "voidbase.lock": JSON.stringify({ lockfileVersion: 1, marketplaces: ["https://marketplace.voidbase.cloud"], plugins: {}, disabled: [] }, null, 2) + "\n" } }) });
+    const sysList = await api("GET", "/api/vbcloud/instances", undefined, U);
+    const demo = (sysList.json.instances ?? []).find((i: Record<string, unknown>) => i.name === "voidbase-demo");
+    const sysRepos = await api("GET", "/api/vbcloud/repos", undefined, U);
+    const demoRepo = (sysRepos.json.repos ?? []).find((r: Record<string, unknown>) => r.fullName === "voidbase-cloud/voidbase-demo");
+    check("a system project is registered for the admin: a system instance at its URL and a system repository row wired to it", !!demo && demo.system === true && demo.url === "http://demo.test" && !!demoRepo && demoRepo.system === true && demoRepo.instanceName === "voidbase-demo", JSON.stringify({ demo, demoRepo }).slice(0, 300));
+    const demoAdd = await api("POST", `/api/vbcloud/instances/${demo?.id}/plugins`, { add: [{ name: "echo", marketplace: MARKET2 }] }, U);
+    const ghsS = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const headS = ghsS.commits.find((c: { sha: string }) => c.sha === ghsS.heads["voidbase-cloud/voidbase-demo"]);
+    check("a plugin change on a system project is committed to its repository with the site's own token", demoAdd.status === 200 && demoAdd.json.repo?.fullName === "voidbase-cloud/voidbase-demo" && headS?.message === "plugins: add echo 0.1.0" && ghsS.files["voidbase-cloud/voidbase-demo"]?.["pb_plugins/echo/bundle.js"] === echo, JSON.stringify(demoAdd.json).slice(0, 300));
+  } finally { market2.stop(true); }
   const after = await api("GET", "/api/vbcloud/repos", undefined, U);
-  check("repos: the user's rows first, then the system row; all live-checked", after.json.repos?.length === 3 && after.json.repos[0].system === false && after.json.repos[2].system === true && after.json.repos.every((r: Record<string, any>) => r.live?.checked === true), JSON.stringify(after.json.repos?.map((r: Record<string, unknown>) => [r.fullName, r.system])));
+  check("repos: the user's rows first, then the system rows; all live-checked", after.json.repos?.length === 4 && after.json.repos[0].system === false && after.json.repos[2].system === true && after.json.repos.every((r: Record<string, any>) => r.live?.checked === true), JSON.stringify(after.json.repos?.map((r: Record<string, unknown>) => [r.fullName, r.system])));
   const disc = await api("DELETE", "/api/vbcloud/github", undefined, U);
   const ghs3 = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   check("disconnect removes the connection and revokes the grant on GitHub", disc.json.disconnected === true && ghs3.grantRevoked === 1 && (await api("GET", "/api/vbcloud/github", undefined, U)).json.connected === false, JSON.stringify(disc.json));

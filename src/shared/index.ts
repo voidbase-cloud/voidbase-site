@@ -8,6 +8,8 @@
 //   releases.ts    the releases `voidbase bundle --push` uploads, in this instance's own R2 bucket
 //   cloudflare.ts  the visitor's Cloudflare connection, and the instances on their account
 //   github.ts      the template marketplace
+//   builder.ts     the instance builder and the build run
+//   project.ts     project instances: plugins as commits to the linked repository
 export * from "./pb";
 export * from "./config";
 export * from "./auth";
@@ -16,3 +18,4 @@ export * from "./releases";
 export * from "./cloudflare";
 export * from "./github";
 export * from "./builder";
+export * from "./project";

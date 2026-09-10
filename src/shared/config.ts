@@ -34,5 +34,9 @@ export const ghCfg = () => {
     // where the callback sends the browser back to: the site (production) or the local site dev server
     site: env("VB_SITE_URL", worker ? "https://voidbase.cloud" : "http://127.0.0.1:5173").replace(/\/$/, ""),
     worker, siteRepo: env("VB_SITE_REPO", "voidbase-cloud/voidbase-site").trim().toLowerCase(), // listed as the system row
+    // the token that commits to the system repositories (plugin changes on system instances), and the projects this
+    // site manages beside its own: "owner/name=worker@https://url" entries, comma separated (the demo)
+    token: env("VB_GH_TOKEN"),
+    systemProjects: env("VB_SYSTEM_PROJECTS").split(",").map((s) => s.trim()).filter(Boolean).map((s) => { const m = s.match(/^([^=]+)=([^@]+)@(.+)$/); return m ? { repo: m[1]!.trim().toLowerCase(), worker: m[2]!.trim(), url: m[3]!.trim().replace(/\/+$/, "") } : null; }).filter((x): x is { repo: string; worker: string; url: string } => !!x),
   };
 };

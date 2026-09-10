@@ -1,11 +1,11 @@
 import { defineHandler } from "void";
 import { authOf, pb } from "@voidbase-cloud/voidbase/adapter";
 import { provisionInstance, workerExists } from "@voidbase-cloud/voidbase/cloud";
-import { cfg, connectionFor, ensureSelf, instanceJSON, isAdmin, randomPassword, readBody, releaseSource, requireAuth, userId, type HookRecord } from "@/shared";
+import { cfg, connectionFor, ensureSelf, ensureSystemProjects, instanceJSON, isAdmin, randomPassword, readBody, releaseSource, requireAuth, userId, type HookRecord } from "@/shared";
 
 export const GET = defineHandler(requireAuth(), async (c) => {
   const auth = authOf(c)!; const origin = new URL(c.req.raw.url).origin;
-  try { await ensureSelf(origin); } catch (err) { console.warn("vbcloud: self registration", err); }
+  try { await ensureSelf(origin); if (isAdmin(auth)) await ensureSystemProjects(); } catch (err) { console.warn("vbcloud: self registration", err); }
   const own = (auth.isSuperuser() ? [] : await pb.$app.findRecordsByFilter("vb_instances", "owner = {:u} && status != 'deleted'", "-created", 100, 0, { u: auth.id })) as HookRecord[];
   const system = (isAdmin(auth) ? await pb.$app.findRecordsByFilter("vb_instances", "system = true && status != 'deleted'", "-created", 20, 0) : []) as HookRecord[];
   const seen = new Set<string>(); const rows = [...system, ...own].filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
