@@ -14,22 +14,38 @@ its API at `/api` and PocketBase's admin panel at `/_/`. One process locally, on
 | `vb_hooks/` | one PocketBase hook per file, registered once when the app mounts |
 | `vb_migrations/` | PocketBase JS migrations, the voidbase counterpart of Void's `db/` |
 | `public/` | static assets served as-is (fonts, images, favicons) |
-| `test/` | `bun test/cloud.ts`: the control plane end to end against mocks of Cloudflare, its OAuth and GitHub |
+| `src/lib/cloud.ts` | the cloud page's client: the work of voidbase.cloud, done in the browser |
+| `test/` | `bun test/cloud.ts`: the browser client and the site end to end against mocks of Cloudflare, its OAuth, GitHub and an instance |
 | `.voidbase/` | the voidbase app this project builds into (generated, git-ignored) |
 
 The project root is a plain Void app. `bun run build` runs Vite: Void prerenders the pages, and voidbase's adapter
 writes the whole voidbase app into `.voidbase/` in PocketBase's layout — `main.ts`, `package.json`, `pb_hooks/`,
 `pb_migrations/`, `pb_public/`, `pb_data/`. Nothing is generated outside that directory.
 
+## What the site does, and what the browser does
+
+voidbase.cloud wraps voidbase and the user's own accounts. The site keeps four things: the sign-in (Cloudflare
+OAuth), the user's Cloudflare and GitHub tokens sealed at rest, the rows about their instances and repositories
+(`vb_instances`, `vb_repos`, written by the browser through the collections' rules), and two pass-throughs,
+`/api/vbcloud/cf/*` and `/api/vbcloud/gh/*`, which forward a call to Cloudflare's or GitHub's API with the user's
+token (Cloudflare's API sends no CORS headers, and neither token ever reaches the browser). Everything else is the
+page's own work, in `src/lib/cloud.ts`: an instance is created, upgraded and deleted with voidbase's REST code in
+the user's account; a repository is created from a template or linked, its variables set, and the instance's
+Worker wired to it (the one server action left, `instances/:id/wire`, because it puts the user's GitHub token on
+their Worker); an instance's plugins are changed through the instance's own installer, with a session the owner
+mints on the instance from the page. Nothing is built for anyone's instance by anyone but its own pipeline.
+
 ## Testing against production
 
 voidbase.cloud and demo.voidbase.cloud are the testbeds: they run the newest voidbase release on purpose (the
 release build in voidbase pins it here and pushes), and they are meant to be exercised for real. `bun run live`
-runs `test/cloud-live.ts` against voidbase.cloud from a maintainer's machine: a throwaway user with a Cloudflare
-connection, an instance created on the account, `echo` installed from the throwaway marketplace, the builder's
-release deployed by the control plane, the plugin answering on the instance, and everything deleted again. The
-credentials come from this checkout's files (`.voidbase/pb_data/.superuser-credentials`, `vb_secrets/secrets.json`).
-`bun run test` is the mocked suite. Nothing runs in CI: a push builds and syncs, and that is all.
+(`test/cloud-live.ts`) is the plugin lifecycle on the demo through the demo's own installer: remove, install an
+older version, update, each a commit to voidbase-cloud/voidbase-demo made by the demo, each build watched, the
+demo answering afterwards. `bun run provision` (`test/cloud-provision.ts`) drives the browser client against
+voidbase.cloud for real, creating and deleting a throwaway instance through the pass-through; run it when the
+provisioning path changed. The credentials come from this checkout's files (`.voidbase/pb_data/.superuser-credentials`,
+`vb_secrets/secrets.json`) or the environment. `bun run test` is the mocked suite. Nothing runs in CI: a push
+builds and syncs, and that is all.
 
 ## Run it
 
