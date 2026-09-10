@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import CloudflareSignIn from "@/components/CloudflareSignIn";
 import { cloud, errorMessage, vb, VB_URL } from "@/lib/vb";
+import { CloudClient } from "@/lib/cloud";
 
 // ---- what /api/vbcloud/* hands back -----------------------------------------------------------------------------
 
@@ -30,6 +31,8 @@ interface Release {
 interface Instance {
   id: string;
   name: string;
+  owner?: string;
+  system?: boolean;
   plugins?: { name: string; version: string; marketplace: string }[];
   build?: string;
   buildError?: string;
@@ -123,113 +126,110 @@ const wiredText: Record<WiredState, string> = {
   no: "points elsewhere",
 };
 
-type CloudFn = <T>(method: string, path: string, body?: unknown) => Promise<T>;
-interface PluginsView {
-  plugins: { name: string; version: string; marketplace: string }[];
-  build: string;
-  buildError: string;
-  available: { marketplace: string; plugins: { name: string; title: string; summary: string; latest: string }[]; error?: string }[];
-}
-
 /**
- * The plugins of one cloud instance. Installing records the set and queues a build, because a cloud instance's
- * plugins are fixed when its Worker is built and the builder runs every few minutes; the panel says so, and polls
- * while a build is queued or running rather than pretending the click was the install.
+ * The plugins of one instance, through the instance's own installer (voidbase's `installer` plugin). This site
+ * holds no session on an instance: the owner signs in to it here, in the browser, and the panel talks to the
+ * instance directly. On a project instance a change is a commit its repository's build deploys; on one built
+ * without a repository the instance says so.
  */
-function PluginsPanel({ inst, cloud, onChange }: { inst: Instance; cloud: CloudFn; onChange: () => Promise<void> }) {
+function PluginsPanel({ inst, client }: { inst: Instance; client: CloudClient }) {
   const [open, setOpen] = useState(false);
-  const [view, setView] = useState<PluginsView | null>(null);
+  const [session, setSession] = useState("");
+  const [login, setLogin] = useState({ email: inst.superuserEmail || "", password: "" });
+  const [running, setRunning] = useState<Awaited<ReturnType<ReturnType<CloudClient["plugins"]>["running"]>> | null>(null);
+  const [available, setAvailable] = useState<Awaited<ReturnType<ReturnType<CloudClient["plugins"]>["available"]>>["available"]>([]);
   const [marketplace, setMarketplace] = useState("");
   const [working, setWorking] = useState("");
   const [error, setError] = useState("");
-  const path = `/api/vbcloud/instances/${inst.id}/plugins`;
+  const [notice, setNotice] = useState("");
 
-  async function refresh(extra = marketplace) {
-    const q = extra.trim() ? `?marketplace=${encodeURIComponent(extra.trim())}` : "";
-    setView(await cloud<PluginsView>("GET", path + q));
+  async function refresh(token = session, extra = marketplace) {
+    const api = client.plugins(inst, token);
+    const [r, a] = await Promise.all([api.running(), api.available(extra.trim() || undefined)]);
+    setRunning(r); setAvailable(a.available);
   }
-  useEffect(() => {
-    if (!open) return;
-    refresh().catch((e) => setError(e instanceof Error ? e.message : String(e)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-  useEffect(() => {
-    if (!open || !view || !["queued", "building"].includes(view.build)) return;
-    const t = setInterval(() => { refresh().catch(() => undefined); onChange().catch(() => undefined); }, 15000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, view?.build]);
-
-  async function change(body: { add?: { name: string; marketplace?: string }[]; remove?: string[] }, step: string) {
-    setWorking(step); setError("");
-    try { await cloud("POST", path, body); await refresh(); await onChange(); }
-    catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+  async function signIn(e: React.FormEvent) {
+    e.preventDefault(); setError("");
+    try { const token = await client.instanceSession(inst, login.email, login.password); setSession(token); setLogin({ ...login, password: "" }); await refresh(token); }
+    catch (err) { setError(errorMessage(err)); }
+  }
+  async function act(step: string, fn: () => Promise<Record<string, unknown>>) {
+    setWorking(step); setError(""); setNotice("");
+    try { const r = await fn(); setNotice(String(r.message ?? "Done.")); await refresh(); }
+    catch (err) { setError(errorMessage(err)); }
     finally { setWorking(""); }
   }
 
-  const installed = new Set((view?.plugins ?? inst.plugins ?? []).map((p) => p.name));
-  const state = view?.build ?? inst.build ?? "";
+  const installer = running?.installer;
+  const installed = new Set(running ? running.names.filter((n) => running.origins[n] !== "shipped") : []);
+  const api = session ? client.plugins(inst, session) : null;
   return (
     <div className="node-plugins">
       <button type="button" className="btn btn-xs btn-secondary" aria-expanded={open} onClick={() => setOpen(!open)}>
-        {open ? "Hide plugins" : `Plugins${installed.size ? ` (${installed.size})` : ""}`}
+        {open ? "Hide plugins" : "Plugins"}
       </button>
-      {state && (
-        <span className={`label label-sm build-${state}`}>
-          {state === "queued" ? "build queued: a builder picks it up within minutes" : state === "building" ? "building…" : state === "failed" ? "last build failed" : state}
-        </span>
-      )}
       {open && (
         <div className="plugins-panel">
-          {(view?.buildError || inst.buildError) && state === "failed" && <p className="node-error">{view?.buildError || inst.buildError}</p>}
           {error && <p className="node-error">{error}</p>}
-          <p className="txt-hint">
-            A cloud instance's plugins are fixed when its Worker is built, so installing one queues a build on the
-            current release, and the instance keeps running what it has until the new Worker is deployed.
-          </p>
-          <ul className="plugins-installed">
-            {(view?.plugins ?? inst.plugins ?? []).map((p) => (
-              <li key={p.name}>
-                <code>{p.name}</code> {p.version} <span className="txt-hint">{p.marketplace}</span>{" "}
-                <button type="button" className="btn btn-xs btn-secondary btn-danger" disabled={!!working || state === "building"} onClick={() => change({ remove: [p.name] }, "remove:" + p.name)}>
-                  {working === "remove:" + p.name ? "Removing…" : "Remove"}
-                </button>
-              </li>
-            ))}
-            {!(view?.plugins ?? inst.plugins ?? []).length && <li className="txt-hint">nothing installed beyond what voidbase ships</li>}
-          </ul>
-          {view?.available.map((m) => (
-            <div key={m.marketplace} className="plugins-available">
-              <h4>
-                <a href={m.marketplace} target="_blank" rel="noopener noreferrer">{m.marketplace.replace(/^https?:\/\//, "")}</a>
-              </h4>
-              {m.error && <p className="node-error">{m.error}</p>}
-              <ul>
-                {m.plugins.map((p) => (
-                  <li key={p.name}>
-                    <code>{p.name}</code> {p.latest} <span className="txt-hint">{p.summary}</span>{" "}
-                    {installed.has(p.name) ? (
-                      <span className="label label-sm">installed</span>
-                    ) : (
-                      <button type="button" className="btn btn-xs btn-outline" disabled={!!working || state === "building"} onClick={() => change({ add: [{ name: p.name, marketplace: m.marketplace }] }, "add:" + p.name)}>
-                        {working === "add:" + p.name ? "Queuing…" : "Install"}
-                      </button>
+          {!session ? (
+            <form className="plugins-login" onSubmit={signIn}>
+              <p className="txt-hint">Sign in to the instance as its superuser: this page talks to the instance itself, and this site keeps nothing of it.</p>
+              <input type="email" placeholder="superuser email" value={login.email} onChange={(e) => setLogin({ ...login, email: e.target.value })} required />
+              <input type="password" placeholder="password" value={login.password} onChange={(e) => setLogin({ ...login, password: e.target.value })} required />
+              <button type="submit" className="btn btn-xs btn-secondary">Sign in to {inst.name}</button>
+            </form>
+          ) : (
+            <>
+              {installer && (
+                <p className="txt-hint">
+                  {installer.mode === "repository" ? <>Deployed from <code>{installer.repository}</code>: a change here is a commit there, and its build deploys it.</> : installer.mode === "filesystem" ? "Changed on disk; the instance loads the change when it restarts." : installer.hint}
+                </p>
+              )}
+              {notice && <p className="txt-hint">{notice}</p>}
+              <ul className="plugins-installed">
+                {running?.names.map((n) => (
+                  <li key={n}>
+                    <code>{n}</code> <span className="txt-hint">{running.origins[n]}</span>{" "}
+                    {running.origins[n] !== "shipped" && api && installer?.mode !== "fixed" && (
+                      <>
+                        <button type="button" className="btn btn-xs btn-outline" disabled={!!working} onClick={() => act("update:" + n, () => api.update(n))}>{working === "update:" + n ? "Updating…" : "Update"}</button>{" "}
+                        <button type="button" className="btn btn-xs btn-secondary btn-danger" disabled={!!working} onClick={() => act("remove:" + n, () => api.remove(n))}>{working === "remove:" + n ? "Removing…" : "Remove"}</button>
+                      </>
                     )}
                   </li>
                 ))}
-                {!m.plugins.length && !m.error && <li className="txt-hint">nothing served yet</li>}
               </ul>
-            </div>
-          ))}
-          <form className="plugins-marketplace" onSubmit={(e) => { e.preventDefault(); refresh().catch((err) => setError(String(err))); }}>
-            <input type="url" placeholder="another marketplace: https://…" value={marketplace} onChange={(e) => setMarketplace(e.target.value)} />
-            <button type="submit" className="btn btn-xs btn-secondary">Read it</button>
-          </form>
+              {available.map((m) => (
+                <div key={m.marketplace} className="plugins-available">
+                  <h4><a href={m.marketplace} target="_blank" rel="noopener noreferrer">{m.marketplace.replace(/^https?:\/\//, "")}</a></h4>
+                  {m.error && <p className="node-error">{m.error}</p>}
+                  <ul>
+                    {m.plugins.map((p) => (
+                      <li key={p.name}>
+                        <code>{p.name}</code> {p.latest} <span className="txt-hint">{p.summary}</span>{" "}
+                        {installed.has(p.name) ? <span className="label label-sm">installed</span> : api && installer?.mode !== "fixed" ? (
+                          <button type="button" className="btn btn-xs btn-outline" disabled={!!working} onClick={() => act("add:" + p.name, () => api.install(p.name, { marketplace: m.marketplace }))}>{working === "add:" + p.name ? "Installing…" : "Install"}</button>
+                        ) : null}
+                      </li>
+                    ))}
+                    {!m.plugins.length && !m.error && <li className="txt-hint">nothing served yet</li>}
+                  </ul>
+                </div>
+              ))}
+              <form className="plugins-marketplace" onSubmit={(e) => { e.preventDefault(); refresh().catch((err) => setError(errorMessage(err))); }}>
+                <input type="url" placeholder="another marketplace: https://…" value={marketplace} onChange={(e) => setMarketplace(e.target.value)} />
+                <button type="submit" className="btn btn-xs btn-secondary">Read it</button>
+              </form>
+            </>
+          )}
         </div>
       )}
     </div>
   );
 }
+
+const client = new CloudClient(VB_URL || "", () => vb().authStore.token);
+const meId = () => String((vb().authStore.record as { id?: string } | null)?.id ?? "");
 
 export default function Cloud() {
   const [ready, setReady] = useState(false);
@@ -288,13 +288,14 @@ export default function Cloud() {
       setInstances(instanceList);
       setGithub(githubData);
       setTemplates(templateList);
-      setRepos(
-        meData?.user?.superuser
-          ? []
-          : await cloud<{ repos: Repo[] }>("GET", "/api/vbcloud/repos")
-              .then((r) => r.repos)
-              .catch(() => [] as Repo[]),
-      );
+      const repoRows = meData?.user?.superuser ? [] : await cloud<{ repos: Repo[] }>("GET", "/api/vbcloud/repos").then((r) => r.repos).catch(() => [] as Repo[]);
+      setRepos(repoRows);
+      // what GitHub says about each linked repository, asked from here (the site keeps rows, not opinions)
+      for (const repo of repoRows.filter((r) => !r.system)) {
+        client.checkRepo(repo, instanceList.find((i) => i.id === repo.instance) ?? null)
+          .then((live) => setRepos((list) => list.map((r) => (r.id === repo.id ? { ...r, live: { checked: true, ...live, htmlUrl: r.htmlUrl } } : r))))
+          .catch((err) => setRepos((list) => list.map((r) => (r.id === repo.id ? { ...r, live: { checked: false, error: errorMessage(err) } } : r))));
+      }
     } catch (err) {
       const status = (err as { status?: number })?.status;
       if (status === 401 || status === 403) {
@@ -350,86 +351,66 @@ export default function Cloud() {
   const createInstance = () =>
     run("create", async () => {
       setLogs([]);
-      const r = await cloud<{ log?: string[]; instance: { name: string; url: string }; credentials?: Credentials }>(
-        "POST",
-        "/api/vbcloud/instances",
-        { name: form.name, account: form.account },
-      );
-      setLogs(r.log || []);
+      const account = me?.connection?.accounts?.find((a) => a.id === form.account) ?? { id: form.account || "", name: "" };
+      const r = await client.createInstance({ name: form.name || "", account, owner: meId(), superuserEmail: me?.user.email || "admin@example.com", prefix: me?.prefix, log: (l) => setLogs((ls) => [...ls, l]) });
       setNotice(`${r.instance.name} is live at ${r.instance.url}`);
-      setCreated(r.credentials || null); // shown once: the password is not stored anywhere but the new instance
+      setCreated(r.credentials); // shown once: the password is not stored anywhere but the new instance
       setPanel(null);
       await load();
     });
 
   const createRepo = () =>
     run("repo", async () => {
-      const r = await cloud<{ repo: { fullName: string; instanceName: string } }>("POST", "/api/vbcloud/repos", {
-        ...form,
-        instance: panel?.instance,
-      });
-      setNotice(
-        `${r.repo.fullName} created from ${pickedTemplate?.title || form.template} and wired to ${r.repo.instanceName}.`,
-      );
+      const inst = instances.find((i) => i.id === panel?.instance); if (!inst) throw new Error("Pick the instance the repository should use.");
+      if (!pickedTemplate) throw new Error("Pick a template.");
+      const r = await client.createRepo({ template: pickedTemplate as unknown as Parameters<CloudClient["createRepo"]>[0]["template"], name: form.name || "", private: !!form.private, instance: inst, user: meId(), inputs: form as Record<string, unknown> });
+      setNotice(`${r.repo.fullName} created from ${pickedTemplate.title} and wired to ${inst.name}${r.wired.length ? "; the instance commits there from now on" : ""}.`);
       setPanel(null);
       await load();
     });
 
   const linkRepo = () =>
     run("link", async () => {
-      const r = await cloud<{ repo: { fullName: string; instanceName: string; instanceUrl: string } }>(
-        "POST",
-        "/api/vbcloud/repos/link",
-        { fullName: form.fullName, instance: panel?.instance },
-      );
-      setNotice(`${r.repo.fullName} wired to ${r.repo.instanceName}: its PB_VB_URL is now ${r.repo.instanceUrl}.`);
+      const inst = instances.find((i) => i.id === panel?.instance); if (!inst) throw new Error("Pick the instance the repository should use.");
+      const r = await client.linkRepo({ fullName: form.fullName || "", instance: inst, user: meId(), inputs: form as Record<string, unknown> });
+      setNotice(`${r.repo.fullName} wired to ${inst.name}: its PB_VB_URL is now ${r.variables.PB_VB_URL ?? inst.url}.`);
       setPanel(null);
       await load();
     });
 
   async function unlinkRepo(repo: Repo) {
-    if (!confirm(`Unlink ${repo.fullName}?\n\nThe repository stays in your GitHub account; this site just stops listing it.`))
+    if (!confirm(`Unlink ${repo.fullName}?\n\nThe repository stays in your GitHub account; this site just stops listing it, and the instance forgets it.`))
       return;
     await run("unlink:" + repo.id, async () => {
-      await cloud("DELETE", `/api/vbcloud/repos/${repo.id}`);
+      await client.unlinkRepo(repo, instances.find((i) => i.id === repo.instance) ?? null);
       await load();
     });
   }
 
   async function remove(inst: Instance) {
-    const what = inst.self
-      ? `${inst.name} — THIS SITE'S OWN BACKEND. The cloud page stops working until it is deployed again.`
-      : inst.name;
-    if (!confirm(`Delete ${what}\n\nThe Worker, its D1 database, R2 bucket and queue are removed. This cannot be undone.`))
-      return;
-    if (inst.self && prompt(`This is the backend serving this page. Type its name (${inst.name}) to confirm.`) !== inst.name)
+    if (inst.self || inst.system) { setNotice("A system instance is deployed from its repository and is not deleted from here."); return; }
+    if (!confirm(`Delete ${inst.name}\n\nThe Worker, its D1 database, R2 bucket and queue are removed. This cannot be undone.`))
       return;
     await run("delete:" + inst.id, async () => {
       setLogs([]);
-      const r = await cloud<{ log?: string[]; deleted: unknown[]; skipped: unknown[] }>(
-        "DELETE",
-        `/api/vbcloud/instances/${inst.id}`,
-      );
-      setLogs(r.log || []);
-      setNotice(
-        `${inst.name} deleted (${r.deleted.length} resources removed${r.skipped.length ? `, ${r.skipped.length} already gone` : ""}).`,
-      );
-      if (inst.self) setInstances((list) => list.filter((i) => i.id !== inst.id));
-      else await load();
+      const r = await client.deleteInstance(inst, { log: (l) => setLogs((ls) => [...ls, l]) });
+      setNotice(`${inst.name} deleted (${r.deleted.length} resources removed${r.skipped.length ? `, ${r.skipped.length} already gone` : ""}).`);
+      await load();
+    });
+  }
+
+  async function upgrade(inst: Instance) {
+    await run("upgrade:" + inst.id, async () => {
+      setLogs([]);
+      const r = await client.upgradeInstance(inst, { log: (l) => setLogs((ls) => [...ls, l]) });
+      setNotice(r.upgraded ? `${inst.name}: ${r.from} → ${r.to}` : `${inst.name} is already on ${r.to}.`);
+      await load();
     });
   }
 
   async function toggleCredentials(inst: Instance) {
-    if (creds[inst.id]) {
-      const next = { ...creds };
-      delete next[inst.id];
-      setCreds(next);
-      return;
-    }
-    await run("creds:" + inst.id, async () => {
-      const c = await cloud<Credentials>("GET", `/api/vbcloud/instances/${inst.id}/credentials`);
-      setCreds((prev) => ({ ...prev, [inst.id]: c }));
-    });
+    if (creds[inst.id]) { const next = { ...creds }; delete next[inst.id]; setCreds(next); return; }
+    setCreds((prev) => ({ ...prev, [inst.id]: client.credentials(inst) }));
   }
 
   function signOut() {
@@ -755,7 +736,12 @@ export default function Cloud() {
                           {creds[inst.id] ? "Hide credentials" : "Credentials"}
                         </button>
                       )}
-                      {inst.canDelete && (
+                      {!inst.system && inst.status === "live" && release?.current && inst.release !== release.current && (
+                        <button type="button" className="btn btn-xs btn-outline" disabled={busy === "upgrade:" + inst.id} onClick={() => upgrade(inst)}>
+                          {busy === "upgrade:" + inst.id ? "Upgrading…" : `Upgrade to ${release.current}`}
+                        </button>
+                      )}
+                      {inst.canDelete && !inst.system && (
                         <button
                           type="button"
                           className="btn btn-xs btn-secondary btn-danger"
@@ -769,7 +755,7 @@ export default function Cloud() {
                   </div>
                   {inst.error && <p className="node-error">{inst.error}</p>}
                   {!me?.user?.superuser && inst.status === "live" && (
-                    <PluginsPanel inst={inst} cloud={cloud} onChange={load} />
+                    <PluginsPanel inst={inst} client={client} />
                   )}
                   {creds[inst.id] && (
                     <p className="node-creds">

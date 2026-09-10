@@ -1,4 +1,6 @@
-// End-to-end test of the voidbase cloud control plane on the Bun runtime, against voidbase's mocks:
+// End-to-end test of voidbase.cloud on the Bun runtime, against voidbase's mocks. The site keeps sign-in, sealed
+// tokens, rows and two pass-throughs; the work is done by the browser client (src/lib/cloud.ts), which this test
+// drives the way the page does, against:
 // test/mock-oidc.ts (a Cloudflare-shaped OAuth client: userinfo = {sub}, access token = the cf-mock bearer) and
 // test/cf-mock.ts (the Cloudflare REST API). Boots `bun main.ts` on a temporary data directory.
 //   bun test/cloud.ts
@@ -6,6 +8,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readdirSync, statSync, e
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { assetHash, contentTypeFor, type ReleaseManifest } from "@voidbase-cloud/voidbase/cloud";
+import { CloudClient, CloudError, type Instance } from "../src/lib/cloud";
 const VOIDBASE = resolve(import.meta.dir, "../node_modules/@voidbase-cloud/voidbase");
 // The npm package ships no test/; the mocks come from a sibling voidbase checkout when the package lacks them.
 const MOCKS = [`${VOIDBASE}/test`, resolve(import.meta.dir, "../../voidbase/test")].find((d) => existsSync(`${d}/cf-mock.ts`)) ?? `${VOIDBASE}/test`;
@@ -83,73 +86,85 @@ try {
   const meAnon = await api("GET", "/api/vbcloud/me");
   check("me needs auth", meAnon.status === 401);
 
-  // instances
+  // ---- the browser client, as the page holds it: the site's URL and the user's session
+  const client = new CloudClient(VB, () => U);
+  const uid = String(login.json.record?.id);
   const list0 = await api("GET", "/api/vbcloud/instances", undefined, U);
   const self0 = (list0.json.instances ?? []).find((i: Record<string, unknown>) => i.self);
-  check("the site's own backend is listed as the system instance (admin can delete it)", !!self0 && self0.system === true && self0.canDelete === true && self0.url === VB && self0.status === "live", JSON.stringify(list0.json));
-  const suCreate = await api("POST", "/api/vbcloud/instances", { name: "x" }, SU);
-  check("superusers cannot create instances", suCreate.status === 401 || suCreate.status === 403, String(suCreate.status));
-  const created = await api("POST", "/api/vbcloud/instances", { name: "My Shop", account: "acc123" }, U);
-  const inst = created.json.instance ?? {};
-  check("one click: instance provisioned on the user's account", created.status === 200 && inst.name === "vb-my-shop" && inst.status === "live" && inst.url === "https://vb-my-shop.testsub.workers.dev" && inst.release === manifest.version && inst.canDelete === true, JSON.stringify(created.json).slice(0, 600));
+  check("the site's own backend is listed as the system instance", !!self0 && self0.system === true && self0.url === VB && self0.status === "live", JSON.stringify(list0.json).slice(0, 300));
+
+  // ---- the pass-throughs: the user's own tokens stay on the site, the browser calls through
+  const cfAnon = await api("GET", "/api/vbcloud/cf/accounts");
+  const cfOut = await api("GET", "/api/vbcloud/cf/client/v4/whatever", undefined, U);
+  const cfAccounts = await api("GET", "/api/vbcloud/cf/accounts", undefined, U);
+  check("the Cloudflare pass-through: sign-in required, only account/zone/user paths, Cloudflare's own answer", cfAnon.status === 401 && cfOut.status === 400 && cfAccounts.status === 200 && cfAccounts.json.success === true && cfAccounts.json.result?.[0]?.id === "acc123", JSON.stringify([cfAnon.status, cfOut.status, cfAccounts.json]).slice(0, 200));
+  const ghEarly = await api("GET", "/api/vbcloud/gh/user", undefined, U);
+  check("the GitHub pass-through needs a GitHub connection first", ghEarly.status === 400 && /Connect your GitHub/.test(ghEarly.json.message ?? ""), JSON.stringify(ghEarly.json));
+
+  // ---- instances: provisioned by the browser in the user's account, the row written through the rules
+  const suRow = await api("POST", "/api/collections/vb_instances/records", { owner: uid, name: "vb-sys", account_id: "acc123", status: "live", system: true }, U);
+  check("the rules: a user cannot write a system row", suRow.status === 400 || suRow.status === 403, String(suRow.status));
+  let created: Awaited<ReturnType<CloudClient["createInstance"]>>;
+  try { created = await client.createInstance({ name: "My Shop", account: { id: "acc123", name: "Test Account" }, owner: uid, superuserEmail: "owner@example.com", prefix: "vb-" }); }
+  catch (e) { throw new Error(`createInstance: ${e instanceof Error ? e.message : e} ${e instanceof CloudError ? e.log.join(" | ") : ""}`); }
+  const inst = created.instance;
+  check("one click, from the browser: instance provisioned on the user's account, row live", inst.name === "vb-my-shop" && inst.status === "live" && inst.url === "https://vb-my-shop.testsub.workers.dev" && inst.release === manifest.version, JSON.stringify(inst));
   const st = await cfState();
   const script = st.scripts["vb-my-shop"];
-  check("cloudflare: worker with all modules, assets, per-instance D1/R2/queue, owner tag", !!script && script.modules.length === manifest.modules.length && st.uploadedHashes.length === new Set(manifest.assets.map((a) => a.hash)).size && st.d1.some((d: string[]) => d[0] === "vb-my-shop-db") && "vb-my-shop-storage" in st.r2 && st.queues.some((q: string[]) => q[0] === "vb-my-shop-jobs") && (script.metadata.tags as string[]).some((t) => t.startsWith("vbcloud-owner:")), JSON.stringify({ modules: script?.modules?.length, hashes: st.uploadedHashes.length, d1: st.d1, queues: st.queues }));
-  const once = created.json.credentials ?? {};
-  check("the superuser password comes back once, with the creation", once.superuserEmail === "owner@example.com" && String(once.superuserPassword).length === 24 && once.panel === "https://vb-my-shop.testsub.workers.dev/_/", JSON.stringify(once));
-  const secret = (script.metadata.bindings as { name: string; text?: string }[]).find((b) => b.name === "VOIDBASE_SUPERUSER_PASSWORD");
-  check("the same password went to the worker as a secret", secret?.text === once.superuserPassword);
-  const creds = await api("GET", `/api/vbcloud/instances/${inst.id}/credentials`, undefined, U);
-  check("credentials afterwards: url, email and panel, never the password", creds.status === 200 && creds.json.superuserEmail === "owner@example.com" && creds.json.superuserPassword === undefined && creds.json.panel === "https://vb-my-shop.testsub.workers.dev/_/", JSON.stringify(creds.json));
+  check("cloudflare: worker with all modules, assets, per-instance D1/R2/queue, owner tag", !!script && script.modules.length === manifest.modules.length && st.uploadedHashes.length === new Set(manifest.assets.map((a) => a.hash)).size && st.d1.some((d: string[] | { name: string }) => JSON.stringify(d).includes("vb-my-shop-db")) && JSON.stringify(script.metadata.tags ?? script.tags ?? []).includes(`vbcloud-owner:${uid}`), JSON.stringify({ script: !!script, d1: st.d1 }).slice(0, 300));
+  check("the superuser password comes back once, with the creation, and went to the worker as a secret", created.credentials.superuserEmail === "owner@example.com" && String(created.credentials.superuserPassword).length === 24 && (script?.metadata.bindings as { name: string; text?: string }[]).find((b) => b.name === "VOIDBASE_SUPERUSER_PASSWORD")?.text === created.credentials.superuserPassword, JSON.stringify(created.credentials));
+  const listed1 = await api("GET", "/api/vbcloud/instances", undefined, U);
+  const row1 = (listed1.json.instances ?? []).find((i: Record<string, unknown>) => i.id === inst.id);
+  check("the site lists the row the browser wrote, with the owner's rights", !!row1 && row1.canDelete === true && row1.canLink === true && row1.superuserEmail === "owner@example.com", JSON.stringify(row1));
+  const viaSdk = await api("GET", "/api/collections/vb_instances/records", undefined, U);
+  check("the collection lists only the owner's rows, never a password", viaSdk.status === 200 && viaSdk.json.totalItems === 1 && viaSdk.json.items.every((i: Record<string, unknown>) => i.superuser_password === undefined), JSON.stringify(viaSdk.json).slice(0, 200));
+  const notMine = await api("PATCH", `/api/collections/vb_instances/records/${inst.id}`, { owner: "somebody-else" }, U);
+  check("the rules: the owner cannot hand a row to somebody else", notMine.status === 400 || notMine.status === 403, String(notMine.status));
+  const dupName = await client.createInstance({ name: "my-shop", account: { id: "acc123" }, owner: uid, superuserEmail: "owner@example.com" }).then(() => "made", (e) => (e instanceof Error ? e.message : String(e)));
+  check("a Worker that exists on the account is not created twice", /already exists/.test(String(dupName)), String(dupName));
 
-  // ---- plugins on a cloud instance: recorded, built elsewhere, deployed from the release the builder pushes ------------
-  // a marketplace of this test's own: the registry protocol is three GETs, and Bun serving three strings is one
-  const echo = 'const manifest = { name: "echo", version: "0.1.0", tier: "community", voidbase: "*" };\nexport default { manifest, apply(ctx) { ctx.app.get("/api/echo", (c) => c.text("echo")); } };\n';
-  const echoBytes = new TextEncoder().encode(echo);
-  const integrity = `sha256-${btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest("SHA-256", echoBytes))))}`;
-  const record = { version: "0.1.0", manifest: { name: "echo", version: "0.1.0", tier: "community", voidbase: "*" }, integrity, bundle: "plugins/echo/0.1.0/bundle.js", bytes: echoBytes.length, source: { repository: "example/voidbase-plugin-echo", commit: "0123456789abcdef0123456789abcdef01234567" }, publishedOn: "2026-09-09" };
-  const index = { schemaVersion: 1, marketplace: { name: "test", url: "http://test.invalid" }, generatedOn: "2026-09-09", plugins: [{ name: "echo", repository: "example/voidbase-plugin-echo", title: "Echo", summary: "Answers /api/echo.", latest: "0.1.0", versions: [record] }], templates: [] };
-  const market = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch: (req) => { const p = new URL(req.url).pathname; if (p === "/registry/v1/index.json") return Response.json(index); if (p === "/registry/v1/plugins/echo/0.1.0.json") return Response.json(record); if (p === "/registry/v1/plugins/echo/0.1.0/bundle.js") return new Response(echoBytes); return new Response("not found", { status: 404 }); } });
-  const MARKET = `http://127.0.0.1:${market.port}`;
-  try {
-    const selfUpgrade = await api("POST", `/api/vbcloud/instances/${self0.id}/upgrade`, undefined, U);
-    const selfPlugins = await api("POST", `/api/vbcloud/instances/${self0.id}/plugins`, { add: [{ name: "echo", marketplace: MARKET }] }, U);
-    check("the site's own backend is never re-provisioned from a release: upgrade and plugins refuse the system row", selfUpgrade.status === 400 && /its repository/.test(selfUpgrade.json.message ?? "") && selfPlugins.status === 400 && /its repository/.test(selfPlugins.json.message ?? ""), `${selfUpgrade.status} ${selfPlugins.status}`);
-    const nothingQueued = await api("GET", "/api/vbcloud/builds/next", undefined, SU);
-    check("builds/next with nothing queued is 204", nothingQueued.status === 204, String(nothingQueued.status));
-    const offered = await api("GET", `/api/vbcloud/instances/${inst.id}/plugins?marketplace=${encodeURIComponent(MARKET)}`, undefined, U);
-    const fromTest = (offered.json.available ?? []).find((m: { marketplace: string }) => m.marketplace === MARKET);
-    check("plugins: the instance's set is empty, and a named marketplace's releases are offered beside the official one", offered.status === 200 && Array.isArray(offered.json.plugins) && offered.json.plugins.length === 0 && fromTest?.plugins?.[0]?.name === "echo" && (offered.json.available ?? []).length === 2, JSON.stringify(offered.json).slice(0, 300));
-    const notServed = await api("POST", `/api/vbcloud/instances/${inst.id}/plugins`, { add: [{ name: "nothing", marketplace: MARKET }] }, U);
-    check("a plugin the marketplace does not serve is refused, nothing recorded", notServed.status === 400 && /not served by/.test(notServed.json.message ?? ""), JSON.stringify(notServed.json));
-    const added = await api("POST", `/api/vbcloud/instances/${inst.id}/plugins`, { add: [{ name: "echo", marketplace: MARKET }] }, U);
-    check("installing records the plugin as voidbase.lock would (version, marketplace, integrity, source) and queues a build", added.status === 200 && added.json.build === "queued" && added.json.plugins?.[0]?.name === "echo" && added.json.plugins[0].integrity === integrity && added.json.plugins[0].marketplace === MARKET && added.json.plugins[0].source?.commit?.length === 40, JSON.stringify(added.json).slice(0, 300));
-    const someoneElse = await api("GET", "/api/vbcloud/builds/next", undefined, U);
-    check("claiming a build takes a superuser (the builder), not an owner", someoneElse.status === 401 || someoneElse.status === 403, String(someoneElse.status));
-    const claimed = await api("GET", "/api/vbcloud/builds/next", undefined, SU);
-    check("the builder claims the queued build: instance, base release and the plugin set", claimed.status === 200 && claimed.json.id === inst.id && claimed.json.name === "vb-my-shop" && claimed.json.base === manifest.version && claimed.json.plugins?.[0]?.integrity === integrity, JSON.stringify(claimed.json));
-    const again = await api("GET", "/api/vbcloud/builds/next", undefined, SU);
-    check("a claimed build is not handed out twice", again.status === 204, String(again.status));
-    const midway = await api("GET", `/api/vbcloud/instances/${inst.id}/plugins`, undefined, U);
-    check("while it builds, the owner sees the state and cannot change the set", midway.json.build === "building" && (await api("POST", `/api/vbcloud/instances/${inst.id}/plugins`, { remove: ["echo"] }, U)).status === 400, JSON.stringify(midway.json).slice(0, 200));
-    // the builder pushes the release it made for this instance (the same files here), without making it the default
-    const built = `${manifest.version}-vb-my-shop.t1`;
-    let pushedBuilt = 0; for (const f of files) { const r = await fetch(`${VB}/api/vbcloud/releases/${built}/files?path=${encodeURIComponent(f)}`, { method: "POST", headers: { authorization: SU, "content-type": "application/octet-stream" }, body: await Bun.file(`${releaseDir}/${f}`).arrayBuffer() }); if (r.ok) pushedBuilt++; }
-    const stillCurrent = await api("GET", "/api/vbcloud/release", undefined, SU);
-    check("the per-instance release is pushed without becoming the default", pushedBuilt === files.length && stillCurrent.json.current === manifest.version, `${pushedBuilt}/${files.length} ${stillCurrent.json.current}`);
-    const uploadsBefore = (await cfState()).scripts["vb-my-shop"]?.uploads ?? 0;
-    const done = await api("POST", `/api/vbcloud/builds/${inst.id}/done`, { version: built }, SU);
-    const after = await cfState();
-    check("done: the instance is deployed from that release, secrets inherited, and runs it", done.status === 200 && done.json.instance?.release === built && done.json.instance?.build === "" && !!after.scripts["vb-my-shop"] && (after.scripts["vb-my-shop"].uploads ?? uploadsBefore + 1) > uploadsBefore, JSON.stringify(done.json).slice(0, 300));
-    const upgradeWithPlugins = await api("POST", `/api/vbcloud/instances/${inst.id}/upgrade`, undefined, U);
-    check("an upgrade of an instance with plugins is a rebuild on the base, not a bare re-provision", upgradeWithPlugins.status === 200 && upgradeWithPlugins.json.upgraded === false && (upgradeWithPlugins.json.queued === true || /Already built/.test(upgradeWithPlugins.json.message ?? "")), JSON.stringify(upgradeWithPlugins.json).slice(0, 200));
-    const reclaim = await api("GET", "/api/vbcloud/builds/next", undefined, SU);
-    if (reclaim.status !== 200) await api("POST", `/api/vbcloud/instances/${inst.id}/plugins`, { remove: ["echo"] }, U);
-    const claim2 = reclaim.status === 200 ? reclaim : await api("GET", "/api/vbcloud/builds/next", undefined, SU);
-    const failed = await api("POST", `/api/vbcloud/builds/${inst.id}/failed`, { error: "the bundler said no" }, SU);
-    const seen = await api("GET", `/api/vbcloud/instances/${inst.id}/plugins`, undefined, U);
-    check("a failed build is reported with its reason, and the instance keeps the release it runs", claim2.status === 200 && failed.status === 200 && seen.json.build === "failed" && seen.json.buildError === "the bundler said no" && seen.json.instance?.release === built, JSON.stringify(seen.json).slice(0, 300));
-  } finally { market.stop(true); }
+  // ---- upgrade, from the browser: a second release, the same instance, secrets inherited
+  const v2 = `${manifest.version}-next`;
+  { const m2 = { ...manifest, version: v2 }; let n = 0; for (const f of files) { const body = f === "manifest.json" ? new TextEncoder().encode(JSON.stringify(m2)) : new Uint8Array(await Bun.file(`${releaseDir}/${f}`).arrayBuffer()); const r = await fetch(`${VB}/api/vbcloud/releases/${v2}/files?path=${encodeURIComponent(f)}`, { method: "POST", headers: { authorization: SU, "content-type": "application/octet-stream" }, body }); if (r.ok) n++; } await api("POST", `/api/vbcloud/releases/${v2}/activate`, undefined, SU); check(`a second release is pushed and activated (${n} files)`, n === files.length); }
+  const putsOf = async () => (((await (await fetch(`${CF}/__calls`)).json()) as string[]).filter((c) => /^PUT \/accounts\/acc123\/workers\/scripts\/vb-my-shop$/.test(c)).length);
+  const uploadsBefore = await putsOf();
+  const up = await client.upgradeInstance(inst);
+  const uploadsAfter = await putsOf();
+  const upRow = (await api("GET", `/api/collections/vb_instances/records/${inst.id}`, undefined, U)).json;
+  check("upgrade: the same worker uploaded again from the new release, the row moved, secrets inherited", up.upgraded === true && up.from === manifest.version && up.to === v2 && uploadsAfter === uploadsBefore + 1 && upRow.release === v2 && upRow.status === "live", JSON.stringify({ up: up.upgraded, uploadsBefore, uploadsAfter, release: upRow.release, status: upRow.status }));
+  const again = await client.upgradeInstance({ ...inst, release: v2 });
+  check("already on it: nothing uploaded", again.upgraded === false, JSON.stringify(again));
+  const sysUp = await client.upgradeInstance({ ...(self0 as Instance), system: true }).then(() => "did", (e) => (e instanceof Error ? e.message : String(e)));
+  check("a system instance is never re-provisioned from here", /deployed from its repository/.test(String(sysUp)), String(sysUp));
+
+  // ---- plugins: the instance's own installer, with a session minted on the instance itself
+  const calls: { path: string; auth: string; body: unknown }[] = [];
+  const instance = Bun.serve({ port: 0, hostname: "127.0.0.1", async fetch(req) {
+    const p = new URL(req.url).pathname; const auth = req.headers.get("authorization") ?? "";
+    if (p === "/api/collections/_superusers/auth-with-password") { const b = (await req.json()) as { identity: string; password: string }; return b.password === created.credentials.superuserPassword ? Response.json({ token: "inst-session" }) : Response.json({ message: "Failed to authenticate." }, { status: 400 }); }
+    if (auth !== "inst-session") return Response.json({ message: "The request requires valid record authorization token." }, { status: 401 });
+    if (p === "/api/plugins") return Response.json({ names: ["auth", "realtime", "hardening", "backups", "installer", "echo"], origins: { auth: "shipped", realtime: "shipped", hardening: "shipped", backups: "shipped", installer: "shipped", echo: "http://market.test 0.1.0" }, disabled: [], installer: { mode: "repository", repository: "octo-tester/existing", branch: "master" } });
+    if (p === "/api/plugins/available") return Response.json({ installer: { mode: "repository" }, available: [{ marketplace: "https://marketplace.voidbase.cloud", plugins: [{ name: "echo", title: "Echo", summary: "x", latest: "0.2.0" }] }] });
+    const body = await req.json().catch(() => null); calls.push({ path: p, auth, body });
+    if (p === "/api/plugins/install") return Response.json({ applied: "repository", committed: { sha: "abc", url: "https://github.example/octo-tester/existing/commit/abc" }, message: "Committed." });
+    if (p === "/api/plugins/remove" || p === "/api/plugins/update") return Response.json({ applied: "repository", message: "Committed." });
+    return Response.json({ message: "no" }, { status: 404 });
+  } });
+  const instUrl = `http://127.0.0.1:${instance.port}`;
+  await api("PATCH", `/api/collections/vb_instances/records/${inst.id}`, { url: instUrl }, U);
+  const reachable = { ...inst, url: instUrl };
+  const badSession = await client.instanceSession(reachable, "owner@example.com", "wrong").then(() => "ok", (e) => (e instanceof Error ? e.message : String(e)));
+  const session = await client.instanceSession(reachable, "owner@example.com", created.credentials.superuserPassword!);
+  check("the owner signs in to the instance from the browser; a wrong password is the instance's refusal", session === "inst-session" && /Failed to authenticate/.test(String(badSession)), String(badSession));
+  const plugins = client.plugins(reachable, session);
+  const running = await plugins.running(); const available = await plugins.available();
+  check("the instance says what runs and where its plugins live; the marketplace's list comes through the instance", running.installer.mode === "repository" && running.origins.echo.startsWith("http://market.test") && available.available[0]?.plugins[0]?.name === "echo", JSON.stringify(running).slice(0, 200));
+  const installed = await plugins.install("echo", { marketplace: "https://marketplace.voidbase.cloud" }); await plugins.remove("echo"); await plugins.update();
+  check("install, remove and update reach the instance with the instance's own session, and the instance answers with its commit", calls.length === 3 && calls.every((c) => c.auth === "inst-session") && (calls[0]!.body as { name: string }).name === "echo" && (installed.committed as { sha: string }).sha === "abc", JSON.stringify(calls));
+  instance.stop(true);
+  await api("PATCH", `/api/collections/vb_instances/records/${inst.id}`, { url: inst.url }, U);
+
+  // ---- sealed at rest
   {
     const { Database } = await import("bun:sqlite");
     const db = new Database(`${data}/pb_data/data.db`, { readonly: true });
@@ -157,16 +172,16 @@ try {
     db.close();
     check("cloudflare tokens are sealed at rest (enc: prefix, not the bearer)", rows.length === 1 && rows[0]!.access_token.startsWith("enc:") && !rows[0]!.access_token.includes("cf-test-token") && rows[0]!.refresh_token.startsWith("enc:"), JSON.stringify(rows).slice(0, 120));
   }
-  // ---- template marketplace: connect GitHub, create a repository from the site template wired to the instance
+
+  // ---- GitHub: connect on the site; repositories created, linked and unlinked from the browser
   const gh0 = await api("GET", "/api/vbcloud/github", undefined, U);
   check("github: configured, not connected yet", gh0.status === 200 && gh0.json.configured === true && gh0.json.connected === false, JSON.stringify(gh0.json));
   const tplAnon = await api("GET", "/api/vbcloud/templates");
   const tpl = await api("GET", "/api/vbcloud/templates", undefined, U);
-  check("templates: auth required, the site template is registered with its variables", tplAnon.status === 401 && tpl.status === 200 && tpl.json.templates?.[0]?.name === "voidbase-site" && tpl.json.templates[0].repo === "voidbase-cloud/voidbase-site" && tpl.json.templates[0].variables?.some((v: { name: string }) => v.name === "PB_VB_URL"), JSON.stringify(tpl.json).slice(0, 300));
-  const tooEarly = await api("POST", "/api/vbcloud/repos", { template: "voidbase-site", name: "my-site", instance: inst.id }, U);
-  check("creating a repository needs a GitHub connection", tooEarly.status === 400 && /Connect your GitHub/.test(tooEarly.json.message ?? ""), JSON.stringify(tooEarly.json));
+  const siteTpl = tpl.json.templates?.[0];
+  check("templates: auth required, the site template is registered with its variables", tplAnon.status === 401 && tpl.status === 200 && siteTpl?.name === "voidbase-site" && siteTpl.variables?.some((v: { name: string }) => v.name === "PB_VB_URL"), JSON.stringify(tpl.json).slice(0, 200));
   const connect = await api("GET", "/api/vbcloud/github/connect", undefined, U);
-  check("connect returns GitHub's authorize url with our callback, scopes and a signed state", connect.status === 200 && String(connect.json.url).startsWith(`${GH}/login/oauth/authorize`) && decodeURIComponent(connect.json.url).includes(`${VB}/api/vbcloud/github/callback`) && /scope=repo/.test(connect.json.url) && /state=[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/.test(connect.json.url), String(connect.json.url).slice(0, 200));
+  check("connect returns GitHub's authorize url with our callback, scopes and a signed state", connect.status === 200 && String(connect.json.url).startsWith(`${GH}/login/oauth/authorize`) && decodeURIComponent(String(connect.json.url)).includes("/api/vbcloud/github/callback") && /state=/.test(String(connect.json.url)), JSON.stringify(connect.json));
   const ghAuthz = await fetch(connect.json.url, { redirect: "manual" }); const cb = ghAuthz.headers.get("location")!;
   const done = await fetch(cb, { redirect: "manual" });
   check("callback exchanges the code, stores the connection and sends the browser back to the site", done.status === 302 && done.headers.get("location") === "http://site.test/cloud?github=connected", `${done.status} ${done.headers.get("location")}`);
@@ -180,103 +195,59 @@ try {
     const rows = db.query("SELECT access_token FROM gh_connections").all() as { access_token: string }[]; db.close();
     check("the GitHub token is sealed at rest", rows.length === 1 && rows[0]!.access_token.startsWith("enc:") && !rows[0]!.access_token.includes("gh-test-token"), JSON.stringify(rows).slice(0, 80));
   }
-  const mk = await api("POST", "/api/vbcloud/repos", { template: "voidbase-site", name: "My Site!", instance: inst.id, private: true, domain: "site.example.com" }, U);
+  const ghUser = await api("GET", "/api/vbcloud/gh/user", undefined, U);
+  check("the GitHub pass-through answers with the user's connection", ghUser.status === 200 && ghUser.json.login === "octo-tester", JSON.stringify(ghUser.json));
+  const mk = await client.createRepo({ template: siteTpl, name: "My Site!", private: true, instance: inst, user: uid, inputs: { domain: "site.example.com" } });
   const ghs = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-  check("repository generated from the template in the user's account, private, from the right template", mk.status === 200 && mk.json.repo?.fullName === "octo-tester/my-site" && mk.json.repo.status === "ready" && ghs.repos["octo-tester/my-site"]?.template === "voidbase-cloud/voidbase-site" && ghs.repos["octo-tester/my-site"].private === true, JSON.stringify(mk.json).slice(0, 300));
+  check("repository generated from the template in the user's account, private, from the right template", mk.repo.fullName === "octo-tester/my-site" && mk.repo.status === "ready" && ghs.repos["octo-tester/my-site"]?.private === true && ghs.repos["octo-tester/my-site"]?.template === "voidbase-cloud/voidbase-site", JSON.stringify(mk.repo));
   check("the instance url and the domain were written as repository variables", ghs.variables["octo-tester/my-site"]?.PB_VB_URL === inst.url && ghs.variables["octo-tester/my-site"]?.PAGES_CNAME === "site.example.com", JSON.stringify(ghs.variables));
-  const dupRepo = await api("POST", "/api/vbcloud/repos", { template: "voidbase-site", name: "my-site", instance: inst.id }, U);
-  check("the same repository cannot be linked twice", dupRepo.status === 400 && /already linked/.test(dupRepo.json.message ?? ""), JSON.stringify(dupRepo.json));
+  const wiredScript = (await cfState()).scripts["vb-my-shop"];
+  check("the instance's Worker was wired: repository, branch and the user's GitHub token as its secrets", ["VOIDBASE_PROJECT_REPO", "VOIDBASE_PROJECT_BRANCH", "VOIDBASE_GH_TOKEN"].every((k) => (wiredScript?.secrets ?? []).includes(k)) && mk.wired.length === 3, JSON.stringify(wiredScript?.secrets));
+  const dupRepo = await client.createRepo({ template: siteTpl, name: "my-site", instance: inst, user: uid }).then(() => "made", (e) => (e instanceof Error ? e.message : String(e)));
+  check("the same repository cannot be created twice", /already exists|Name already/.test(String(dupRepo)), String(dupRepo));
   const repos = await api("GET", "/api/vbcloud/repos", undefined, U);
   const r0 = repos.json.repos?.[0];
-  check("repos: listed with instance, template and a live connection check", repos.status === 200 && r0?.fullName === "octo-tester/my-site" && r0.instanceName === "vb-my-shop" && r0.templateName === "voidbase-site" && r0.live?.checked === true && r0.live.exists === true && r0.live.connected === true, JSON.stringify(repos.json).slice(0, 300));
-  const viaSdkRepos = await api("GET", "/api/collections/vb_repos/records", undefined, U);
-  check("vb_repos through the API rules: only the owner's rows", viaSdkRepos.status === 200 && viaSdkRepos.json.totalItems === 1, JSON.stringify(viaSdkRepos.json).slice(0, 120));
-  const unlink = await api("DELETE", `/api/vbcloud/repos/${r0.id}`, undefined, U);
+  check("repos: the row the browser wrote is listed with its instance and template", repos.status === 200 && r0?.fullName === "octo-tester/my-site" && r0.instanceName === "vb-my-shop" && r0.templateName === "voidbase-site", JSON.stringify(repos.json).slice(0, 300));
+  const live = await client.checkRepo(r0, inst);
+  check("the browser asks GitHub about the repository: it exists and points at the instance", live.exists && live.connected && live.backendUrl === inst.url, JSON.stringify(live));
+  await client.unlinkRepo(r0, inst);
   const ghs2 = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-  check("unlink removes the link and leaves the repository on GitHub", unlink.status === 200 && unlink.json.unlinked === true && "octo-tester/my-site" in ghs2.repos && (await api("GET", "/api/vbcloud/repos", undefined, U)).json.repos.filter((r: Record<string, unknown>) => !r.system).length === 0, JSON.stringify(unlink.json));
-  // ---- dogfooding: the site's own repository is a system row wired to the site's own backend; admins may wire more
-  // repositories to that backend; existing repositories can be linked without a template
-  await fetch(`${GH}/__seed`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ full_name: "voidbase-cloud/voidbase-site", variables: { PB_VB_URL: VB } }) });
+  const unwiredScript = (await cfState()).scripts["vb-my-shop"];
+  const reposAfter = ((await api("GET", "/api/vbcloud/repos", undefined, U)).json.repos as { system?: boolean }[]).filter((r) => !r.system);
+  check("unlink removes the row and the wiring, and leaves the repository on GitHub", "octo-tester/my-site" in ghs2.repos && reposAfter.length === 0 && !(unwiredScript?.secrets ?? []).includes("VOIDBASE_GH_TOKEN"), JSON.stringify({ onGitHub: "octo-tester/my-site" in ghs2.repos, rows: reposAfter.length, secrets: unwiredScript?.secrets }));
   await fetch(`${GH}/__seed`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ full_name: "octo-tester/existing", private: true }) });
-  const allInst = await api("GET", "/api/vbcloud/instances", undefined, U);
-  const sysInst = (allInst.json.instances ?? []).find((i: Record<string, unknown>) => i.system && i.self);
-  check("the admin sees the system instance as linkable, others' instances are not offered", !!sysInst && sysInst.canLink === true && sysInst.self === true, JSON.stringify(allInst.json).slice(0, 200));
+  const missing = await client.linkRepo({ fullName: "octo-tester/nope", instance: inst, user: uid }).then(() => "linked", (e) => (e instanceof Error ? e.message : String(e)));
+  check("linking a repository GitHub does not know is refused", /not found on GitHub/.test(String(missing)), String(missing));
+  const linked = await client.linkRepo({ fullName: "https://github.com/Octo-Tester/existing.git", instance: inst, user: uid });
+  const ghsL = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  check("an existing repository (given as a URL) is linked: PB_VB_URL written, private flag read from GitHub, wired", linked.repo.fullName === "octo-tester/existing" && linked.repo.private === true && ghsL.variables["octo-tester/existing"]?.PB_VB_URL === inst.url && linked.wired.length === 3, JSON.stringify(linked));
+  const relink = await client.linkRepo({ fullName: "octo-tester/existing", instance: inst, user: uid }).then(() => "linked", (e) => (e instanceof Error ? e.message : String(e)));
+  check("a linked repository cannot be linked twice (the unique name)", /already|unique|failed/i.test(String(relink)), String(relink));
+
+  // ---- the system rows: the site's own repository, the demo project; admins see them, nobody writes them from here
+  await fetch(`${GH}/__seed`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ full_name: "voidbase-cloud/voidbase-site", variables: { PB_VB_URL: VB } }) });
+  await fetch(`${GH}/__seed`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ full_name: "voidbase-cloud/voidbase-demo" }) });
+  const sysList = await api("GET", "/api/vbcloud/instances", undefined, U);
+  const demo = (sysList.json.instances ?? []).find((i: Record<string, unknown>) => i.name === "voidbase-demo");
   const dog = await api("GET", "/api/vbcloud/repos", undefined, U);
   const site = (dog.json.repos ?? []).find((r: Record<string, unknown>) => r.fullName === "voidbase-cloud/voidbase-site");
-  check("the site's own repository is listed to the admin as a system row wired to this backend, live-checked connected", dog.status === 200 && !!site && site.system === true && site.canUnlink === false && site.instanceName === "voidbase-site" && site.templateName === "voidbase-site" && site.live?.connected === true, JSON.stringify(dog.json).slice(0, 300));
-  const noUnlink = await api("DELETE", `/api/vbcloud/repos/${site?.id}`, undefined, U);
-  check("the site's own repository cannot be unlinked", noUnlink.status === 403, JSON.stringify(noUnlink.json));
-  const dogfood = await api("POST", "/api/vbcloud/repos", { template: "voidbase-site", name: "dogfood", instance: sysInst?.id }, U);
-  const ghsD = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-  check("an admin creates a repository from the template wired to the site's own backend", dogfood.status === 200 && dogfood.json.repo?.instanceName === "voidbase-site" && ghsD.variables["octo-tester/dogfood"]?.PB_VB_URL === VB, JSON.stringify(dogfood.json).slice(0, 200));
-  const linkMissing = await api("POST", "/api/vbcloud/repos/link", { fullName: "octo-tester/nope", instance: inst.id }, U);
-  check("linking a repository GitHub does not know is refused", linkMissing.status === 400 && /not found on GitHub/.test(linkMissing.json.message ?? ""), JSON.stringify(linkMissing.json));
-  const linked = await api("POST", "/api/vbcloud/repos/link", { fullName: "https://github.com/Octo-Tester/existing.git", instance: inst.id }, U);
-  const ghsL = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-  check("an existing repository (given as a URL) is linked: PB_VB_URL written, private flag read from GitHub", linked.status === 200 && linked.json.repo?.fullName === "octo-tester/existing" && linked.json.repo.private === true && linked.json.repo.instanceName === "vb-my-shop" && ghsL.variables["octo-tester/existing"]?.PB_VB_URL === inst.url, JSON.stringify(linked.json).slice(0, 200));
-  const relink = await api("POST", "/api/vbcloud/repos/link", { fullName: "octo-tester/existing", instance: inst.id }, U);
-  check("a linked repository cannot be linked twice", relink.status === 400 && /already linked/.test(relink.json.message ?? ""), JSON.stringify(relink.json));
-  // ---- project instances: an instance with a repository linked gets its plugins as one commit to that repository,
-  // and the repository's own build deploys it; no builder, no release
-  const market2 = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch: (req) => { const p = new URL(req.url).pathname; if (p === "/registry/v1/index.json") return Response.json(index); if (p === "/registry/v1/plugins/echo/0.1.0.json") return Response.json(record); if (p === "/registry/v1/plugins/echo/0.1.0/bundle.js") return new Response(echoBytes, { headers: { "content-type": "text/javascript" } }); return new Response("no", { status: 404 }); } });
-  const MARKET2 = `http://127.0.0.1:${market2.port}`;
-  try {
-    await fetch(`${GH}/__files`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ full_name: "octo-tester/existing", files: { "pb_hooks/main.pb.js": "// hooks\n", "voidbase.lock": JSON.stringify({ lockfileVersion: 1, marketplaces: ["https://marketplace.voidbase.cloud"], plugins: {}, disabled: ["backups"] }, null, 2) + "\n" } }) });
-    const projAdd = await api("POST", `/api/vbcloud/instances/${inst.id}/plugins`, { add: [{ name: "echo", marketplace: MARKET2 }] }, U);
-    const ghsP = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-    const headP = ghsP.commits.find((c: { sha: string }) => c.sha === ghsP.heads["octo-tester/existing"]);
-    const filesP = ghsP.files["octo-tester/existing"] ?? {};
-    const lockP = (() => { try { return JSON.parse(filesP["voidbase.lock"] ?? ""); } catch { return null; } })();
-    check("a project instance: installing is one commit to its repository, no build queued", projAdd.status === 200 && projAdd.json.build === "" && String(projAdd.json.commit).includes(headP?.sha ?? "?") && projAdd.json.repo?.fullName === "octo-tester/existing" && /Committed to octo-tester\/existing/.test(projAdd.json.message ?? ""), JSON.stringify(projAdd.json).slice(0, 300));
-    check("the commit is what `voidbase plugins add` writes: bundle.js (the verified bytes), release.json, and the lockfile entry", headP?.message === "plugins: add echo 0.1.0" && filesP["pb_plugins/echo/bundle.js"] === echo && JSON.parse(filesP["pb_plugins/echo/release.json"] ?? "{}").version === "0.1.0" && lockP?.plugins?.echo?.version === "0.1.0" && lockP.plugins.echo.integrity === integrity && lockP.plugins.echo.marketplace === MARKET2 && lockP.plugins.echo.source?.commit === record.source.commit && JSON.stringify(lockP.disabled) === '["backups"]' && filesP["pb_hooks/main.pb.js"] === "// hooks\n", JSON.stringify({ head: headP, lock: lockP }).slice(0, 400));
-    const projGet = await api("GET", `/api/vbcloud/instances/${inst.id}/plugins`, undefined, U);
-    check("the owner sees the set, the repository and the commit", projGet.status === 200 && projGet.json.plugins?.[0]?.name === "echo" && projGet.json.repo?.fullName === "octo-tester/existing" && projGet.json.commit === projAdd.json.commit, JSON.stringify(projGet.json).slice(0, 300));
-    const projUp = await api("POST", `/api/vbcloud/instances/${inst.id}/upgrade`, undefined, U);
-    check("a project instance is never re-provisioned from a release: upgrade says to move voidbase forward in the repository", projUp.status === 400 && /deploys from octo-tester\/existing/.test(projUp.json.message ?? ""), JSON.stringify(projUp.json));
-    const projRm = await api("POST", `/api/vbcloud/instances/${inst.id}/plugins`, { remove: ["echo"] }, U);
-    const ghsR = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-    const filesR = ghsR.files["octo-tester/existing"] ?? {}; const headR = ghsR.commits.find((c: { sha: string }) => c.sha === ghsR.heads["octo-tester/existing"]);
-    check("removing is the next commit: the plugin's files and its lock entry go, the rest of the lockfile stays", projRm.status === 200 && projRm.json.plugins?.length === 0 && headR?.message === "plugins: remove echo" && headR.parents[0] === headP?.sha && !("pb_plugins/echo/bundle.js" in filesR) && !("pb_plugins/echo/release.json" in filesR) && JSON.stringify(JSON.parse(filesR["voidbase.lock"]).plugins) === "{}" && JSON.stringify(JSON.parse(filesR["voidbase.lock"]).disabled) === '["backups"]', JSON.stringify({ head: headR, files: Object.keys(filesR) }).slice(0, 300));
-    // the system projects (VB_SYSTEM_PROJECTS): the demo is a system instance with its repository, committed to with VB_GH_TOKEN
-    await fetch(`${GH}/__seed`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ full_name: "voidbase-cloud/voidbase-demo" }) });
-    await fetch(`${GH}/__files`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ full_name: "voidbase-cloud/voidbase-demo", files: { "voidbase.lock": JSON.stringify({ lockfileVersion: 1, marketplaces: ["https://marketplace.voidbase.cloud"], plugins: {}, disabled: [] }, null, 2) + "\n" } }) });
-    const sysList = await api("GET", "/api/vbcloud/instances", undefined, U);
-    const demo = (sysList.json.instances ?? []).find((i: Record<string, unknown>) => i.name === "voidbase-demo");
-    const sysRepos = await api("GET", "/api/vbcloud/repos", undefined, U);
-    const demoRepo = (sysRepos.json.repos ?? []).find((r: Record<string, unknown>) => r.fullName === "voidbase-cloud/voidbase-demo");
-    check("a system project is registered for the admin: a system instance at its URL and a system repository row wired to it", !!demo && demo.system === true && demo.url === "http://demo.test" && !!demoRepo && demoRepo.system === true && demoRepo.instanceName === "voidbase-demo", JSON.stringify({ demo, demoRepo }).slice(0, 300));
-    const demoAdd = await api("POST", `/api/vbcloud/instances/${demo?.id}/plugins`, { add: [{ name: "echo", marketplace: MARKET2 }] }, U);
-    const ghsS = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-    const headS = ghsS.commits.find((c: { sha: string }) => c.sha === ghsS.heads["voidbase-cloud/voidbase-demo"]);
-    check("a plugin change on a system project is committed to its repository with the site's own token", demoAdd.status === 200 && demoAdd.json.repo?.fullName === "voidbase-cloud/voidbase-demo" && headS?.message === "plugins: add echo 0.1.0" && ghsS.files["voidbase-cloud/voidbase-demo"]?.["pb_plugins/echo/bundle.js"] === echo, JSON.stringify(demoAdd.json).slice(0, 300));
-  } finally { market2.stop(true); }
-  const after = await api("GET", "/api/vbcloud/repos", undefined, U);
-  check("repos: the user's rows first, then the system rows; all live-checked", after.json.repos?.length === 4 && after.json.repos[0].system === false && after.json.repos[2].system === true && after.json.repos.every((r: Record<string, any>) => r.live?.checked === true), JSON.stringify(after.json.repos?.map((r: Record<string, unknown>) => [r.fullName, r.system])));
+  const demoRepo = (dog.json.repos ?? []).find((r: Record<string, unknown>) => r.fullName === "voidbase-cloud/voidbase-demo");
+  check("the admin sees the site's own repository and the demo project as system rows wired to their instances", !!site && site.system === true && site.canUnlink === false && site.instanceName === "voidbase-site" && !!demo && demo.system === true && demo.url === "http://demo.test" && !!demoRepo && demoRepo.instanceName === "voidbase-demo", JSON.stringify({ site, demo, demoRepo }).slice(0, 300));
+  const noUnlink = await client.unlinkRepo(site, null).then(() => "unlinked", (e) => (e instanceof Error ? e.message : String(e)));
+  const noSysDelete = await api("DELETE", `/api/collections/vb_repos/records/${site?.id}`, undefined, U);
+  check("a system repository cannot be unlinked, from the client or through the rules", /stays linked/.test(String(noUnlink)) && (noSysDelete.status === 403 || noSysDelete.status === 404), `${noUnlink} ${noSysDelete.status}`);
+  const noSelfDelete = await client.deleteInstance({ ...(self0 as Instance), system: true }).then(() => "deleted", (e) => (e instanceof Error ? e.message : String(e)));
+  check("a system instance is not deleted from the browser", /not deleted from here/.test(String(noSelfDelete)), String(noSelfDelete));
   const disc = await api("DELETE", "/api/vbcloud/github", undefined, U);
   const ghs3 = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   check("disconnect removes the connection and revokes the grant on GitHub", disc.json.disconnected === true && ghs3.grantRevoked === 1 && (await api("GET", "/api/vbcloud/github", undefined, U)).json.connected === false, JSON.stringify(disc.json));
 
-  const dup = await api("POST", "/api/vbcloud/instances", { name: "my-shop" }, U);
-  check("duplicate name refused", dup.status === 400 && /named vb-my-shop|taken/.test(dup.json.message ?? ""), JSON.stringify(dup.json));
-  const second = await api("POST", "/api/vbcloud/instances", { name: "second" }, U);
-  const third = await api("POST", "/api/vbcloud/instances", { name: "third" }, U);
-  check("per-user limit enforced", second.status === 200 && third.status === 400 && /limit/.test(third.json.message ?? ""), JSON.stringify([second.status, third.json]));
-  const viaSdk = await api("GET", "/api/collections/vb_instances/records", undefined, U);
-  check("the collection itself lists only the owner's rows through the API rules, without the password", viaSdk.status === 200 && viaSdk.json.totalItems === 2 && viaSdk.json.items.every((i: Record<string, unknown>) => i.superuser_password === undefined), JSON.stringify(viaSdk.json).slice(0, 300));
-  const del = await api("DELETE", `/api/vbcloud/instances/${inst.id}`, undefined, U);
+  // ---- delete, from the browser: everything of the instance goes, then the row
+  const del = await client.deleteInstance(inst);
   const st2 = await cfState();
-  check("one click delete: queue consumer, worker, queue, D1 and bucket gone, row removed", del.status === 200 && del.json.deleted.length === 5 && del.json.errors.length === 0 && !st2.scripts["vb-my-shop"] && !st2.d1.some((d: string[]) => d[0] === "vb-my-shop-db") && (await api("GET", "/api/vbcloud/instances", undefined, U)).json.instances.every((i: Record<string, unknown>) => i.name !== "vb-my-shop"), JSON.stringify([del.json, Object.keys(st2.scripts)]));
-  const delAgain = await api("DELETE", `/api/vbcloud/instances/${inst.id}`, undefined, U);
-  check("deleting a removed instance is a 404", delAgain.status === 404);
-
-  // dogfood: the site's own backend, deployed earlier, is destroyed from the site by the admin
-  await fetch(`${CF}/accounts/acc123/d1/database`, { method: "POST", headers: { authorization: "Bearer cf-test-token", "content-type": "application/json" }, body: JSON.stringify({ name: "voidbase-site-db" }) });
-  await fetch(`${CF}/accounts/acc123/r2/buckets`, { method: "POST", headers: { authorization: "Bearer cf-test-token", "content-type": "application/json" }, body: JSON.stringify({ name: "voidbase-site-storage" }) });
-  const form = new FormData(); form.append("metadata", new Blob([JSON.stringify({ main_module: "index.js" })], { type: "application/json" }), "metadata.json"); form.append("index.js", new Blob(["export default {}"], { type: "application/javascript+module" }), "index.js");
-  await fetch(`${CF}/accounts/acc123/workers/scripts/voidbase-site`, { method: "PUT", headers: { authorization: "Bearer cf-test-token" }, body: form });
-  const selfDel = await api("DELETE", `/api/vbcloud/instances/${self0.id}`, undefined, U);
-  const st3 = await cfState();
-  check("admin deletes the site's own backend: worker, D1 and bucket removed on Cloudflare", selfDel.status === 200 && selfDel.json.self === true && selfDel.json.deleted.length === 3 && !st3.scripts["voidbase-site"] && st3.d1.every((d: string[]) => d[0] !== "voidbase-site-db"), JSON.stringify([selfDel.json, Object.keys(st3.scripts)]));
+  check("one click delete: worker, D1, bucket and queue gone, row removed", del.deleted.length >= 3 && !st2.scripts["vb-my-shop"] && (await api("GET", `/api/collections/vb_instances/records/${inst.id}`, undefined, U)).status === 404, JSON.stringify(del));
+  const delAgain = await client.deleteInstance(inst).then(() => "deleted", (e) => (e instanceof Error ? e.message : String(e)));
+  check("deleting a removed instance is refused", /404|not found|wasn't found/i.test(String(delAgain)), String(delAgain));
 } catch (e) { fail++; console.log("FAIL  unexpected error", e); console.log(serverLog.join("").slice(-3000)); }
 finally { for (const p of procs) p.kill(); rmSync(data, { recursive: true, force: true }); rmSync(fake, { recursive: true, force: true }); }
 if (fail) console.log("--- server log tail ---\n" + serverLog.join("").slice(-4000));

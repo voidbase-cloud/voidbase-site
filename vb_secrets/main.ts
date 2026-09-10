@@ -29,7 +29,6 @@ export default defineSecrets({
   // Optional, and declared as such: a deploy goes through without a value for it (voidbase 0.9.0-beta.11 and later).
   // Without it the control plane starts no builds and says so; a maintainer starts them by hand.
   VB_GH_TOKEN: secret(string().optional(), "a GitHub token with contents write on the system repositories (this site's, the demo's), so a plugin change on a system instance is committed there"),
-  VB_BUILDS_TOKEN: secret(string().optional(), "a user API token with Workers Builds Configuration: Edit and Workers Scripts: Read, so the control plane starts instance builds and the nightly proof on Cloudflare (src/shared/builder.ts)"),
 
   // ---- server: hooks and routes only (src/shared/config.ts reads them)
   VB_ADMIN_EMAILS: server(string(), "who counts as an admin of this site (comma separated)"),
@@ -40,11 +39,11 @@ export default defineSecrets({
   GH_OAUTH_SCOPES: server(string().optional(), "overrides the GitHub OAuth scopes"),
   VB_SITE_URL: server(url().optional(), "where the GitHub callback sends the browser back (defaults per runtime)"),
   VB_SITE_REPO: server(string().optional(), "this site's own repository, owner/name"),
+  VOIDBASE_PROJECT_REPO: server(string().default("voidbase-cloud/voidbase-site"), "the repository this site deploys from: its own installer commits there"),
+  VOIDBASE_PROJECT_BRANCH: server(string().default("master"), "that repository's branch"),
+  VOIDBASE_GH_TOKEN: secret(string().optional(), "a GitHub token with contents write on that repository, for the installer (the same value as VB_GH_TOKEN)"),
   VB_SYSTEM_PROJECTS: server(string().optional(), "repositories this site manages as system instances beside its own, `owner/name=worker@https://url` comma separated (the demo)"),
   // the builds the control plane starts (src/shared/builder.ts, workflows/instance-build.ts): found by name, never kept as uuids
-  VB_BUILDS_ACCOUNT: server(string().optional(), "the account the builds run on (defaults to this Worker's own)"),
-  VB_BUILDER_WORKER: server(string().default("voidbase-ci"), "the Worker whose trigger builds cloud instances"),
-  VB_BUILDER_TRIGGER: server(string().default("voidbase-ci (instance-build)"), "that trigger's name"),
   // the landing page's live cursors (voidbase/docs/deploy.md): the newest three visitors hold a slot and may send
   // their cursor, everyone else watches over the connection they already have. Nothing is written to the database.
   // Set VOIDBASE_PRESENCE to 0 and the page falls back to a canned animation at no cost.
