@@ -10,7 +10,7 @@
 import { defineHandler } from "void";
 import { authOf, pb } from "@voidbase-cloud/voidbase/adapter";
 import { download, fetchIndex, pick, type PluginVersion } from "@voidbase-cloud/voidbase/registry";
-import { commitPlugins, instanceJSON, isAdmin, pluginsMessage, pluginsOf, readBody, repoJSON, repoOf, repoToken, requireAuth, startBuildRun, userId, type InstancePlugin, type PluginChange } from "@/shared";
+import { commitPlugins, instanceJSON, isAdmin, lockOf, lockPlugins, pluginsMessage, pluginsOf, readBody, repoJSON, repoOf, repoToken, requireAuth, startBuildRun, userId, type InstancePlugin, type PluginChange } from "@/shared";
 
 const OFFICIAL = "https://marketplace.voidbase.cloud";
 const NAME = /^[a-z][a-z0-9-]*$/;
@@ -37,7 +37,10 @@ export const GET = defineHandler(requireAuth("users"), async (c) => {
   const extra = (c.req.query("marketplace") ?? "").trim().replace(/\/+$/, "");
   const marketplaces = [OFFICIAL, ...(extra && extra !== OFFICIAL && MARKETPLACE.test(extra) ? [extra] : [])];
   const linked = await repoOf(row);
-  return { instance: instanceJSON(row, auth), plugins: pluginsOf(row), build: row.getString("build"), buildError: row.getString("build_error"), commit: row.getString("build_commit"), repo: linked ? repoJSON(linked) : null, available: await Promise.all(marketplaces.map(available)) };
+  // a project instance's set is its repository's lockfile; the row is a record of the last change made from here
+  let plugins = pluginsOf(row);
+  if (linked) { try { plugins = lockPlugins(await lockOf(await repoToken(linked), linked)); } catch (err) { console.warn("vbcloud: lockfile of", linked.getString("full_name"), err instanceof Error ? err.message : err); } }
+  return { instance: instanceJSON(row, auth), plugins, build: row.getString("build"), buildError: row.getString("build_error"), commit: row.getString("build_commit"), repo: linked ? repoJSON(linked) : null, available: await Promise.all(marketplaces.map(available)) };
 });
 
 export const POST = defineHandler(requireAuth("users"), async (c) => {
@@ -51,7 +54,8 @@ export const POST = defineHandler(requireAuth("users"), async (c) => {
   const add = Array.isArray(body.add) ? (body.add as { name?: unknown; version?: unknown; marketplace?: unknown }[]) : [];
   const remove = Array.isArray(body.remove) ? (body.remove as unknown[]).map(String) : [];
   if (!add.length && !remove.length) throw new pb.BadRequestError("Say what to add or remove.");
-  const set = new Map(pluginsOf(row).map((p) => [p.name, p]));
+  const current: InstancePlugin[] = linked ? lockPlugins(await lockOf(token, linked)) : pluginsOf(row);
+  const set = new Map(current.map((p) => [p.name, p]));
   const change: PluginChange = { add: [], remove: [] };
   for (const name of remove) { if (!set.has(name)) throw new pb.BadRequestError(`${name} is not installed on this instance.`); set.delete(name); }
   for (const a of add) {

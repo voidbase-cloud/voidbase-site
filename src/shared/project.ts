@@ -43,6 +43,15 @@ export async function repoToken(repo: HookRecord): Promise<string> {
 const b64 = (bytes: Uint8Array): string => { let s = ""; for (const b of bytes) s += String.fromCharCode(b); return btoa(s); };
 const fromB64 = (s: string): string => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g, "")), (ch) => ch.charCodeAt(0)));
 
+/** the repository's lockfile at the head of its default branch: what a project instance really runs */
+export async function lockOf(token: string, repo: HookRecord): Promise<Lock> {
+  const full = repo.getString("full_name"); const branch = repo.getString("default_branch") || "master";
+  const f = await gh<{ content?: string }>(token, "GET", `/repos/${full}/contents/${LOCKFILE}?ref=${encodeURIComponent(branch)}`, undefined, [404]);
+  return f.status === 404 ? emptyLock() : parseLock(fromB64(String(f.data.content ?? "")));
+}
+/** the lockfile's plugins in the shape the instance row records */
+export const lockPlugins = (lock: Lock) => Object.entries(lock.plugins).map(([name, e]) => ({ name, version: e.version, marketplace: e.marketplace, integrity: e.integrity, source: e.source }));
+
 export interface PluginChange { add: { name: string; version: PluginVersion; marketplace: string; bytes: Uint8Array }[]; remove: string[] }
 export interface Committed { sha: string; url: string; branch: string; lock: Lock }
 
