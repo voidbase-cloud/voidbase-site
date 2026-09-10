@@ -41,8 +41,8 @@ export default defineSecrets({
   VB_SITE_REPO: server(string().optional(), "this site's own repository, owner/name"),
   // the builds the control plane starts (src/shared/builder.ts, workflows/instance-build.ts): found by name, never kept as uuids
   VB_BUILDS_ACCOUNT: server(string().optional(), "the account the builds run on (defaults to this Worker's own)"),
-  VB_BUILDER_WORKER: server(string().default("voidbase-builder"), "the Worker whose trigger builds cloud instances"),
-  VB_BUILDER_TRIGGER: server(string().default("voidbase-builder (instance-build)"), "that trigger's name"),
+  VB_BUILDER_WORKER: server(string().default("voidbase-ci"), "the Worker whose trigger builds cloud instances"),
+  VB_BUILDER_TRIGGER: server(string().default("voidbase-ci (instance-build)"), "that trigger's name"),
   // the landing page's live cursors (voidbase/docs/deploy.md): the newest three visitors hold a slot and may send
   // their cursor, everyone else watches over the connection they already have. Nothing is written to the database.
   // Set VOIDBASE_PRESENCE to 0 and the page falls back to a canned animation at no cost.

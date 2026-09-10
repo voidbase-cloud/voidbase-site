@@ -1,6 +1,6 @@
 // Instance builds and the nightly proof run as Cloudflare Workers Builds, started from here through the Builds API.
 //
-// The builder is the `voidbase-builder (instance-build)` trigger, on a Worker of its own in voidbase's account
+// The builder is the `voidbase-ci (instance-build)` trigger, the CI Worker's second in voidbase's account
 // (voidbase/docs/ci.md; a Worker takes two triggers at most): a push never starts it, this does, the moment a build
 // is queued, and the keeper cron (crons/keeper.ts) does again for a build nobody claimed. A trigger is found by
 // the Worker's name and its own, never kept as a uuid: a Worker rename gave the site new triggers once, and a
@@ -52,7 +52,7 @@ export async function startBuild(worker: string, trigger: string, reason: string
 }
 
 /** the instance builder: claims every queued build (scripts/instance-build.ts in voidbase) */
-export const dispatchBuilder = (reason: string) => startBuild(env("VB_BUILDER_WORKER", "voidbase-builder"), env("VB_BUILDER_TRIGGER", "voidbase-builder (instance-build)"), reason);
+export const dispatchBuilder = (reason: string) => startBuild(env("VB_BUILDER_WORKER", "voidbase-ci"), env("VB_BUILDER_TRIGGER", "voidbase-ci (instance-build)"), reason);
 
 /**
  * Where a Cloudflare build stands: "running" while it is queued, initializing or running, "success" once it
