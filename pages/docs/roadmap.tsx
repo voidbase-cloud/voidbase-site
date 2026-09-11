@@ -1,9 +1,12 @@
-// What is coming, in three sections. The first came out of writing the comparison pages honestly, so every item in
-// it is a row that carries an amber mark and the two stay true to each other: nothing is amber unless it is here,
-// and nothing is here without a design. The second is the core, and the third is the plugins we intend to ship on
-// top of it. All three are plans. None of them is a shipped feature.
+// What was planned and what shipped, in three sections: the gaps the comparison pages showed, the core, and the
+// plugins on top of it. Each item keeps the words it was proposed with, says what shipped and when, and names what
+// is still open, so the page is a record rather than a promise. A row marked "depends" or "planned" on a comparison
+// page is an item here, and an item here is shipped, partly shipped or still a plan, and says which.
 import { Link } from "@void/react";
 import "@/scss/why.scss";
+
+type Status = "shipped" | "partly" | "open";
+const LABEL: Record<Status, string> = { shipped: "Shipped", partly: "Partly shipped", open: "Planned" };
 
 function Item({
   title,
@@ -11,24 +14,49 @@ function Item({
   now,
   plan,
   size,
+  status = "open",
+  left,
 }: {
   title: string;
   from: string;
   now: string;
   plan: string;
   size: string;
+  status?: Status;
+  /** what is still open on a shipped or partly shipped item */
+  left?: string;
 }) {
+  const done = status !== "open";
   return (
-    <section className="why-item">
-      <h3>{title}</h3>
+    <section className={`why-item why-item-${status}`}>
+      <h3>
+        {title} <span className={`label ${status === "shipped" ? "label-success" : status === "partly" ? "label-warning" : ""}`}>{LABEL[status]}</span>
+      </h3>
       <p className="why-item-from">{from}</p>
       <dl className="why-item-body">
-        <dt>Today</dt>
+        <dt>{done ? "What shipped" : "Today"}</dt>
         <dd>{now}</dd>
-        <dt>The plan</dt>
-        <dd>{plan}</dd>
-        <dt>Size</dt>
-        <dd>{size}</dd>
+        {done ? (
+          left ? (
+            <>
+              <dt>What is left</dt>
+              <dd>{left}</dd>
+            </>
+          ) : null
+        ) : (
+          <>
+            <dt>The plan</dt>
+            <dd>{plan}</dd>
+            <dt>Size</dt>
+            <dd>{size}</dd>
+          </>
+        )}
+        {done && (
+          <>
+            <dt>As proposed</dt>
+            <dd className="txt-hint">{plan}</dd>
+          </>
+        )}
       </dl>
     </section>
   );
@@ -40,14 +68,16 @@ export default function DocsRoadmap() {
       <span className="why-eyebrow">The roadmap</span>
       <h1>Roadmap</h1>
       <p className="docs-lead">
-        Four sections. The gaps other backends showed us, the shape we want the core to have, the plugins we intend
-        to ship on top of it, and the ecosystem we would rather other people build than build ourselves.
+        Four sections. The gaps other backends showed us, the shape the core has taken, the plugins on top of it,
+        and the ecosystem we would rather other people build than build ourselves.
       </p>
 
       <p>
-        Everything here is a plan, not a shipped feature. An item earns its place by having a design, not by being
-        desirable. In the first section that rule is visible on the comparison pages: a row is amber only when it
-        is listed below, and a gap with no answer yet stays a red cross.
+        This page is a record as much as a plan. Each item keeps the words it was proposed with, says what shipped
+        and in which release, and names what is still open; an item that is still a plan says so. Most of it shipped
+        between 0.9.0-beta.20 and 0.9.0-beta.35 in September 2026. An item earns its place by having a design, not
+        by being desirable, and on the comparison pages a row marked depends or planned is an item here, while a gap
+        with no answer stays a cross.
       </p>
 
       <h2>From the comparisons</h2>
@@ -60,6 +90,8 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Transactions and the database limits</h3>
       <Item
         title="Real transactions, and fewer platform limits"
+        status="partly"
+        left="Hooks opening an interactive transaction of their own, and the Durable Object database becoming the default rather than a knob once more instances have run on it. The parameter and column ceilings are SQLite's and stay."
         from="PocketBase has interactive transactions and no bound-parameter or column ceiling. Convex is transactional by design. We have neither."
         now="Shipped in 0.9.0-beta.32 behind a knob. VOIDBASE_DATABASE=durable puts an instance's data in its own SQLite-backed Durable Object instead of D1: the deploy binds the object and skips D1, the same D1 interface is served over it, and a batch runs as one real transaction, so a failing second statement leaves nothing of the first, which workerd proves in the package's own test. One premise did not survive measurement: the 100-parameter and 100-column ceilings are SQLite's on Cloudflare, and they apply to the object too. An existing instance moves with voidbase migrate through the backups API. Hooks still cannot open an interactive transaction of their own."
         plan="Move an instance's data into its own SQLite-backed Durable Object instead of a D1 database. The object is a single writer, so transactionSync gives real interactive transactions, the caches never need invalidating, and the D1 statement limits stop applying. The database layer already goes through one interface with a swappable implementation, which is what makes this a replacement rather than a rewrite."
@@ -69,8 +101,10 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Offline</h3>
       <Item
         title="Writes that survive a tunnel, as a client plugin"
+        status="partly"
+        left="Reads through a local store, so a screen renders before the network answers."
         from="Firebase caches writes on the device and reconciles them when the network returns, and has done for a decade."
-        now="Nothing. A request that fails is a request your code has to handle."
+        now="Shipped in @voidbase-cloud/sdk 0.1.0 as the offline plugin, on the client's plugin surface: a mutation the network refuses, or one attempted while the browser says it is offline, is queued in localStorage (or a store you hand in), answered optimistically with an id chosen up front, and replayed in order when the connection is back or on flush(); a 4xx on replay drops it and says so. The adapter's pwa option and @voidbase-cloud/sdk/pwa put the service worker around it."
         plan="A plugin on the typed client above rather than a feature inside it, because offline is exactly the shape that surface is for: it sits in the request path, holds state of its own, and most applications do not want it. Two pieces, in order. A queue that takes mutations the network refused and replays them on reconnect, which needs no change to the API. Then reads through a local store, so a screen renders before the network answers. Being a plugin is what makes the second piece safe to attempt: an application that only wants the queue installs only the queue, and one that wants neither carries neither."
         size="Medium for the queue, large for the local store, and both wait on the client having a plugin surface at all. The installable-app plugin further down this page wraps whichever of them you have."
       />
@@ -78,8 +112,10 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Types</h3>
       <Item
         title="A typed client, and a client that takes plugins"
+        status="shipped"
+        left="A watch mode for voidbase types; run it again, or put it in the build."
         from="Convex types the whole path from schema to component, so a rename breaks the build. Ours breaks at the call instead."
-        now="voidbase types writes a typed client from the instance's own OpenAPI document: one interface per collection, select literals, multi-select arrays, typed expand for relations, and a TypedPocketBase type that makes a renamed field a compile error. No watch mode yet, and the client still takes no plugins."
+        now="Shipped in two steps. voidbase types writes the Collections map from the instance's own OpenAPI document, and @voidbase-cloud/sdk, voidbase's fork of the PocketBase SDK, takes it as new VoidBase<Collections>(url), so a renamed field is a compile error at the call. The same client has the plugin surface: client.use(plugin), hook lists on the request path, and six shipped plugins that use it (offline, pwa, editable, ai, payments, seo)."
         plan="Generate a typed client from the instance's own OpenAPI description rather than from a second reading of the collections, so the client and the documentation cannot disagree about what the API is. A command writes it, the build refreshes it, and a rename becomes a compile error. The collection definitions are already data on the server, so nothing new has to be described. Then give that client the same thing the server is getting: a plugin surface. A client plugin sits in the request path, can add methods, and can hold state of its own, which is what turns the next item from a feature we would have to build into something that can be written by us or by anyone else. Caching, retries, telemetry and offline are all the same shape once that exists."
         size="Medium for the generator, medium again for the plugin surface, and neither touches the server."
       />
@@ -87,6 +123,7 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Operations</h3>
       <Item
         title="Cloudflare's observability, as a core plugin"
+        status="open"
         from="Every hosted competitor shows you what your backend is doing. Ours makes you go and look."
         now="Errors reach Workers Logs if your code logs them, and the platform's own request data is there for anyone who opens the dashboard. Neither is set up for you or surfaced anywhere."
         plan="Turn on Workers Observability at deploy so logs and traces are retained without being asked for, sample the request path into an Analytics Engine dataset the deploy already knows how to create, and put the instance's own numbers behind the admin panel: requests, errors, slow endpoints, and which hooks are costing the CPU. All of it as a core plugin, installed and on by default, which is the second of those after auth. Core because an instance you cannot see into is one you cannot operate, and a plugin because somebody who would rather send all of this somewhere else should be able to remove ours and install theirs against the same interface rather than fork the server."
@@ -102,6 +139,8 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Upgrading a running instance</h3>
       <Item
         title="Moving an instance onto a newer release, in place"
+        status="shipped"
+        left="A reversible upgrade, and rolling one per instance from our side rather than yours."
         from="Every way of running voidbase can be updated except the one that was meant to be the easiest. A CLI install runs one command; a cloud instance waits for us."
         now="voidbase update covers the executable, a global install and a project's dependency, and voidbase cloud now upgrades an instance in place from its page: the same Worker, its database, files, domains and superuser kept, the migrations of the new release run on the next boot. An instance with plugins keeps them: they live in its own repository, so the next push after the upgrade deploys them on the new base. Not rolled per instance by us, and not reversible yet: an upgrade you cannot undo is one people press carefully."
         plan="An upgrade for an instance the control plane owns: re-deploy it onto the active release, run the migrations the new version brings, and keep its database, its files, its custom domains and its secrets exactly where they are. Roll it per instance rather than to everyone at once, and make it reversible, because an upgrade you cannot undo is one nobody presses."
@@ -111,6 +150,8 @@ export default function DocsRoadmap() {
       <h3 className="why-group">The stack</h3>
       <Item
         title="The stack, finished"
+        status="partly"
+        left="One session across the pages and the API, and the admin panel mounted under your own route."
         from="It is the newest of the ways to run voidbase and the least complete. It deploys, and that is most of what it does."
         now="Pages, typed routes, your own Drizzle tables and a voidbase instance build into one Worker and go live in one deploy. Everything past that you wire yourself: two notions of who is signed in, collections the frontend knows nothing about, and an admin panel that lives at its own address rather than inside your app."
         plan="Make the two halves know about each other. One session across the pages and the API, which is the Better Auth item above. Collection types generated into the app so a renamed field breaks the build the way a renamed Drizzle column already does. The admin panel mountable under your own route behind your own authorisation. And one command that runs the pages, the backend and a seeded instance together, because two terminals is a thing you tolerate rather than a thing you like."
@@ -120,6 +161,7 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Three ways to run it, two modes, one CLI</h3>
       <Item
         title="Three ways to run an instance, two modes for each, and a CLI that moves data between them"
+        status="shipped"
         from="Where an instance runs should be a choice about a machine, not a choice of product. Today the standalone executable, the npm package and Cloudflare each work, and each is a slightly different world with its own way in and no way across."
         now="An instance runs three ways: the standalone executable on your own machine, the npm package on your own machine (on Bun today), and on Cloudflare through wrangler, the voidbase CLI or voidbase cloud. Two modes exist in shape: an empty directory and the executable is a vanilla instance with no project at all, and a voidbase project wraps one in pb_ folders you version on GitHub and deploy from CI. The adapter builds a stack app into that project shape, so a stack app runs on a machine or on Cloudflare; a project is the cloud's own shape too, since an instance's plugins change as commits to the repository it deploys from; voidbase serve --tunnel puts a machine's instance on the internet through a Cloudflare quick tunnel, voidbase serve --workers runs the npm package on Cloudflare's local runtime with local D1, R2 and queues, voidbase migrate moves an instance's data between any two running instances in either direction, and voidbase sync connects a project's repository to its Cloudflare pipeline and deploys it. Missing: the npm package on miniflare, so the Workers code runs on your machine exactly as it runs deployed; an instance on your machine put on the internet in a minute; and data that moves between the three."
         plan="The three ways, each of which is a vanilla instance or a voidbase project, treated as one thing by the CLI. voidbase serve --tunnel puts a machine on the internet through a try.cloudflare.com quick tunnel, for the executable and the npm package alike. The npm package runs on miniflare. A project is synced between GitHub and Cloudflare with one command, so its CI/CD exists the moment the project does. And data migrates between the executable, an npm instance and a cloud instance in either direction with one command, so choosing where to run is never a final choice."
@@ -129,6 +171,8 @@ export default function DocsRoadmap() {
       <h3 className="why-group">voidbase cloud</h3>
       <Item
         title="A dashboard for the life of an instance, not its first minute"
+        status="partly"
+        left="Teams, so an instance is not tied to whoever clicked first; and the domains panel moving onto the domains plugin instead of the control plane attaching hostnames itself."
         from="It provisions an instance beautifully and then has nothing else to say. Everything past the moment it exists happens somewhere else."
         now="Sign in with Cloudflare, name an instance, and your browser creates it in your own account with its database, storage and domain: voidbase.cloud keeps your sign-in, your sealed Cloudflare and GitHub tokens and the rows, and passes your calls through; the work is the page's, with voidbase's own code. From its page you upgrade it to the active release, wire a repository to it (created from a template or linked), and sign in to the instance itself to install, update and remove plugins through its own installer: on a project instance a change is a commit its repository's build deploys. From the same card: the instance's logs with a filter, requests and errors over the last day, its backups (take, download, restore, delete), its superusers, its custom domains and its Worker secrets, each a call the page makes itself; and the page hands you the token for voidbase cloud, the CLI that does all of this from a shell."
         plan="The things you actually do to a backend after making one: requests and errors over time, logs you can search, backups and a restore that has been tested, custom domains, secrets, superusers, and the upgrade above. Templates, so a new instance can start as something rather than nothing. Teams, so an instance is not tied to whoever happened to click first. Everything the dashboard can do gets a CLI command as well, because a dashboard-only feature is one you cannot script or review."
@@ -138,6 +182,7 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Plugins</h3>
       <Item
         title="pb_plugins, with a marketplace"
+        status="shipped"
         from="Every instance ends up needing the same handful of things, and everyone writes them again."
         now="Built, on every shape. A plugin is a repository with a plugin.json; the marketplace builds a bundle from it at a commit, audits it on both sides of the build, hashes it and serves it under /registry/v1, and voidbase plugins add puts that bundle in pb_plugins, verified against the hash and pinned in voidbase.lock with the marketplace, the version and the commit. An instance verifies the bytes again every time it starts and loads the bundle beside what ships; removing a shipped plugin turns it off, installing one with its name takes its place, and /api/plugins says where each came from. The registry protocol is three GETs anyone can serve: the demo runs one plugin from our marketplace and one from a throwaway marketplace of static files. Backups, realtime and the request limits ship this way. A stack app's build carries pb_plugins into its generated app, and a cloud instance installs from its page: the page is a client of the instance's own installer, which commits the change to the instance's repository, and the push deploys it. Not yet: the unpackaged way."
         plan="A pb_plugins directory beside the hooks, holding installed plugins the same way pb_hooks holds your own code. A plugin declares what it needs, adds routes, hooks and collections, and is installed and updated by name. Panel screens are not on that list: the admin panel is PocketBase's own build, used unmodified because that is what keeps it compatible, and a plugin cannot add a screen to a bundle voidbase does not build. Plugin settings live in collections the stock panel already edits, and a surface of voidbase's own for plugins that need one is an open question rather than a promise. Core plugins ship with voidbase, official ones are ours and versioned with it, and a marketplace lists what the community has published so installing one does not mean trusting a gist."
@@ -147,6 +192,8 @@ export default function DocsRoadmap() {
       <h3 className="why-group">The three tiers, and what "core" means</h3>
       <Item
         title="Core plugins, installed and on by default"
+        status="partly"
+        left="The CLI asking before it removes a core plugin, the panel saying so, and observability as the second core plugin."
         from="Auth leaving the core creates a problem the loader alone does not solve: an instance with no auth plugin is not a lean instance, it is a broken one. Some plugins are not optional in any useful sense."
         now="The tiers exist in the manifest (core, official, community), auth is the first core plugin and the core list names auth@1: an instance without a provider loads, runs with nobody signed in and reports the gap on /api/plugins and in its log rather than refusing to start. An installed plugin can turn a shipped one off or take its place. What is missing is the confirmation the CLI should ask for before removing a core plugin, and a way for the panel to say so."
         plan="Three tiers, and they differ in what happens if you do nothing. A core plugin is installed and enabled by default and comes with voidbase, because the instance is not usable without it: auth and observability are the two, one because nothing works without it and the other because an instance you cannot see into is one you cannot operate, and the list should stay about that short. An official plugin is ours and supported and versioned with voidbase, but it arrives because you asked for it. A community plugin is somebody else's, from our marketplace or a registry of your own. Removing a core plugin has to be possible, because replacing auth is the entire point of moving it out, but it has to be a thing you did on purpose rather than a thing that happened while you were installing something else, and the instance should say plainly what it is now missing."
@@ -156,6 +203,7 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Interfaces, and plugins that need other plugins</h3>
       <Item
         title="Depend on what a plugin does, not on which plugin it is"
+        status="shipped"
         from="Three items on this page describe the same mechanism without naming it. The core will need an auth plugin without caring which. Commerce will need a payment plugin without caring which. Payments are one plugin per provider over a shared shape, and the shared shape is the whole point. Left unnamed, that becomes three private arrangements that do not compose."
         now="Built, ahead of the plugins that will use it. Interfaces are versioned names, auth@1 and payments@1, kept in one list in voidbase, and a manifest naming one outside the list is refused. Two providers of one interface are refused at install with both named, a cycle is refused with the circle printed, a missing provider names the interface and who wanted it, and removing a provider unloads what required it and reloads it against a replacement without the dependent changing. Each of those is a test. What is not decided is who besides us may define an interface."
         plan="A plugin declares what it provides and what it requires, and both are interfaces rather than names. Something that needs to take a payment requires the payment interface; Stripe, Polar and Lemon Squeezy each provide it; swapping one for another is removing a provider and installing another, and nothing that depended on it changes or is even aware. The loader resolves the graph and loads in its order. Interfaces are versioned, because an interface is a contract and a contract that can change silently is not one. The failures are decided up front rather than discovered: no provider for a required interface means the dependent plugin does not load and says why, two providers for the same interface is ambiguous and has to be resolved on purpose rather than by whichever won a sort, and a cycle is refused at install rather than at boot. Auth is the first proof of it: the core requires an auth interface, our Better Auth plugin provides it, and yours can too."
@@ -165,6 +213,7 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Keeping plugins current</h3>
       <Item
         title="Versions, updates, and what happens when voidbase moves underneath one"
+        status="shipped"
         from="A plugin system without an update path produces the thing it was meant to prevent: code copied in once, never touched again, and quietly wrong two releases later. The gist problem with extra steps."
         now="Every install is recorded in voidbase.lock with its marketplace, version, integrity and source commit, so an instance can say what it runs and reproduce it. A plugin declares the voidbase range it works against and the loader refuses one that does not fit. voidbase plugins update moves one plugin or all of them to the newest their marketplace serves, and the installer plugin does the same from inside a running instance: on disk on a machine, as a commit on a project deployed from a repository. voidbase update names the installed plugins a new voidbase would leave behind before it changes anything."
         plan="Every plugin is versioned and every install is recorded, so an instance can say what it is running and reproduce it. A plugin declares which voidbase versions it works against, and the loader refuses one that does not fit rather than discovering it at request time. Updating is one command for all of them or one for a named plugin, it says what changed before it does anything, and an unpackaged update is files while a packaged update is a rebuild, which is the same split as installing. Two harder halves come with it. Upgrading voidbase itself has to say which installed plugins will not survive the jump, before the upgrade rather than after. And a packaged plugin's update currently drags the whole instance onto the newest release, because rebuilding is how it is applied; separating those is the thing that decides whether a plugin update is routine or something you schedule."
@@ -181,6 +230,7 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Auth</h3>
       <Item
         title="Rip auth out of the core and ship it as a packaged plugin"
+        status="shipped"
         from="Auth is the one thing every project needs and no two projects agree about. While it is welded into the server, having different auth means editing the server, which is not a thing anyone should have to do to use their own identity provider."
         now="Done as the core plugin, on 2026-09-09. auth is a plugin of tier core that provides auth@1 with a three-part contract: who is making a request (a request or a token in, a record or null out), the fields every account answers to in a rule, and which collections hold accounts, plus what a superuser is, which the core asks and no longer decides. It owns _superusers, _externalAuths, _authOrigins, _otps and _mfas and mounts every auth route; the server imports none of it and asks through one slot. Remove it and the instance runs with nobody signed in and says which core interface it is missing. What has not moved: the code itself still lives in voidbase's tree, the bootstrap still creates the auth collections, and there is no second provider yet, so the seam is proven by removal rather than by replacement."
         plan="Take everything on the far side of that seam out. The core keeps the contract and nothing else, and the contract turned out to have three parts rather than one. A request goes in and a record or null comes out; a record from _superusers is a superuser; and the core has to know auth's shape, because API rules are compiled to SQL against @request.auth.<field> and a rule naming a field that does not exist should be refused when it is written rather than fail when it runs. So the interface carries the fields an auth record may have and which collections hold them, as well as the function that authenticates. Endpoints, tokens, tables, OAuth providers, one-time codes, passkeys, all of it moves into a packaged plugin, which is the shape that can carry it because a packaged plugin brings its own dependencies. The core requires the auth interface, our plugin provides it, and yours can too."
@@ -190,6 +240,8 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Headers, origins and the requests you did not mean to accept</h3>
       <Item
         title="Hardening, as a plugin, and one that matters more once auth is pluggable"
+        status="partly"
+        left="A per-route Content-Security-Policy, a double-submit token for the flows that need one, and the OWASP-shaped check."
         from="What an instance sends back is a security decision, and right now it is four headers chosen to match PocketBase rather than to match your application. Everything past that is yours to remember."
         now="The body limit and the rate limit are a plugin providing hardening@1, and so is the response policy now: the headers on every response, the strict Content-Security-Policy on files, and knobs that are off unless set: named CORS origins instead of the wildcard, HSTS, Referrer-Policy, Permissions-Policy, a CSP for every response, the cross-origin trio. When origins are named, a state-changing request that carries a cookie from an origin not on the list is refused, which is the CSRF hole a cookie-based auth plugin would otherwise open. Remove the plugin and there is no policy at all."
         plan="A plugin owning the whole response policy rather than a list of headers nobody revisits. A Content-Security-Policy you can set per route instead of one that applies to files and nothing else, HSTS, Referrer-Policy, Permissions-Policy, and the cross-origin trio. CORS as a list of origins you named, with the wildcard something you choose rather than inherit. CSRF protection, with SameSite defaults, origin checking and a double-submit token for the flows that need it. And an OWASP-shaped check that reports what an instance is missing rather than quietly defaulting it, because a header you did not know was absent is the only kind that hurts. It provides an interface, so a company with its own policy replaces ours instead of arguing with it."
@@ -199,6 +251,8 @@ export default function DocsRoadmap() {
       <h3 className="why-group">A domain of your own</h3>
       <Item
         title="Domains leave the deploy and become a plugin"
+        status="shipped"
+        left="The control plane on voidbase.cloud still attaches hostnames itself for the instances it provisions."
         from="Where an instance answers is not a property of the server. It is a decision about DNS, certificates and which of several names is the real one, and the core has no business holding an opinion about any of it."
         now="Shipped in 0.9.0-beta.31. A plugin may now carry a deploy-time half with before, after and remove hooks around voidbase deploy, shipped or installed as a deploy.js beside its bundle, and domains is the first: it validates the hostnames, turns workers.dev off, attaches each through the Custom Domains API, waits for the certificate, redirects every other hostname to the canonical one with zone rules, and detaches all of it on voidbase deploy --remove. The deploy itself uploads a Worker, reports where it answers, and stops. Backups' scheduling, previews and observability toggles get the same surface next."
         plan="The deploy uploads a Worker and says where it answers, which is its workers.dev address, and stops. Everything else moves out: which hostnames, which one is canonical, permanently redirecting the rest to it, waiting for the certificate before claiming success, and removing them again on teardown. Where the zone is on the same account, the plugin should ask for a domain and nothing else, because the records, the certificate and the redirects are all reachable from there."
@@ -208,6 +262,8 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Email from that domain</h3>
       <Item
         title="Sending through Cloudflare Email Service, on the domain you just set up"
+        status="shipped"
+        left="Onboarding the domain to Email Sending is a dashboard step of yours; the deploy prints it."
         from="A backend sends password resets, verification links and email changes. Sending them from a domain with no SPF, no DKIM and no DMARC is sending them to spam folders, and that is a thing nobody discovers until users say they never got the mail."
         now="Shipped in 0.9.0-beta.29 as the mail plugin. VOIDBASE_MAIL_DOMAIN makes voidbase deploy add the send_email binding and bake the domain in; the plugin provides mail@1 over it, holds the sender to that domain and refuses one off it with the reason on /api/plugins, and SMTP stays the fallback for a sender it cannot carry. The remaining errand is yours once: onboarding the domain to Email Sending in the dashboard, which writes SPF, DKIM and DMARC for you; the deploy prints that step when the zone is not onboarded yet."
         plan="Use Cloudflare's own Email Service instead, which wants exactly what the item above already arranged: a domain whose zone is on the account and whose DNS Cloudflare runs. Onboarding it writes the SPF, DKIM and DMARC records itself, which is the whole deliverability problem solved by the thing that already has the authority to solve it. The Worker gets a send_email binding, the plugin points the instance's mail at it, and the sender address is restricted to the domain rather than left open. SMTP stays for anyone who has a mail server they trust and would rather use it."
@@ -217,6 +273,8 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Backups worth relying on</h3>
       <Item
         title="Enterprise backup, as an official plugin"
+        status="shipped"
+        left="A streaming restore for archives larger than memory, and the panel offering the kind and the verification."
         from="The built-in backup is a zip in the same account as the thing it is backing up."
         now="Shipped in 0.9.0-beta.31 inside the backups plugin. A full archive holds every table, every file, the settings with secrets left out and the schema, with a manifest that names each entry's hash; a data archive holds the non-system collections' rows and files for moving between environments. Each archive is read back and verified after it is written and on demand, restore refuses an archive from a newer voidbase and never invents a collection unasked, the scheduled backup keeps VOIDBASE_BACKUP_KEEP of them, and VOIDBASE_BACKUP_S3_* copies every archive to a bucket outside the account with a hand-signed SigV4 upload."
         plan="An official plugin that takes the whole instance, not only the rows. Two modes, because they answer different fears. A complete instance backup captures the database, the files, the configuration and the schema so the instance can be rebuilt from nothing. A data-only backup captures the rows and files for moving between environments or restoring after a bad migration. Both use Cloudflare's own storage and both are scheduled, verified and restorable without a support ticket."
@@ -226,6 +284,8 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Previews</h3>
       <Item
         title="Preview environments, as an official plugin"
+        status="shipped"
+        left="The second shape: the same instance with a branch's writes flagged as preview and filtered out of production reads."
         from="A pull request that changes the schema cannot be reviewed against production, and reviewing it against nothing is not reviewing it."
         now="Shipped in 0.9.0-beta.32 as the previews plugin, on the deploy-time surface. voidbase deploy --preview <branch> is a whole instance for the branch, named after it with its own database, bucket and queue on workers.dev, seeded from production's schema through the backups API, its address posted once on the pull request and updated on every push, and gone with everything it owns once the pull request is merged or closed; voidbase sync --previews sets up the second Workers Builds trigger that deploys every other branch that way. The roadmap's second shape, the same instance with the branch's writes flagged, is not built."
         plan="A preview per pull request, in the shape that fits the change. Either a new instance for the branch, using Cloudflare's own preview deployments, seeded from the production schema so the reviewer gets a working address that disappears on merge. Or, where an instance is expensive or the data matters, the same instance with the branch's writes flagged as preview and filtered out of production reads, which makes a preview a query rather than a deploy. The plugin picks based on what the change touches, and the pull request gets the address either way."
@@ -235,6 +295,7 @@ export default function DocsRoadmap() {
       <h3 className="why-group">A description of the API, generated and scoped</h3>
       <Item
         title="OpenAPI, Scalar and a stateless MCP server, from the collections you have"
+        status="shipped"
         from="Every instance already knows its own shape: the collections, their fields, the rules that decide who may read and write each one. Nothing exposes that in a form other tools can read, so anything that wants to understand a voidbase instance has to be told separately, by hand, and go stale."
         now="Every instance serves its own description: GET /api/openapi.json is an OpenAPI 3.1 document generated from the collections it has, scoped to the caller (anonymous, a signed-in user, or a superuser sees what that token may call, with the gating rule quoted), and GET /api/docs is Scalar over the same document, a page to read and try requests on. POST /api/mcp is the stateless MCP server over it: an agent's tools are the routes its token may call, derived per request, and every call runs through the same rules as any other."
         plan="Generate an OpenAPI document from the collections an instance actually has, and scope it to the caller. A document fetched with no token describes what an anonymous request can do; one fetched as a user describes what that user can do; one fetched as a superuser describes everything. That scoping is the part that matters, because an API description that lists what you may not call is a description that lies to you. Serve Scalar over the same document so there is a page to read and try requests on, and a stateless MCP server over it too, so an agent can discover an instance rather than be told about it. Stateless because a voidbase instance is a Worker: no session to keep, each call carrying its own auth, which is the only shape that survives being run at the edge."
@@ -244,6 +305,8 @@ export default function DocsRoadmap() {
       <h3 className="why-group">AI</h3>
       <Item
         title="Workers AI and Think, as official plugins"
+        status="shipped"
+        left="A chat in the admin panel and in a preview environment, on Think, once the panel can carry a screen of ours."
         from="The instance already runs on the network that serves the models, and it already runs a Durable Object for realtime. Calling a third-party API to add a chat box is the long way round."
         now="Shipped in two steps. The ai plugin (0.9.0-beta.30) puts a tool-calling chat over the instance on Workers AI, with the MCP server's tool list for the caller's own token, so the model reaches exactly what the token may call. Since 0.9.0-beta.32 a signed-in user's conversations are records, ai_conversations and ai_messages, written through the records service so realtime sees each reply land, with the final answer streamed; client.ai.conversations in @voidbase-cloud/sdk/ai opens, sends, streams and subscribes. Cloudflare's Think exists as @cloudflare/think, a Durable Object chat harness, and is what a panel chat or a preview chat would build on later."
         plan="Plugins built on Cloudflare's Think harness, which is a chat agent over Durable Object SQLite with Workers AI behind it. One puts a chat in the admin panel that can read the instance's own schema, records and logs, so finding where something lives is a question rather than a search. One does the same inside a preview environment, where the thing worth asking about is the change under review. And because a Think agent can be driven as a sub-agent over RPC, the third is a chat your own app mounts, scoped to the collections you let it read. None of them needs a hand-written tool list: the MCP server above already describes the instance, scoped to whoever is asking, which is the same scoping these three need anyway."
@@ -253,6 +316,7 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Payments</h3>
       <Item
         title="Payment providers, as official plugins"
+        status="shipped"
         from="Taking money is the first thing most projects add and the last thing anyone wants to write a second time."
         now="Three providers by 0.9.0-beta.31: stripe, polar and lemonsqueezy, each a shipped plugin over its provider's REST API with no SDK, sharing one module for the customers, subscriptions and payments collections, the checkout, portal and cancel routes and the signature-checked webhook. Whichever key is present is the provider that answers, and /api/plugins says which. The client side is @voidbase-cloud/sdk/payments, which finds the provider and calls its routes."
         plan="One plugin per provider, all of them providing the same payment interface, starting with Stripe, Polar and Lemon Squeezy. Each owns its webhook route, verifies signatures, and writes customers, subscriptions and payments into collections you query like any other. Changing provider becomes changing which plugin is installed, and the shared shape is what makes the next provider cheap to add."
@@ -262,6 +326,8 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Editing content</h3>
       <Item
         title="Rich text you edit where it renders"
+        status="shipped"
+        left="A rendered preview beside the markdown source, and a field-level permission check finer than the collection's rule."
         from="Editing a markdown field in an admin panel means editing it away from the page it appears on."
         now="The plain-text half shipped in @voidbase-cloud/sdk 0.2.0 as the editable plugin: an element marked data-vb-edit set to collection:id:field becomes contenteditable for a signed-in user, saves through the same update call and rules as any other write, shows saving, saved or error on the element, reverts on Escape or a refused save, and can follow the record over realtime. Since 0.3.0 an element marked data-vb-edit-markdown edits the field's markdown source in a textarea with a small toolbar and renders it back through whatever renderer the app passes."
         plan="A plugin that binds a block on your own site to the field it came from. A signed-in admin gets contenteditable on that block with a markdown toolbar over it, edits in place, and the save writes the field back through the same rules as any other write. The content stays markdown in a collection, so it is still queryable and still exports, and none of it turns into a document only one editor can open."
@@ -271,6 +337,8 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Search engines, and the other crawlers</h3>
       <Item
         title="SEO, as official plugins"
+        status="shipped"
+        left="Share cards as PNG rather than SVG, which the image library on Workers cannot rasterise today."
         from="Anything that serves pages has to answer crawlers, and every project answers them again from scratch with a handful of routes nobody enjoys writing."
         now="Shipped in full by 0.9.0-beta.31 as the seo plugin. robots.txt, a sitemap from the public records VOIDBASE_SITEMAP names (with hreflang alternates once locales are declared) and llms.txt came first, each yielding to a real file and reaching a deployed Worker through the _redirects rules the adapter writes. Then GET /api/seo/meta resolves a page path back to its record and answers the canonical URL, title, description, JSON-LD from the schema.org mapping VOIDBASE_SEO declares, OpenGraph and Twitter tags and a ready head fragment; share cards render on request as SVG at /api/seo/og; every answer carries an ETag and the Worker version so a cache revalidates cleanly across a deploy. The client side is @voidbase-cloud/sdk/seo."
         plan="Generated from the routes and records that exist rather than kept in step by hand: robots.txt, a sitemap that changes when records do, JSON-LD from schema.org types mapped onto collections, OpenGraph and Twitter tags, canonical URLs so one page has one address, per-route rules for what may be indexed, and llms.txt for the crawlers that are not search engines. Open Graph images rendered on request and cached the way thumbnails already are, so a share card is a field rather than a design job. Deployment skew and asset versioning are on this list too, because they are the same question asked at deploy time: a browser that loaded one version should keep working against that version, and an asset URL should say which version it came from. Cloudflare's Worker versions and gradual deployments are what that would be built on."
@@ -280,6 +348,7 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Installable, and usable on a bad connection</h3>
       <Item
         title="A progressive web app, and the service worker under it"
+        status="shipped"
         from="The offline plugin in the first section is the engine. This is everything you would otherwise assemble around it by hand, once per project, from a manifest you copied off a blog post."
         now="Shipped in 0.9.0-beta.29 on both sides. The adapter's pwa option writes manifest.webmanifest, the icon set and sw.js into pb_public from what void.json already declares, with the shell and the hashed assets precached under a version hash, navigations network first, /api and the panel never cached; @voidbase-cloud/sdk/pwa registers it with the update prompt, the skip-waiting handshake, the install prompt and an unregister that also clears the caches."
         plan="A plugin that writes the manifest, the icon set and the service worker from what the app already declares, registers it with the parts everyone gets wrong handled: the update prompt, the skip-waiting path, and a way to unregister, because a stuck service worker is the worst bug in this area and the hardest to talk a user through. It precaches the shell and reuses the offline plugin's queue rather than inventing a second one, so a write made with no signal replays through the same path whichever page queued it. Two plugins on two different surfaces, one on the client and one on the server side of the build, which is a reasonable early test of whether those surfaces compose."
@@ -289,6 +358,8 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Languages</h3>
       <Item
         title="Translations, as an official plugin"
+        status="partly"
+        left="Interface strings in the project, typed and failing the build when a key is missing; a locale in the route; the panel screen showing what is untranslated."
         from="Every application that reaches a second country rebuilds this, and what gets rebuilt is usually a JSON file per language and a helper that cannot tell you which keys are missing."
         now="The content half shipped in 0.9.0-beta.30 as the translations plugin. VOIDBASE_TRANSLATABLE names the fields per collection and VOIDBASE_LOCALES the locales in fallback order; translations live in a collection the plugin owns, and the records API answers list and view (expands included) in the locale the request asks for, with Content-Language and a per-record note of which fields were swapped, in one batched lookup. Superusers get the missing report and the status per locale. Interface strings, a locale in the route and hreflang are still to come."
         plan="Two halves, because they are two problems. Interface strings live in the project, are typed, and fail the build when a key is missing rather than rendering the key to a user. Content translations live in the collections: a field is declared translatable once and the API answers in the language the request asks for, falling back the way you said rather than the way we guessed. Then the parts around both, which is a locale in the route, hreflang and canonical tags handled by the SEO plugin above, and a panel screen showing what is untranslated so you find out before a reader does."
@@ -298,6 +369,7 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Commerce</h3>
       <Item
         title="A shop the other plugins plug into"
+        status="open"
         from="Once payments, files, auth and editable content are all in the box, what is left of a shop is the part nobody enjoys building."
         now="Nothing. You build it on collections, and everybody builds it differently."
         plan="An official commerce plugin holding the parts that are the same everywhere: products and variants, inventory, carts, orders, tax, shipping, refunds and an audit trail. It requires interfaces rather than particular plugins, so a payment plugin supplies checkout, a shipping plugin supplies rates, and a plugin of your own supplies whatever your business does that nobody else's does, without commerce knowing which."
@@ -314,6 +386,7 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Templates</h3>
       <Item
         title="Templates, and a listing anyone can add to"
+        status="shipped"
         from="Starting from nothing is the slowest part of trying anything, and every project that gets past that point started as a copy of somebody's working example."
         now="voidbase init --template <name> starts from a template the marketplace lists, and --template owner/name from any public GitHub repository: the repository at one ref, unpacked, with the next steps read from what it contains. voidbase templates lists what is on offer. The cloud page offers the same templates when it creates an instance, and voidbase-cloud/voidbase-site is the first listed one."
         plan="A template is a public repository with a manifest. voidbase init --template <name> starts from one, the cloud dashboard offers them on the create screen, and anyone can publish theirs by adding it to the listing. Official templates are ours and are kept working, and the first of them is this site: voidbase-cloud/voidbase-site is already public, is a real voidbase stack app, and serves the page you are reading, which makes it an honest starting point rather than a demo we wrote to look good."
@@ -323,6 +396,8 @@ export default function DocsRoadmap() {
       <h3 className="why-group">The marketplace</h3>
       <Item
         title="One marketplace for plugins, themes and templates"
+        status="partly"
+        left="Themes, and the audit reporting what changed since the version you have."
         from="A gist is not a distribution channel, and an author you have never heard of is not a security model. Every backend that grew an ecosystem grew a supply chain problem at the same time."
         now="Templates and plugins are listed at marketplace.voidbase.cloud, submitted through a form and accepted as a commit. For a plugin the marketplace is also the build: it audits the source, bundles it with what an instance provides left as imports, audits the bundle, hashes it and serves it; the audit is deterministic, recorded with the release, and a first pass rather than a guarantee. Themes are not listed yet, and nobody is paid."
         plan="One place, three kinds of thing, and every listing a versioned repository you install by name. Each submission and each update goes through an automated audit that reports what the code reaches for, whether the permissions it asks for match the ones it uses, and what changed since the version you have, in language a person can read before installing. That audit is a first pass and not a guarantee, so its report is published with the listing and you are free to disagree with it."
@@ -332,6 +407,7 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Paying the people who build it</h3>
       <Item
         title="Creators keeping what they earn, and us not taking a cut of the ecosystem"
+        status="open"
         from="Free plugin ecosystems get abandoned and paid ones get gouged. The difference is usually who is being paid and for what."
         now="Nothing to sell and nowhere to sell it, which is at least honest."
         plan="Official plugins and themes stay free, as many as we can write, because an ecosystem does not start behind a paywall. Later a subscription may cover a growing basket of specialised official ones, and specialised is the word doing the work there: things most projects will never need, and never something that used to be free. Anyone can charge for what they publish and keep what they earn. We would rather the marketplace itself be paid for by sponsors than by a percentage of everybody in it, which is also the answer on the pricing page."
