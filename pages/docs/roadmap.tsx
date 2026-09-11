@@ -150,10 +150,10 @@ export default function DocsRoadmap() {
       <h3 className="why-group">The stack</h3>
       <Item
         title="The stack, finished"
-        status="partly"
-        left="One session across the pages and the API, and the admin panel mounted under your own route."
+        status="shipped"
+        left="A page that renders per request still has no runtime under the adapter, so the session helper is what such a page will call once there is one."
         from="It is the newest of the ways to run voidbase and the least complete. It deploys, and that is most of what it does."
-        now="Pages, typed routes, your own Drizzle tables and a voidbase instance build into one Worker and go live in one deploy. Everything past that you wire yourself: two notions of who is signed in, collections the frontend knows nothing about, and an admin panel that lives at its own address rather than inside your app."
+        now="Shipped by 0.9.0-beta.40. Pages, typed routes, your own Drizzle tables and a voidbase instance build into one Worker and go live in one deploy, and the two halves now know about each other. VOIDBASE_AUTH_COOKIE=1 makes a sign-in set the token as a cookie as well, so an ordinary browser navigation is authenticated and a loader can ask who the visitor is through sessionOf(request); the knob refuses to take effect unless the origin rule or the double-submit token is on, because a cookie that authenticates a write is exactly what those exist for. The admin panel mounts under your own path behind your own check: the adapter takes a panel option naming the path and the guard writes its files there, rebases the two URLs its build hardcodes, and sends the entry through a handler that answers 404 without a superuser session. voidbase.cloud runs that way."
         plan="Make the two halves know about each other. One session across the pages and the API, which is the Better Auth item above. Collection types generated into the app so a renamed field breaks the build the way a renamed Drizzle column already does. The admin panel mountable under your own route behind your own authorisation. And one command that runs the pages, the backend and a seeded instance together, because two terminals is a thing you tolerate rather than a thing you like."
         size="Medium each, and they are independent. The typed collections are the one that changes how the stack feels."
       />
@@ -171,10 +171,9 @@ export default function DocsRoadmap() {
       <h3 className="why-group">voidbase cloud</h3>
       <Item
         title="A dashboard for the life of an instance, not its first minute"
-        status="partly"
-        left="Teams, so an instance is not tied to whoever clicked first."
+        status="shipped"
         from="It provisions an instance beautifully and then has nothing else to say. Everything past the moment it exists happens somewhere else."
-        now="Sign in with Cloudflare, name an instance, and your browser creates it in your own account with its database, storage and domain: voidbase.cloud keeps your sign-in, your sealed Cloudflare and GitHub tokens and the rows, and passes your calls through; the work is the page's, with voidbase's own code. From its page you upgrade it to the active release, wire a repository to it (created from a template or linked), and sign in to the instance itself to install, update and remove plugins through its own installer: on a project instance a change is a commit its repository's build deploys. From the same card: the instance's logs with a filter, requests and errors over the last day, its backups (take, download, restore, delete), its superusers, its custom domains and its Worker secrets, each a call the page makes itself; and the page hands you the token for voidbase cloud, the CLI that does all of this from a shell."
+        now="Sign in with Cloudflare, name an instance, and your browser creates it in your own account: voidbase.cloud keeps your sign-in, your sealed tokens and the rows, and the work is the page's. From its card you upgrade it, roll that upgrade back for seven days, wire a repository, set a domain through the domains plugin, and read what the instance reports: its plugins, logs, metrics, backups, superusers, secrets, payments and its own numbers from the observability plugin. An instance belongs to a team rather than to whoever clicked first: owner, admin and viewer, invited by email, with every ownership check in the site asking what role the caller has. No token is ever lent between people, so an admin acts with their own Cloudflare access."
         plan="The things you actually do to a backend after making one: requests and errors over time, logs you can search, backups and a restore that has been tested, custom domains, secrets, superusers, and the upgrade above. Templates, so a new instance can start as something rather than nothing. Teams, so an instance is not tied to whoever happened to click first. Everything the dashboard can do gets a CLI command as well, because a dashboard-only feature is one you cannot script or review."
         size="Large in total, small in pieces. Most of it is surfacing things the instance already knows."
       />
@@ -392,10 +391,9 @@ export default function DocsRoadmap() {
       <h3 className="why-group">The marketplace</h3>
       <Item
         title="One marketplace for plugins, themes and templates"
-        status="partly"
-        left="Themes, and the audit reporting what changed since the version you have."
+        status="shipped"
         from="A gist is not a distribution channel, and an author you have never heard of is not a security model. Every backend that grew an ecosystem grew a supply chain problem at the same time."
-        now="Templates and plugins are listed at marketplace.voidbase.cloud, submitted through a form and accepted as a commit. For a plugin the marketplace is also the build: it audits the source, bundles it with what an instance provides left as imports, audits the bundle, hashes it and serves it; the audit is deterministic, recorded with the release, and a first pass rather than a guarantee. Themes are not listed yet, and nobody is paid."
+        now="Templates, plugins and themes are listed at marketplace.voidbase.cloud, submitted through a form and accepted as a commit. For a plugin the marketplace is also the build: it audits the source, bundles it with what an instance provides left as imports, audits the bundle, hashes it and serves it. A theme is a repository with a theme.json carrying a pb_public overlay and stylesheets, audited for what its files are (no JavaScript, nothing outside what it declares, a size ceiling) and served file by file with a hash each; voidbase installs plugins and not themes, so a theme is fetched and copied, and the listing says so rather than implying an installer. GET /registry/v1/plugins/<name>/diff?from=<version> says what changed between the version an instance has and the newest: the files, what the manifest now asks for, and each side's audit."
         plan="One place, three kinds of thing, and every listing a versioned repository you install by name. Each submission and each update goes through an automated audit that reports what the code reaches for, whether the permissions it asks for match the ones it uses, and what changed since the version you have, in language a person can read before installing. That audit is a first pass and not a guarantee, so its report is published with the listing and you are free to disagree with it."
         size="Large, and the audit is the part that decides whether any of it is worth having."
       />
