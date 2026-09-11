@@ -1,7 +1,7 @@
 // "Start from a template", on the two pages where starting from one makes sense.
 //
-// Three routes, and only the first works today: GitHub's own button, our marketplace, and someone else's registry.
-// The section says which is which rather than presenting three equal options.
+// Three routes: GitHub's own button, the CLI reading the marketplace's listing (or another marketplace's), and the
+// cloud page's create screen. The section says what each one is for.
 import { Link } from "@void/react";
 import CodeBlock from "@/components/CodeBlock";
 import { hl } from "@/lib/hl";
@@ -11,9 +11,11 @@ const SCRATCH: Record<"project" | "stack", ReturnType<typeof hl.bash>> = {
   stack: hl.bash`bun add void && bunx void init && bun add @voidbase-cloud/voidbase`,
 };
 
-const PROPOSED = hl.bash`voidbase init blog-api --template voidbase-cloud/voidbase-demo
+const FROM_TEMPLATE = hl.bash`voidbase templates                                              # what the marketplace lists
 voidbase init blog-api --template voidbase-site                 # by listed name
-voidbase init blog-api --template acme/starter --registry https://templates.acme.internal/list.json`;
+voidbase init blog-api --template voidbase-cloud/voidbase-demo  # any public repository, at its default branch
+voidbase init blog-api --template acme/starter --ref v2         # at a branch or tag
+voidbase init blog-api --template starter --marketplace https://templates.acme.internal   # another listing`;
 
 export default function StartFromTemplate({ shape }: { shape: "project" | "stack" }) {
   const what = shape === "project" ? "a voidbase project" : "a stack app";
@@ -25,12 +27,11 @@ export default function StartFromTemplate({ shape }: { shape: "project" | "stack
         get something running. A template is somebody's working {what} that you copy into your own account and change.
       </p>
 
-      <h3>From GitHub, which works today</h3>
+      <h3>From GitHub</h3>
       <p>
         Every template in <Link href="/docs/marketplace">the marketplace</Link> is a public repository with GitHub's{" "}
         <em>Use this template</em> switched on. Open it, press the button, and you have your own copy with its whole
-        history left behind. That is the entire mechanism and it is GitHub's, not ours, which is why it is the one
-        that works.
+        history left behind. That is the entire mechanism and it is GitHub's, not ours.
       </p>
       <p>
         {shape === "project" ? (
@@ -58,14 +59,16 @@ export default function StartFromTemplate({ shape }: { shape: "project" | "stack
       <h3>From the CLI</h3>
       <p>
         Cloning through a browser is fine once and tedious after that, so <code>init</code> takes a template
-        directly. Give it <code>owner/name</code>, a GitHub URL, or the name of anything listed in the marketplace,
-        which it looks up for you.
+        directly. Give it the name of anything the marketplace lists, which it looks up for you, or{" "}
+        <code>owner/name</code> for any public repository, with <code>--ref</code> for a branch or a tag.
       </p>
-      <CodeBlock {...PROPOSED} />
+      <CodeBlock {...FROM_TEMPLATE} />
       <p>
-        It writes the files and nothing else: no <code>.git</code>, no history, no remote pointing at somebody
-        else's repository. It refuses a directory that already has anything in it, because writing a whole project
-        over your work is not something you can undo. <code>--registry</code> points it at a listing of your own.
+        It unpacks the repository at that ref and nothing else: no <code>.git</code>, no history, no remote pointing
+        at somebody else's repository, and it prints the next steps it finds in what it unpacked. It refuses a
+        directory that already has anything in it, because writing a whole project over your work is not something
+        you can undo. <code>--marketplace</code> points it at another listing. The cloud page offers the same
+        templates on its create screen once GitHub is connected.
       </p>
       <p className="txt-hint">Starting from nothing is still one command:</p>
       <CodeBlock {...SCRATCH[shape]} />
