@@ -129,8 +129,8 @@ export default function DocsCloud() {
       </table>
       <p>
         Beside those: upgrade the instance to the site's current release in place, its database, files, domains and
-        superuser kept; wire another repository to it, from a template or one you have; delete it, which takes the
-        Worker and everything it owns after you type the name back.
+        superuser kept; roll that upgrade back, for a week; wire another repository to it, from a template or one you
+        have; delete it, which takes the Worker and everything it owns after you type the name back.
       </p>
 
       <h2>Every button is a command</h2>
@@ -158,6 +158,23 @@ export default function DocsCloud() {
         migrations of the new release run on the next boot. An instance deployed from a repository is the other
         case: there the release is the repository's dependency, and a push is what changes it.
       </p>
+      <p>
+        An upgrade is reversible for a week. The row keeps the release the instance was on and when it moved, and the
+        card offers "Roll back to" that release for seven days: the same provisioning, on the recorded release
+        instead of the current one, its database, files, secrets and domains kept. After seven days the button is
+        gone and the card says the release it is on. This one is the page's for now:{" "}
+        <code>voidbase cloud instances upgrade</code> takes no release yet.
+      </p>
+      <div className="alert alert-warning">
+        <div className="content">
+          <p className="m-0">
+            What a rollback does not undo is migrations. The ones the newer release ran have run, and nothing
+            reverses them, so a rollback can leave the database ahead of the code reading it. Rolling back also
+            clears the recorded release, so a rollback is not itself rollable; the way forward from there is the
+            upgrade again, or a backup taken before the upgrade.
+          </p>
+        </div>
+      </div>
 
       <h2>When you would rather hold the commands yourself</h2>
       <p>

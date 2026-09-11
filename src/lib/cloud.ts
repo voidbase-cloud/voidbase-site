@@ -2,18 +2,43 @@
 // code the `voidbase cloud` CLI drives); this module keeps the page's import path, and adds the thin layer the
 // page needs before the shared client gains it: what an instance reports on `/api/plugins` beyond the installer
 // (mail, ai, translations, domains, payments), the backups plugin's archive kinds, verification and per-kind
-// restore, and the payments collections read as a superuser. Each override is a superset of the shared shape,
-// so the page and the test see one `CloudClient`; when the shared client catches up, the overrides go.
+// restore, the payments collections read as a superuser, and an upgrade onto a named release with the one it left
+// recorded, so it can be undone. Each override is a superset of the shared shape, so the page and the test see one
+// `CloudClient`; when the shared client catches up, the overrides go.
 //
 // What the shared client should gain, so this file shrinks back to the re-export: `plugins().running()` typed
 // with the report fields below (`PluginsReport`); `backups().list()` returning `BackupItem` (kind, verified,
 // voidbase, verifyError, offsite, restore); `backups().create(name, kind)`; `backups().verify(key)`;
-// `backups().restore(key, { createMissing })`; and `payments(inst, session)` over the three collections.
+// `backups().restore(key, { createMissing })`; `payments(inst, session)` over the three collections; and
+// `upgradeInstance(inst, { release })`, the release to put the instance on rather than always the active one, with
+// the release it left recorded on the row, which is what makes an upgrade reversible.
+import { provisionInstance, workerExists } from "@voidbase-cloud/voidbase/cloud";
 import { CloudClient as SharedClient, CloudError, type Backup, type Instance } from "@voidbase-cloud/voidbase/cloud-client";
 export * from "@voidbase-cloud/voidbase/cloud-client";
 
 /** what PocketBase accepts as a backup file name (the shared client's rule, kept here for `create` with a kind) */
 const BACKUP_NAME = /^[a-z0-9_-]+\.zip$/;
+/** carried over rather than resupplied when an instance's Worker is uploaded again (the shared client's list) */
+const INHERITED = ["VOIDBASE_SUPERUSER_EMAIL", "VOIDBASE_SUPERUSER_PASSWORD"];
+/** now, in the shape PocketBase stores a date in */
+const pbNow = () => new Date().toISOString().replace("T", " ");
+
+// ---- upgrading, and the way back ---------------------------------------------------------------------------------
+
+/** how long after an upgrade the release it left is still offered */
+export const ROLLBACK_WINDOW_DAYS = 7;
+/** the two fields the row keeps about the last upgrade, as `/api/vbcloud/instances` hands them back */
+export interface Upgraded { previousRelease?: string; upgradedAt?: string; status?: string; system?: boolean }
+/**
+ * The release an instance can be put back on: the one it left, while that upgrade is still inside the window. A
+ * rollback clears the pair, so it is never itself rollable, and beyond the window there is nothing to offer.
+ */
+export function rollbackTarget(inst: Upgraded, now = Date.now()): string | null {
+  if (!inst.previousRelease || !inst.upgradedAt || inst.system || (inst.status && inst.status !== "live")) return null;
+  const at = Date.parse(inst.upgradedAt.replace(" ", "T"));
+  if (!Number.isFinite(at) || now - at > ROLLBACK_WINDOW_DAYS * 24 * 3600 * 1000) return null;
+  return inst.previousRelease;
+}
 
 // ---- what GET /api/plugins reports, beyond the installer ---------------------------------------------------------
 
@@ -61,9 +86,19 @@ export interface PaymentsSummary { customers: number; subscriptions: number; pay
 
 export class CloudClient extends SharedClient {
   private readonly fetchOnInstance: (input: string, init?: RequestInit) => Promise<Response>;
+  /** the site and the user's session again, because the shared client keeps its own copies private */
+  private readonly siteBase: string;
+  private readonly siteToken: () => string;
   constructor(base: string, token: () => string, fetchImpl: (input: string, init?: RequestInit) => Promise<Response> = (u, i) => fetch(u, i)) {
     super(base, token, fetchImpl);
     this.fetchOnInstance = fetchImpl;
+    this.siteBase = base.replace(/\/$/, "");
+    this.siteToken = token;
+  }
+  /** one field of an instance's row, written through the collection's rules the way the shared client writes them */
+  private async instanceRow(id: string, body: Record<string, unknown>): Promise<void> {
+    const r = await this.fetchOnInstance(`${this.siteBase}/api/collections/vb_instances/records/${id}`, { method: "PATCH", headers: { "content-type": "application/json", authorization: this.siteToken() }, body: JSON.stringify(body) });
+    if (!r.ok) { const j = (await r.json().catch(() => ({}))) as { message?: string }; throw new CloudError(String(j.message ?? `the row of ${id}: ${r.status}`), r.status); }
   }
   /** one call on the instance's own API with the owner's session, as the shared client makes it (private there) */
   private onInstanceHere(inst: Instance, session: string) {
@@ -75,6 +110,32 @@ export class CloudClient extends SharedClient {
       if (!r.ok) throw new CloudError(String(j.message ?? `${path}: ${r.status}`), r.status);
       return j as T;
     };
+  }
+
+  /**
+   * The shared upgrade with the release named: the active one, as before, or a recorded one for a rollback. The row
+   * keeps what the instance was on and when it moved (`previous_release`, `upgraded_at`), which is what lets the card
+   * offer the way back; a rollback clears the pair instead, so it is not itself rollable. A rollback re-deploys the
+   * code and nothing else: the migrations the newer release ran have run, and none of this reverses them.
+   */
+  override async upgradeInstance(inst: Instance, o: { log?: (l: string) => void; release?: string; rollback?: boolean } = {}): Promise<{ upgraded: boolean; from: string; to: string; log: string[] }> {
+    if (inst.system) throw new CloudError("A system instance is deployed from its repository; upgrade it there.");
+    const release = await this.release(o.release); const from = inst.release ?? ""; const to = release.version;
+    if (from === to) return { upgraded: false, from, to, log: [] };
+    const cf = this.cf();
+    if (!(await workerExists(cf, inst.account.id, inst.name))) throw new CloudError("The Worker for this instance is not on the account any more.");
+    const record = o.rollback ? { previous_release: "", upgraded_at: "" } : { previous_release: from, upgraded_at: pbNow() };
+    await this.instanceRow(inst.id, { status: "upgrading", ...record });
+    const lines: string[] = []; const log = (l: string) => { lines.push(l); o.log?.(l); };
+    try {
+      await provisionInstance(cf, { account: inst.account.id, name: inst.name, release, inheritSecrets: INHERITED, applyDoMigrations: false, tags: [`vbcloud-owner:${inst.owner ?? ""}`], log });
+      await this.instanceRow(inst.id, { release: to, status: "live", error: "" });
+      return { upgraded: true, from, to, log: lines };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await this.instanceRow(inst.id, { status: inst.status || "live", error: message.slice(0, 1000) }).catch(() => null);
+      throw new CloudError(`${o.rollback ? "Rolling back" : "Upgrading"} ${inst.name} failed: ${message}`, 400, lines);
+    }
   }
 
   /** the shared calls, with `running()` typed as the whole report */

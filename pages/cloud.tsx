@@ -7,7 +7,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import CloudflareSignIn from "@/components/CloudflareSignIn";
 import { CopyButton } from "@/components/CodeBlock";
 import { cloud, errorMessage, vb, VB_URL } from "@/lib/vb";
-import { CloudClient, LOG_LEVELS, type BackupItem, type BackupKind, type CustomDomain, type DomainsReport, type LogPage, type Metrics, type PaymentsReport, type PaymentsSummary, type PluginsReport, type Superuser, type WorkerSecret, type Zone } from "@/lib/cloud";
+import { CloudClient, LOG_LEVELS, rollbackTarget, ROLLBACK_WINDOW_DAYS, type BackupItem, type BackupKind, type CustomDomain, type DomainsReport, type LogPage, type Metrics, type PaymentsReport, type PaymentsSummary, type PluginsReport, type Superuser, type WorkerSecret, type Zone } from "@/lib/cloud";
 
 // ---- what /api/vbcloud/* hands back -----------------------------------------------------------------------------
 
@@ -45,6 +45,9 @@ interface Instance {
   self?: boolean;
   url?: string;
   release?: string;
+  /** the release this instance was on before its last upgrade, and when that was: the way back, for seven days */
+  previousRelease?: string;
+  upgradedAt?: string;
   error?: string;
   superuserEmail?: string;
   canDelete?: boolean;
@@ -966,6 +969,20 @@ export default function Cloud() {
     });
   }
 
+  /** the last upgrade undone: the same provisioning, on the release the row recorded */
+  async function rollback(inst: Instance) {
+    const to = rollbackTarget(inst);
+    if (!to) return;
+    if (!confirm(`Roll ${inst.name} back to ${to}?\n\nThe Worker is provisioned again from ${to}, in place: the database, the files, the secrets and the domains stay.\n\nWhat this does not undo is migrations. The ones the newer release ran have run, and nothing reverses them, so a rollback can leave the database ahead of the code reading it.\n\nThe recorded release is cleared afterwards, so a rollback is not itself rollable.`))
+      return;
+    await run("rollback:" + inst.id, async () => {
+      setLogs([]);
+      const r = await client.upgradeInstance(inst, { release: to, rollback: true, log: (l) => setLogs((ls) => [...ls, l]) });
+      setNotice(`${inst.name} rolled back: ${r.from} → ${r.to}. Migrations the newer release ran are not reversed.`);
+      await load();
+    });
+  }
+
   async function toggleCredentials(inst: Instance) {
     if (creds[inst.id]) { const next = { ...creds }; delete next[inst.id]; setCreds(next); return; }
     setCreds((prev) => ({ ...prev, [inst.id]: client.credentials(inst) }));
@@ -1322,6 +1339,11 @@ export default function Cloud() {
                           {busy === "upgrade:" + inst.id ? "Upgrading…" : `Upgrade to ${release.current}`}
                         </button>
                       )}
+                      {rollbackTarget(inst) && (
+                        <button type="button" className="btn btn-xs btn-outline" disabled={busy === "rollback:" + inst.id} onClick={() => rollback(inst)}>
+                          {busy === "rollback:" + inst.id ? "Rolling back…" : `Roll back to ${rollbackTarget(inst)}`}
+                        </button>
+                      )}
                       {inst.canDelete && !inst.system && (
                         <button
                           type="button"
@@ -1335,6 +1357,14 @@ export default function Cloud() {
                     </div>
                   </div>
                   {inst.error && <p className="node-error">{inst.error}</p>}
+                  {rollbackTarget(inst) && (
+                    <p className="txt-hint">
+                      Rolling back provisions {inst.name} from {inst.previousRelease} again, the release it left on{" "}
+                      {when(inst.upgradedAt!)}: it does not undo the migrations the newer release ran, and it clears the
+                      recorded release, so a rollback is not itself rollable. Offered for {ROLLBACK_WINDOW_DAYS} days
+                      after an upgrade; after that the card says the release it is on.
+                    </p>
+                  )}
                   {!me?.user?.superuser && inst.status === "live" && (
                     <InstancePanels inst={inst} client={client} />
                   )}

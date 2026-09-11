@@ -9,7 +9,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readdirSync, statSync, e
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { assetHash, contentTypeFor, type ReleaseManifest } from "@voidbase-cloud/voidbase/cloud";
-import { CloudClient, CloudError, type Instance } from "../src/lib/cloud";
+import { CloudClient, CloudError, rollbackTarget, ROLLBACK_WINDOW_DAYS, type Instance } from "../src/lib/cloud";
 const VOIDBASE = resolve(import.meta.dir, "../node_modules/@voidbase-cloud/voidbase");
 // The npm package ships no test/; the mocks come from a sibling voidbase checkout when the package lacks them
 // (a sibling of the site, or of the site a worktree under .claude/worktrees/ belongs to).
@@ -138,6 +138,19 @@ try {
   check("already on it: nothing uploaded", again.upgraded === false, JSON.stringify(again));
   const sysUp = await client.upgradeInstance({ ...(self0 as Instance), system: true }).then(() => "did", (e) => (e instanceof Error ? e.message : String(e)));
   check("a system instance is never re-provisioned from here", /deployed from its repository/.test(String(sysUp)), String(sysUp));
+
+  // ---- and back: the row keeps the release the upgrade left, the card offers it for seven days, a rollback clears it
+  const recorded = { previousRelease: String(upRow.previous_release ?? ""), upgradedAt: String(upRow.upgraded_at ?? ""), status: "live" };
+  const offered = rollbackTarget(recorded);
+  const expired = rollbackTarget(recorded, Date.now() + (ROLLBACK_WINDOW_DAYS + 1) * 24 * 3600 * 1000);
+  const never = rollbackTarget({ ...recorded, previousRelease: "" });
+  check("upgrade: the row keeps the release it left and when it moved; the way back is offered for seven days, not after, and not without one", recorded.previousRelease === manifest.version && recorded.upgradedAt.length > 0 && offered === manifest.version && expired === null && never === null, JSON.stringify({ recorded, offered, expired, never }));
+  const uploadsBeforeBack = await putsOf();
+  const back = await client.upgradeInstance({ ...inst, release: v2 }, { release: manifest.version, rollback: true });
+  const backRow = (await api("GET", `/api/collections/vb_instances/records/${inst.id}`, undefined, U)).json;
+  check("rollback: the worker is provisioned again from the recorded release, the row moves back, and the record is cleared, so a rollback is not itself rollable", back.upgraded === true && back.from === v2 && back.to === manifest.version && (await putsOf()) === uploadsBeforeBack + 1 && backRow.release === manifest.version && backRow.status === "live" && String(backRow.previous_release ?? "") === "" && String(backRow.upgraded_at ?? "") === "" && rollbackTarget({ previousRelease: String(backRow.previous_release ?? ""), upgradedAt: String(backRow.upgraded_at ?? ""), status: "live" }) === null, JSON.stringify({ back: { from: back.from, to: back.to }, row: { release: backRow.release, previous: backRow.previous_release, at: backRow.upgraded_at } }));
+  // on the active release again, where the rest of this run expects it
+  await client.upgradeInstance({ ...inst, release: manifest.version });
 
   // ---- plugins: the instance's own installer, with a session minted on the instance itself
   const calls: { path: string; auth: string; body: unknown }[] = [];
