@@ -188,8 +188,12 @@ export default function DocsPlugins() {
             <Row name="realtime" on="On by default.">
               Provides <code>realtime@1</code>: the subscriptions, built per request over the hub binding on Workers, so the write path knows whether a change has anywhere to go.
             </Row>
-            <Row name="hardening" on={<>On by default. The policy knobs (<code>VOIDBASE_CORS_ORIGINS</code>, <code>VOIDBASE_HSTS</code>, <code>VOIDBASE_CSP</code> and the rest) are off unless set.</>}>
+            <Row name="hardening" on={<>On by default. The policy knobs (<code>VOIDBASE_CORS_ORIGINS</code>, <code>VOIDBASE_HSTS</code>, <code>VOIDBASE_CSP_ROUTES</code>, <code>VOIDBASE_CSRF</code>, <code>VOIDBASE_CSP</code> and the rest) are off unless set.</>}>
               Provides <code>hardening@1</code>: the body limit, the rate limit and the response policy, the headers every answer carries. Naming CORS origins also turns on the CSRF rule for cookie-carrying writes. Remove it and there is no policy at all.
+             <code>VOIDBASE_CSP_ROUTES</code> gives a path its own
+              policy, and <code>VOIDBASE_CSRF=double-submit</code> adds the token a cookie-authenticated write must
+              echo; a bearer request is exempt. <code>voidbase check --security &lt;url&gt;</code> reads a running
+              instance from outside and says pass, warn or fail per line.
             </Row>
             <Row name="backups" on={<>On by default. <code>VOIDBASE_BACKUP_KIND</code>, <code>VOIDBASE_BACKUP_KEEP</code> and <code>VOIDBASE_BACKUP_S3_*</code> shape the schedule and the off-site copy.</>}>
               PocketBase's backups routes plus <code>verify</code>: full, data and schema archives with a manifest, each read back and verified after it is written, restore per kind read as one stream so an archive larger than memory loads, retention, and a copy to any S3-compatible bucket outside the account.
