@@ -234,6 +234,10 @@ export default function DocsPlugins() {
             </Row>
             <Row name="previews" on={<><code>voidbase deploy --preview &lt;branch&gt;</code>, or <code>VOIDBASE_PREVIEW</code>, which <code>voidbase sync --previews</code> sets from the branch in CI.</>}>
               Deploy time: a second Worker for the branch with its own database, bucket and queue, seeded from production through the backups API, its address posted once on the pull request and updated on every push, gone with everything it owns when the pull request closes.
+             A preview comes in two shapes: <code>--shape instance</code>, a whole
+              instance for the branch, and <code>--shape flagged</code>, the same instance with the branch&apos;s new
+              rows marked and filtered out of every production read. The flagged one isolates new rows only, and
+              refuses a change to a row production already has rather than making it quietly.
             </Row>
           </tbody>
         </table>
