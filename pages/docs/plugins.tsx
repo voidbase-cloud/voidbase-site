@@ -232,8 +232,9 @@ export default function DocsPlugins() {
             <Row name="commerce" on={<>Off unless <code>VOIDBASE_COMMERCE=1</code>. <code>VOIDBASE_TAX_RATE</code>, <code>VOIDBASE_SHIPPING_FLAT</code> and <code>VOIDBASE_SHIPPING_FREE_OVER</code> shape the two flat-rate defaults.</>}>
               A shop over ten collections: products, variants, inventory, carts, orders, shipments, refunds and an
               append-only audit trail, with a cart, an address that quotes tax and shipping, a checkout that reserves
-              stock and hands the line items to whichever payment provider runs, and fulfilment and refunds for a
-              superuser. It requires <code>payments@1</code>, <code>tax@1</code> and <code>shipping@1</code>, so the
+              stock and charges the order's whole total at whichever payment provider runs, tax and shipping
+              included, and fulfilment and refunds for a superuser. A payment moves an order only when it names that
+              order, pays it in full before the provider's own tax, and bought what the order is. It requires <code>payments@1</code>, <code>tax@1</code> and <code>shipping@1</code>, so the
               provider of each is yours to choose; <code>tax-flat</code> and <code>shipping-flat</code> ship with it.
             </Row>
             <Row name="domains" on={<><code>VOIDBASE_DOMAINS=example.com,www.example.com</code>, or <code>voidbase deploy --domain</code>.</>}>
