@@ -117,8 +117,9 @@ export default function DocsCloud() {
           <tr>
             <td>Domains</td>
             <td>
-              The hostnames the deploy attached and which is canonical, and the Workers Custom Domains on your zones,
-              attached and detached through Cloudflare.
+              The hostnames the <code>domains</code> plugin reports from the instance and which is canonical, and
+              setting them, which is the plugin's knob written where that instance's deploy reads it. Below them,
+              what your account has attached to the Worker, so a hostname on one side and not the other shows.
             </td>
           </tr>
           <tr>
@@ -131,6 +132,26 @@ export default function DocsCloud() {
         Beside those: upgrade the instance to the site's current release in place, its database, files, domains and
         superuser kept; roll that upgrade back, for a week; wire another repository to it, from a template or one you
         have; delete it, which takes the Worker and everything it owns after you type the name back.
+      </p>
+
+      <h2>Setting a domain</h2>
+      <p>
+        A deployed instance carries the <code>domains</code> plugin, and the plugin is what attaches a hostname: at
+        deploy time it reads <code>VOIDBASE_DOMAINS</code> (comma separated, the first canonical), turns the
+        workers.dev address off, attaches each hostname through Cloudflare, waits for the certificate and sends the
+        other hostnames to the canonical one with a 301. The panel sets that knob rather than doing the work itself,
+        and it reads the plugin's own report back as the truth.
+      </p>
+      <p>
+        On an instance deployed from a repository, setting a domain is one commit to it, the way a plugin install is
+        one commit: <code>VOIDBASE_DOMAINS</code> goes into the project's <code>vb_secrets/main.ts</code>, where the
+        deploy reads its knobs, and the change lands on the next deploy, which the push starts. On an instance with
+        no repository there is no deploy a browser can run, so the panel sets the plugin's two vars on the Worker and
+        attaches the hostnames itself; the panel says so in a line, and the instance reports them as it would after a
+        deploy. What that case does not get is the redirects, which the plugin sets around a deploy as zone rules, so
+        a second hostname there answers on its own name. Under both, the Workers Custom Domains your account has
+        attached to that Worker are listed as what the account has attached, so a hostname the plugin does not
+        report, or one it reports that the account does not have, is visible rather than hidden.
       </p>
 
       <h2>Every button is a command</h2>

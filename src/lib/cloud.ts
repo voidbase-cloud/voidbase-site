@@ -2,16 +2,18 @@
 // code the `voidbase cloud` CLI drives); this module keeps the page's import path, and adds the thin layer the
 // page needs before the shared client gains it: what an instance reports on `/api/plugins` beyond the installer
 // (mail, ai, translations, domains, payments), the backups plugin's archive kinds, verification and per-kind
-// restore, the payments collections read as a superuser, and an upgrade onto a named release with the one it left
-// recorded, so it can be undone. Each override is a superset of the shared shape, so the page and the test see one
-// `CloudClient`; when the shared client catches up, the overrides go.
+// restore, the payments collections read as a superuser, an upgrade onto a named release with the one it left
+// recorded (so it can be undone), and the domains plugin's knob set where a deploy reads it. Each override is a
+// superset of the shared shape, so the page and the test see one `CloudClient`; when the shared client catches
+// up, the overrides go.
 //
 // What the shared client should gain, so this file shrinks back to the re-export: `plugins().running()` typed
 // with the report fields below (`PluginsReport`); `backups().list()` returning `BackupItem` (kind, verified,
 // voidbase, verifyError, offsite, restore); `backups().create(name, kind)`; `backups().verify(key)`;
-// `backups().restore(key, { createMissing })`; `payments(inst, session)` over the three collections; and
+// `backups().restore(key, { createMissing })`; `payments(inst, session)` over the three collections;
 // `upgradeInstance(inst, { release })`, the release to put the instance on rather than always the active one, with
-// the release it left recorded on the row, which is what makes an upgrade reversible.
+// the release it left recorded on the row, which is what makes an upgrade reversible; and `setDomains(inst,
+// hostnames, repo)`, the domains plugin's knob written where that instance's deploy reads it.
 import { provisionInstance, workerExists } from "@voidbase-cloud/voidbase/cloud";
 import { CloudClient as SharedClient, CloudError, type Backup, type Instance } from "@voidbase-cloud/voidbase/cloud-client";
 export * from "@voidbase-cloud/voidbase/cloud-client";
@@ -39,6 +41,55 @@ export function rollbackTarget(inst: Upgraded, now = Date.now()): string | null 
   if (!Number.isFinite(at) || now - at > ROLLBACK_WINDOW_DAYS * 24 * 3600 * 1000) return null;
   return inst.previousRelease;
 }
+
+// ---- the domains plugin's knobs ----------------------------------------------------------------------------------
+
+/** the hostnames attached, comma separated, the first canonical (src/server/plugins/domains.ts, and the deploy knob) */
+export const DOMAINS_VAR = "VOIDBASE_DOMAINS";
+/** the canonical hostname, the one every other attached hostname redirects to */
+export const CANONICAL_DOMAIN_VAR = "VOIDBASE_CANONICAL_DOMAIN";
+/** where a project declares its configuration, and so where its deploy reads a knob from the repository */
+export const SECRETS_DECLARATION = "vb_secrets/main.ts";
+/** the deploy plugin's own rule for a hostname */
+const HOSTNAME = /^[a-z0-9.-]+\.[a-z]{2,}$/;
+/** what setting the domains did: one commit on the project's repository, or the vars and the hostnames here */
+export interface DomainsChange { via: "repository" | "worker"; hostnames: string[]; canonical: string | null; commit?: { sha: string; url: string; path: string }; attached?: string[] }
+
+/** the hostnames a field or a list names, cleaned the way the deploy plugin cleans them; the first is canonical */
+export function hostnamesOf(text: string | string[]): string[] {
+  const raw = Array.isArray(text) ? text : String(text).split(",");
+  const hosts = [...new Set(raw.map((h) => h.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase()).filter(Boolean))];
+  for (const h of hosts) if (!HOSTNAME.test(h)) throw new CloudError(`"${h}" is not a hostname like api.example.com.`);
+  return hosts;
+}
+
+/** the names a declaration needs from the secrets module, added to its import when they are not already there */
+function withImports(source: string, names: string[]): string {
+  const im = /import\s*\{([^}]*)\}\s*from\s*(["'])([^"']*\/secrets)\2/.exec(source);
+  if (!im) return source;
+  const have = im[1]!.split(",").map((n) => n.trim()).filter(Boolean);
+  const missing = names.filter((n) => !have.includes(n));
+  if (!missing.length) return source;
+  return `${source.slice(0, im.index)}import { ${[...have, ...missing].join(", ")} } from ${im[2]}${im[3]}${im[2]}${source.slice(im.index + im[0].length)}`;
+}
+
+/**
+ * `VOIDBASE_DOMAINS` written into a project's secrets declaration: its line replaced when the file has one, added
+ * at the top of the declaration when it has none, with `server` and `string` added to the import if they are
+ * missing. A deploy puts every declared value into its environment, which is where the domains plugin reads it.
+ */
+export function declareDomains(source: string, hostnames: string[]): string {
+  const line = (indent: string) => `${indent}${DOMAINS_VAR}: server(string().default(${JSON.stringify(hostnames.join(","))}), "the hostnames the domains plugin attaches, the first canonical"),`;
+  const existing = new RegExp(`^([ \\t]*)${DOMAINS_VAR}\\s*:.*$`, "m");
+  if (existing.test(source)) return withImports(source.replace(existing, (_m, indent: string) => line(indent)), ["server", "string"]);
+  const open = /defineSecrets\(\s*\{/.exec(source);
+  if (!open) throw new CloudError(`${SECRETS_DECLARATION} does not call defineSecrets({ … }), so ${DOMAINS_VAR} cannot be declared in it.`);
+  const at = open.index + open[0].length;
+  return withImports(`${source.slice(0, at)}\n${line("  ")}${source.slice(at)}`, ["server", "string"]);
+}
+
+const toBase64Text = (text: string) => { let s = ""; for (const b of new TextEncoder().encode(text)) s += String.fromCharCode(b); return btoa(s); };
+const fromBase64Text = (b64: string) => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, "")), (ch) => ch.charCodeAt(0)));
 
 // ---- what GET /api/plugins reports, beyond the installer ---------------------------------------------------------
 
@@ -136,6 +187,47 @@ export class CloudClient extends SharedClient {
       await this.instanceRow(inst.id, { status: inst.status || "live", error: message.slice(0, 1000) }).catch(() => null);
       throw new CloudError(`${o.rollback ? "Rolling back" : "Upgrading"} ${inst.name} failed: ${message}`, 400, lines);
     }
+  }
+
+  /**
+   * The domains plugin's knob, set where this instance's deploy reads it. An instance deployed from a repository
+   * holds its configuration there, so this is one commit on it, the way a plugin install is one commit: the knob
+   * goes into the project's secrets declaration, the push deploys, and the plugin attaches the hostnames, waits for
+   * the certificate and redirects the others to the canonical one. An instance with no repository has no deploy a
+   * browser can run, so the two vars the plugin would bake go on the Worker itself and each hostname is attached
+   * here, which is what the plugin's own `after` does; the instance then reports them like any other.
+   */
+  async setDomains(inst: Instance, hostnames: string[] | string, repo: { fullName: string; branch?: string } | null): Promise<DomainsChange> {
+    const hosts = hostnamesOf(hostnames); const canonical = hosts[0] ?? null;
+    if (repo?.fullName) {
+      const branch = repo.branch || (await this.gh<{ default_branch?: string }>("GET", `/repos/${repo.fullName}`)).data.default_branch || "master";
+      return { via: "repository", hostnames: hosts, canonical, commit: await this.commitDomains(repo.fullName, branch, hosts) };
+    }
+    const worker = this.secrets(inst); const api = this.domains(inst);
+    if (hosts.length) { await worker.set(DOMAINS_VAR, hosts.join(",")); await worker.set(CANONICAL_DOMAIN_VAR, canonical!); }
+    else for (const name of [DOMAINS_VAR, CANONICAL_DOMAIN_VAR]) await worker.remove(name).catch(() => null);
+    for (const h of hosts) await api.attach(h);
+    // the plugin's list is the whole list: a hostname it no longer names comes off the Worker, as `--remove` takes it off
+    for (const d of await api.list()) if (!hosts.includes(d.hostname)) await api.detach(d.id);
+    return { via: "worker", hostnames: hosts, canonical, attached: hosts };
+  }
+
+  /** one commit on the project's branch, through GitHub's Git Data API, as src/server/project-sync.ts commits a plugin */
+  private async commitDomains(fullName: string, branch: string, hosts: string[]): Promise<{ sha: string; url: string; path: string }> {
+    const path = SECRETS_DECLARATION;
+    const head = await this.gh<{ object: { sha: string } }>("GET", `/repos/${fullName}/git/ref/heads/${branch}`);
+    const headSha = head.data.object.sha;
+    const commit = await this.gh<{ tree: { sha: string } }>("GET", `/repos/${fullName}/git/commits/${headSha}`);
+    const file = await this.gh<{ content?: string }>("GET", `/repos/${fullName}/contents/${path}?ref=${headSha}`, undefined, [404]);
+    if (file.status === 404) throw new CloudError(`${fullName} has no ${path}, so there is nowhere in it to declare ${DOMAINS_VAR}.`);
+    const source = fromBase64Text(String(file.data.content ?? ""));
+    const next = declareDomains(source, hosts);
+    if (next === source) return { sha: "", url: "", path };
+    const blob = await this.gh<{ sha: string }>("POST", `/repos/${fullName}/git/blobs`, { content: toBase64Text(next), encoding: "base64" });
+    const tree = await this.gh<{ sha: string }>("POST", `/repos/${fullName}/git/trees`, { base_tree: commit.data.tree.sha, tree: [{ path, mode: "100644", type: "blob", sha: blob.data.sha }] });
+    const made = await this.gh<{ sha: string; html_url?: string }>("POST", `/repos/${fullName}/git/commits`, { message: `domains: ${hosts.join(", ") || "none"}`, tree: tree.data.sha, parents: [headSha] });
+    await this.gh("PATCH", `/repos/${fullName}/git/refs/heads/${branch}`, { sha: made.data.sha, force: false });
+    return { sha: made.data.sha, url: made.data.html_url ?? `https://github.com/${fullName}/commit/${made.data.sha}`, path };
   }
 
   /** the shared calls, with `running()` typed as the whole report */

@@ -1,13 +1,14 @@
 // The cloud control plane: sign in with Cloudflare, list the visitor's instances, create and delete them, connect
 // GitHub, and create or link the repositories wired to an instance; then the life of one: its plugins, logs,
-// metrics, backups, superusers and payments through the instance itself, its domains and secrets through the
-// Cloudflare pass-through (with what the domains plugin reports read from the instance); and the sign-in's own
-// token as a CLI login, for the same session. Ported from the SvelteKit page at src/routes/(app)/cloud/+page.svelte.
+// metrics, backups, superusers and payments through the instance itself, its domains through the domains plugin
+// (a commit on the project's repository, or the plugin's own vars and hostnames on a repositoryless instance) and
+// its secrets through the Cloudflare pass-through; and the sign-in's own token as a CLI login, for the same
+// session. Ported from the SvelteKit page at src/routes/(app)/cloud/+page.svelte.
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import CloudflareSignIn from "@/components/CloudflareSignIn";
 import { CopyButton } from "@/components/CodeBlock";
 import { cloud, errorMessage, vb, VB_URL } from "@/lib/vb";
-import { CloudClient, LOG_LEVELS, rollbackTarget, ROLLBACK_WINDOW_DAYS, type BackupItem, type BackupKind, type CustomDomain, type DomainsReport, type LogPage, type Metrics, type PaymentsReport, type PaymentsSummary, type PluginsReport, type Superuser, type WorkerSecret, type Zone } from "@/lib/cloud";
+import { CloudClient, hostnamesOf, LOG_LEVELS, rollbackTarget, ROLLBACK_WINDOW_DAYS, type BackupItem, type BackupKind, type CustomDomain, type DomainsReport, type LogPage, type Metrics, type PaymentsReport, type PaymentsSummary, type PluginsReport, type Superuser, type WorkerSecret, type Zone } from "@/lib/cloud";
 
 // ---- what /api/vbcloud/* hands back -----------------------------------------------------------------------------
 
@@ -575,32 +576,50 @@ function SuperusersPanel({ inst, client, session }: { inst: Instance; client: Cl
 }
 
 /**
- * The instance's domains, in two halves: what the domains plugin reports from the instance (the hostnames the
- * deploy attached and the canonical one, read with the owner's session), and the Workers Custom Domains on the
- * account's zones, attached and detached from here through Cloudflare. The deploy-side plugin is not reachable
- * from the browser, so the redirects it sets are only described.
+ * The instance's domains, through the domains plugin. What the plugin reports from the instance is the truth here:
+ * the hostnames its deploy attached and the canonical one, read with the owner's session. Setting them is the
+ * plugin's knob, written where this instance's deploy reads it: a commit on the project's repository, which the
+ * push deploys, or, on an instance with no repository, the plugin's own two vars on the Worker with the hostnames
+ * attached here. The account's Workers Custom Domains stay below as what the account has attached, so a hostname
+ * on one side and not the other is visible rather than hidden.
  */
-function DomainsPanel({ inst, client, session, onSession }: { inst: Instance; client: CloudClient; session: string; onSession: (token: string) => void }) {
+function DomainsPanel({ inst, client, session, repo, onSession }: { inst: Instance; client: CloudClient; session: string; repo: Repo | null; onSession: (token: string) => void }) {
   const [report, setReport] = useState<DomainsReport | null>(null);
   const [reportError, setReportError] = useState("");
   const [list, setList] = useState<CustomDomain[]>([]);
   const [zones, setZones] = useState<Zone[]>([]);
-  const [form, setForm] = useState({ hostname: "", zone: "" });
+  const [field, setField] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [working, setWorking] = useState("");
   const api = useMemo(() => client.domains(inst), [client, inst]);
   const refresh = () => Promise.all([api.list(), api.zones()]).then(([d, z]) => { setList(d); setZones(z); }).catch((err) => setError(errorMessage(err)));
+  const readReport = () => client.plugins(inst, session).running().then((r) => { const d = r.domains ?? { hostnames: [], canonical: null }; setReport(d); setField(d.hostnames.join(", ")); }).catch((err) => setReportError(errorMessage(err)));
   useEffect(() => { refresh(); }, [inst.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     setReport(null); setReportError("");
-    if (!session) return;
-    client.plugins(inst, session).running().then((r) => setReport(r.domains ?? { hostnames: [], canonical: null })).catch((err) => setReportError(errorMessage(err)));
+    if (session) readReport();
   }, [session, inst.id]); // eslint-disable-line react-hooks/exhaustive-deps
   async function act(step: string, fn: () => Promise<unknown>) {
     setWorking(step); setError("");
     try { await fn(); await refresh(); } catch (err) { setError(errorMessage(err)); } finally { setWorking(""); }
   }
+  async function save() {
+    setWorking("save"); setError(""); setNotice("");
+    try {
+      const r = await client.setDomains(inst, hostnamesOf(field), repo ? { fullName: repo.fullName } : null);
+      const named = r.hostnames.join(", ") || "no hostname";
+      setNotice(r.via === "repository"
+        ? r.commit?.sha
+          ? `Committed to ${repo!.fullName} (${r.commit.sha.slice(0, 7)}): ${r.commit.path} now declares ${named}. The change lands on the next deploy, which attaches them.`
+          : `${repo!.fullName} already declares ${named}; nothing to commit.`
+        : `${named} set on the Worker and attached here; the instance reports them itself.`);
+      await refresh();
+      if (session) await readReport();
+    } catch (err) { setError(errorMessage(err)); } finally { setWorking(""); }
+  }
   const zoneName = (id: string) => zones.find((z) => z.id === id)?.name ?? id;
+  const unreported = report ? report.hostnames.filter((h) => !list.some((d) => d.hostname === h)) : [];
   return (
     <>
       <h4>What the domains plugin reports</h4>
@@ -617,31 +636,35 @@ function DomainsPanel({ inst, client, session, onSession }: { inst: Instance; cl
               ))}
             </ul>
           ) : (
-            <p className="txt-hint">The deploy attached no hostname; the Worker answers on {host(inst.url)}. Set <code>VOIDBASE_DOMAINS</code> (comma separated, the first canonical) and redeploy. <a href={DOCS.plugins}>docs</a></p>
+            <p className="txt-hint">The deploy attached no hostname; the Worker answers on {host(inst.url)}.</p>
           ))}
-          <p className="txt-hint">Redirects to the canonical hostname are set at deploy time by the domains plugin, one Redirect Rule on the zone per other hostname; nothing here changes them.</p>
+          {error && <p className="node-error">{error}</p>}
+          {notice && <p className="txt-hint">{notice}</p>}
+          <form className="tool-row" onSubmit={(e) => { e.preventDefault(); save(); }}>
+            <input type="text" placeholder="shop.example.com, www.shop.example.com" value={field} onChange={(e) => setField(e.target.value)} aria-label="Hostnames, comma separated, the first canonical" />
+            <button type="submit" className="btn btn-xs btn-secondary" disabled={!!working}>{working === "save" ? "Saving…" : "Set domains"}</button>
+          </form>
+          <p className="txt-hint">
+            Comma separated, the first canonical. {repo
+              ? <>Setting them is one commit to <code>{repo.fullName}</code>, in <code>vb_secrets/main.ts</code> where the deploy reads its knobs: the push deploys, the plugin attaches each hostname, waits for its certificate and redirects the others to the canonical one, and the change lands on the next deploy.</>
+              : <>This instance has no repository, so its domains are attached here and the plugin reports them. The redirects to the canonical hostname are the deploy's, so they are not set; wire a repository to get them.</>} <a href={DOCS.plugins}>docs</a>
+          </p>
         </>
       ) : <InstanceSignIn inst={inst} client={client} onSession={onSession} />}
-      <h4>On the Worker, through Cloudflare</h4>
-      {error && <p className="node-error">{error}</p>}
-      <p className="txt-hint">A hostname on one of the account's zones, pointed at the Worker: Cloudflare adds the DNS record and the certificate.</p>
+      <h4>What the account has attached</h4>
+      {!session && error && <p className="node-error">{error}</p>}
+      <p className="txt-hint">The Workers Custom Domains on the account's zones pointing at this Worker: Cloudflare's own DNS record and certificate for each.</p>
       <ul>
         {list.map((d) => (
           <li key={d.id}>
             <a href={`https://${d.hostname}`} target="_blank" rel="noopener noreferrer">{d.hostname}</a> <span className="txt-hint">{zoneName(d.zone_id)}</span>{" "}
+            {report && !report.hostnames.includes(d.hostname) && <span className="label label-sm" title="Attached on the account, but not among the hostnames the instance reports">not in the report</span>}{" "}
             <button type="button" className="btn btn-xs btn-secondary btn-danger" disabled={!!working} onClick={() => { if (confirm(`Detach ${d.hostname} from ${inst.name}?`)) act("detach:" + d.id, () => api.detach(d.id)); }}>{working === "detach:" + d.id ? "Detaching…" : "Detach"}</button>
           </li>
         ))}
-        {!list.length && <li className="txt-hint">no custom domain; the Worker answers on {host(inst.url)}</li>}
+        {unreported.map((h) => <li key={h} className="txt-hint">{h}: reported by the instance, not attached on this account</li>)}
+        {!list.length && !unreported.length && <li className="txt-hint">no custom domain; the Worker answers on {host(inst.url)}</li>}
       </ul>
-      <form className="tool-row" onSubmit={(e) => { e.preventDefault(); act("attach", async () => { await api.attach(form.hostname, form.zone); setForm({ hostname: "", zone: "" }); }); }}>
-        <input type="text" placeholder="api.example.com" value={form.hostname} onChange={(e) => setForm({ ...form, hostname: e.target.value })} required />
-        <select value={form.zone} onChange={(e) => setForm({ ...form, zone: e.target.value })}>
-          <option value="">zone: from the hostname</option>
-          {zones.map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}
-        </select>
-        <button type="submit" className="btn btn-xs btn-secondary" disabled={!!working}>{working === "attach" ? "Attaching…" : "Attach"}</button>
-      </form>
       {!zones.length && <p className="txt-hint">The account has no zones this token can read; add the domain to Cloudflare first.</p>}
     </>
   );
@@ -750,11 +773,11 @@ function PaymentsPanel({ inst, client, session }: { inst: Instance; client: Clou
 
 /**
  * What the owner does to an instance after it exists: plugins, logs, metrics, backups, superusers and payments
- * through the instance itself, with one session minted on it and shared by those panels; domains and secrets on
- * its Worker through the Cloudflare pass-through, with the user's own token (the domains panel reads the plugin's
- * report with the same instance session). This site holds nothing of any of it.
+ * through the instance itself, with one session minted on it and shared by those panels; domains through the
+ * domains plugin, which on a project is a commit to its repository; secrets on its Worker through the Cloudflare
+ * pass-through, with the user's own token. This site holds nothing of any of it.
  */
-function InstancePanels({ inst, client }: { inst: Instance; client: CloudClient }) {
+function InstancePanels({ inst, client, repo }: { inst: Instance; client: CloudClient; repo: Repo | null }) {
   const [open, setOpen] = useState("");
   const [session, setSession] = useState("");
   const onInstance = (body: (s: string) => React.ReactNode) => (session ? body(session) : <InstanceSignIn inst={inst} client={client} onSession={setSession} />);
@@ -768,7 +791,7 @@ function InstancePanels({ inst, client }: { inst: Instance; client: CloudClient 
       <Collapsible id="payments" label="Payments" open={open} setOpen={setOpen}>{onInstance((s) => <PaymentsPanel inst={inst} client={client} session={s} />)}</Collapsible>
       {!inst.system && (
         <>
-          <Collapsible id="domains" label="Domains" open={open} setOpen={setOpen}><DomainsPanel inst={inst} client={client} session={session} onSession={setSession} /></Collapsible>
+          <Collapsible id="domains" label="Domains" open={open} setOpen={setOpen}><DomainsPanel inst={inst} client={client} session={session} repo={repo} onSession={setSession} /></Collapsible>
           <Collapsible id="secrets" label="Secrets" open={open} setOpen={setOpen}><SecretsPanel inst={inst} client={client} /></Collapsible>
         </>
       )}
@@ -1366,7 +1389,7 @@ export default function Cloud() {
                     </p>
                   )}
                   {!me?.user?.superuser && inst.status === "live" && (
-                    <InstancePanels inst={inst} client={client} />
+                    <InstancePanels inst={inst} client={client} repo={list.find((r) => !r.system) ?? null} />
                   )}
                   {creds[inst.id] && (
                     <p className="node-creds">

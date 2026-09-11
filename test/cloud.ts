@@ -353,6 +353,20 @@ try {
   await domApi.detach(attached.id);
   check("domains: detached, the Worker has none", (await domApi.list()).length === 0 && (await cfState()).domains.length === 0);
 
+  // ---- the domains plugin on an instance with no repository: nothing here can run a deploy, so the two vars the
+  // plugin would bake go on the Worker itself and each hostname is attached here, which is what its `after` does
+  const setWorker = await client.setDomains(inst, "Shop.example.com, www.shop.example.com", null);
+  const stSet = await cfState();
+  const workerSecrets = (stSet.scripts["vb-my-shop"]?.secrets ?? []) as string[];
+  check("domains without a repository: the plugin's own vars go on the Worker and each hostname is attached here, the first canonical", setWorker.via === "worker" && setWorker.canonical === "shop.example.com" && setWorker.hostnames.length === 2 && workerSecrets.includes("VOIDBASE_DOMAINS") && workerSecrets.includes("VOIDBASE_CANONICAL_DOMAIN") && stSet.domains.length === 2 && stSet.domains.every((d: { service: string }) => d.service === "vb-my-shop"), JSON.stringify({ setWorker, secrets: workerSecrets, domains: stSet.domains.map((d: { hostname: string }) => d.hostname) }));
+  const setFewer = await client.setDomains(inst, ["shop.example.com"], null);
+  const stFewer = await cfState();
+  check("domains without a repository: the list is the whole list, so a hostname it no longer names comes off the Worker", setFewer.hostnames.length === 1 && stFewer.domains.length === 1 && stFewer.domains[0].hostname === "shop.example.com", JSON.stringify(stFewer.domains));
+  const badSet = await client.setDomains(inst, "not a host", null).then(() => "set", (e) => (e instanceof Error ? e.message : String(e)));
+  check("domains: a malformed hostname is refused before anything is written", /is not a hostname/.test(String(badSet)), String(badSet));
+  await client.setDomains(inst, [], null);
+  check("domains: with none named, nothing stays attached and the vars come off the Worker", (await domApi.list()).length === 0 && !(((await cfState()).scripts["vb-my-shop"]?.secrets ?? []) as string[]).includes("VOIDBASE_DOMAINS"));
+
   // ---- secrets: names on the Worker; the ones this site manages are listed and left alone
   const secApi = client.secrets(inst);
   const sec0 = await secApi.list();
@@ -389,6 +403,22 @@ try {
   check("an existing repository (given as a URL) is linked: PB_VB_URL written, private flag read from GitHub, wired", linked.repo.fullName === "octo-tester/existing" && linked.repo.private === true && ghsL.variables["octo-tester/existing"]?.PB_VB_URL === inst.url && linked.wired.length === 3, JSON.stringify(linked));
   const relink = await client.linkRepo({ fullName: "octo-tester/existing", instance: inst, user: uid }).then(() => "linked", (e) => (e instanceof Error ? e.message : String(e)));
   check("a linked repository cannot be linked twice (the unique name)", /already|unique|failed/i.test(String(relink)), String(relink));
+
+  // ---- the domains plugin on a project: the knob committed where that instance's deploy reads it, and the push deploys
+  const declaration = `// the project's configuration\nimport { defineSecrets, secret, string } from "@voidbase-cloud/voidbase/secrets";\n\nexport default defineSecrets({\n  VOIDBASE_SUPERUSER_EMAIL: secret(string()),\n});\n`;
+  await fetch(`${GH}/__files`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ full_name: "octo-tester/existing", files: { "vb_secrets/main.ts": declaration } }) });
+  await fetch(`${GH}/__files`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ full_name: "octo-tester/my-site", files: { "README.md": "# my site\n" } }) });
+  const project = { fullName: "octo-tester/existing", branch: "master" };
+  const committed = await client.setDomains(inst, "Shop.example.com, www.shop.example.com", project);
+  const ghDom = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const declared = String(ghDom.files["octo-tester/existing"]?.["vb_secrets/main.ts"] ?? "");
+  check("domains with a repository: one commit writes VOIDBASE_DOMAINS into the project's secrets declaration, where its deploy reads it, with server added to the import", committed.via === "repository" && !!committed.commit?.sha && committed.commit?.path === "vb_secrets/main.ts" && declared.includes('VOIDBASE_DOMAINS: server(string().default("shop.example.com,www.shop.example.com")') && /import \{ defineSecrets, secret, string, server \}/.test(declared) && ghDom.commits.at(-1).message === "domains: shop.example.com, www.shop.example.com", JSON.stringify({ commit: committed.commit, declared }).slice(0, 400));
+  await client.setDomains(inst, ["shop.example.com"], project);
+  const declared2 = String((((await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>).files["octo-tester/existing"]?.["vb_secrets/main.ts"] ?? "")); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const declaredAgain = await client.setDomains(inst, ["shop.example.com"], project);
+  check("domains with a repository: the declared line is replaced rather than added a second time, and declaring what is already there is no commit", (declared2.match(/VOIDBASE_DOMAINS/g) ?? []).length === 1 && declared2.includes('.default("shop.example.com")') && declaredAgain.commit?.sha === "", JSON.stringify({ declared2, again: declaredAgain.commit }).slice(0, 300));
+  const noDeclaration = await client.setDomains(inst, ["shop.example.com"], { fullName: "octo-tester/my-site", branch: "main" }).then(() => "committed", (e) => (e instanceof Error ? e.message : String(e)));
+  check("domains with a repository that declares nothing: refused, naming the file it would have written, and nothing is attached from here", /has no vb_secrets\/main\.ts/.test(String(noDeclaration)) && (await cfState()).domains.length === 0, String(noDeclaration));
 
   // ---- the system rows: the site's own repository, the demo project; admins see them, nobody writes them from here
   await fetch(`${GH}/__seed`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ full_name: "voidbase-cloud/voidbase-site", variables: { PB_VB_URL: VB } }) });
