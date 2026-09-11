@@ -8,7 +8,7 @@
 // vb_secrets/secrets.json) or the environment (VB_LIVE_SUPERUSER_EMAIL, VB_LIVE_SUPERUSER_PASSWORD,
 // VOIDBASE_DEPLOY_CF_API_KEY, VOIDBASE_ENCRYPTION_KEY).
 import { sealSecret } from "@voidbase-cloud/voidbase/cloud";
-import { CloudClient, CloudError } from "../src/lib/cloud";
+import { CloudClient, CloudError, ROLLBACK_WINDOW_DAYS, rollbackTarget } from "../src/lib/cloud";
 
 const args = process.argv.slice(2);
 const flag = (n: string) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined; };
@@ -66,6 +66,41 @@ try {
   check("the owner signs in to the instance from the client; the instance says its plugins are fixed (no repository yet)", !!session && running.installer?.mode === "fixed" && running.names.includes("installer"), JSON.stringify(running).slice(0, 300));
   const up = await client.upgradeInstance(inst);
   check("upgrade to the active release: already on it", up.upgraded === false && up.from === up.to, JSON.stringify(up));
+  // and the way back: move it to an older release, which records what it left, then roll that back (item 1.5)
+  // listing every release is a superuser's (a visitor is given the active one), so the scaffolding asks as one;
+  // the page itself never needs the list, because a rollback's version comes off the instance's own row
+  const versions: string[] = ((await api("GET", "/api/vbcloud/releases", undefined, SU)).json.releases ?? []).map((r: { version: string }) => r.version);
+  const older = versions.filter((v) => v !== inst!.release).sort().pop();
+  if (!older) check("a second release exists to move between", false, versions.join(", "));
+  else {
+    const active = inst.release!;
+    const moved = await client.upgradeInstance(inst, { release: older });
+    const movedRow = ((await api("GET", "/api/vbcloud/instances", undefined, U)).json.instances ?? []).find((i: { id: string }) => i.id === inst!.id);
+    check("moving to another release records the one it left and when", moved.upgraded === true && moved.to === older && movedRow?.previousRelease === active && !!movedRow?.upgradedAt, JSON.stringify({ moved: moved.to, previousRelease: movedRow?.previousRelease, upgradedAt: movedRow?.upgradedAt }));
+    check("the card offers the way back while the record is fresh", rollbackTarget(movedRow ?? {}) === active && rollbackTarget(movedRow ?? {}, Date.now() + (ROLLBACK_WINDOW_DAYS + 1) * 86400000) === null, String(rollbackTarget(movedRow ?? {})));
+    inst = { ...inst, release: older };
+    const back = await client.upgradeInstance(inst, { release: active, rollback: true });
+    const backRow = ((await api("GET", "/api/vbcloud/instances", undefined, U)).json.instances ?? []).find((i: { id: string }) => i.id === inst!.id);
+    check("rolling back re-deploys the recorded release and clears the record, so it is not itself rollable", back.upgraded === true && back.to === active && backRow?.release === active && !backRow?.previousRelease && rollbackTarget(backRow ?? {}) === null, JSON.stringify({ to: back.to, release: backRow?.release, previousRelease: backRow?.previousRelease }));
+    const stillThere = await fetch(`${inst.url}/api/health`, { headers: ua }).then((r) => r.status).catch(() => 0);
+    check("the instance still answers after the round trip", stillThere === 200, String(stillThere));
+    inst = { ...inst, release: active };
+  }
+
+  // a domain is the domains plugin's knob (item 1.6): no repository here, so the vars go on the Worker and the
+  // hostname is attached; the plugin's own report is what the panel reads, and the run takes the hostname away again
+  const host = `${NAME}-${Date.now().toString(36)}.voidbase.cloud`;
+  const set = await client.setDomains(inst, [host], null).catch((e) => (e instanceof Error ? e.message : String(e)));
+  if (typeof set === "string") check("setting a domain without a repository puts the plugin's knob on the Worker", false, set);
+  else {
+    check("setting a domain without a repository puts the plugin's knob on the Worker and attaches the hostname", set.via === "worker" && set.canonical === host && set.attached?.includes(host) === true, JSON.stringify(set));
+    let reported: string[] = []; for (let i = 0; i < 10 && !reported.includes(host); i++) { await Bun.sleep(3000); reported = (await client.plugins(inst, session).running().catch(() => ({}) as Record<string, never>))?.domains?.hostnames ?? []; }
+    check("the instance itself reports the hostname, which is what the panel reads", reported.includes(host), reported.join(", "));
+    const cleared = await client.setDomains(inst, [], null);
+    const left = await client.domains(inst).list().catch(() => []);
+    check("clearing it takes the hostname off the account again", cleared.hostnames.length === 0 && !left.some((d: { hostname: string }) => d.hostname === host), JSON.stringify(left.map((d: { hostname: string }) => d.hostname)));
+  }
+
   const listed = ((await api("GET", "/api/vbcloud/instances", undefined, U)).json.instances ?? []).find((i: { id: string }) => i.id === inst!.id);
   check("the site lists the row the client wrote", !!listed && listed.name === inst.name && listed.canDelete === true, JSON.stringify(listed).slice(0, 200));
 } finally {
