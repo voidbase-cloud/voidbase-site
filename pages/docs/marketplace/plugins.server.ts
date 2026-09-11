@@ -1,5 +1,5 @@
 import { defineHead } from "void";
 export const head = defineHead(() => ({
   title: "Publish a plugin - Docs - voidbase",
-  description: "pb_plugins does not exist yet. Register a plugin now and help decide the format it will build against.",
+  description: "A voidbase plugin is a repository with a plugin.json. What the marketplace builds, audits and serves, how to submit one, and how versions and removals land.",
 }));

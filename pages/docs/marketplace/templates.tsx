@@ -33,7 +33,8 @@ export default function DocsMarketplaceTemplates() {
       <h1>Publish a template</h1>
       <p className="docs-lead">
         A template is a public repository somebody can start a voidbase project from. It stays yours, in your
-        account, under your licence. Listing it points people at it.
+        account, under your licence. Listing it points people at it: GitHub's <em>Use this template</em> button,{" "}
+        <code>voidbase init --template &lt;name&gt;</code> and <code>voidbase templates</code> all read the listing.
       </p>
 
       <h2>What makes one worth listing</h2>
@@ -60,7 +61,7 @@ export default function DocsMarketplaceTemplates() {
         <li>It has a README saying what someone gets from starting with it.</li>
         <li>
           <strong>Template repository</strong> is switched on in its settings. Without that, <em>Use this template</em>{" "}
-          does nothing, and that button is the only way anyone can use what you listed.
+          does nothing; <code>voidbase init --template</code> downloads the repository's tarball and does not need it.
         </li>
       </ul>
 
@@ -102,11 +103,15 @@ export default function DocsMarketplaceTemplates() {
       <ol>
         <li>Open the <a href={SUBMIT} target="_blank" rel="noreferrer noopener">template submission form</a>.</li>
         <li>The audit comments within a minute or two. If it flags something, edit the issue: that runs it again.</li>
-        <li>A maintainer decides. Accepted listings are committed to the registry and appear after the next deploy.</li>
+        <li>
+          A maintainer labels it <code>approved</code>. The listing is committed to the registry and pushed, the push
+          deploys, and the issue is answered and closed.
+        </li>
       </ol>
       <p>
-        A listing can be removed if the repository disappears, becomes something other than what was listed, or turns
-        out to be someone else's work. If you would rather ask before you spend time on it, we are on{" "}
+        A listing leaves through an issue titled <code>[remove] owner/name</code>, retired once a maintainer approves
+        it. One can also be removed if the repository disappears, becomes something other than what was listed, or
+        turns out to be someone else's work. If you would rather ask before you spend time on it, we are on{" "}
         <a href={SITE.discordUrl} target="_blank" rel="noreferrer noopener">Discord</a>.
       </p>
     </>

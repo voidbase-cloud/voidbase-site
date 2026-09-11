@@ -1,4 +1,4 @@
-// Charging for what you publish, before anyone can.
+// Charging for what you publish: what the marketplace does not do, what an instance can do, and what is promised.
 //
 // The commitments here are the same ones on the pricing page, said from the creator's side rather than the user's.
 // Repeating them is deliberate: a promise about money that only appears where buyers read it is not a promise.
@@ -10,12 +10,22 @@ export default function DocsMarketplaceGettingPaid() {
     <>
       <h1>Getting paid</h1>
       <p className="docs-lead">
-        <span className="label label-warning">Not built yet</span> There is nothing to sell and nowhere to sell it.
-        No accounts, no payments, no payouts. This page exists so the intent is written down before the mechanism is,
-        rather than announced afterwards.
+        Nothing is sold through the marketplace. It has no accounts, no billing and no payouts, and it takes no cut
+        of anything. What it lists is installed by name from your repository, under your licence, and money between
+        you and whoever uses it is yours to arrange. This page exists so the intent is written down before any
+        mechanism is, rather than announced afterwards.
       </p>
 
-      <h2>What is already promised</h2>
+      <h2>What your instance can do today</h2>
+      <p>
+        Taking money is a plugin, not a marketplace feature. <code>stripe</code>, <code>polar</code> and{" "}
+        <code>lemonsqueezy</code> ship with voidbase, each providing <code>payments@1</code> and writing customers,
+        subscriptions and payments into collections your app queries like any other; setting the provider's key is
+        what turns one on, and <code>@voidbase-cloud/sdk/payments</code> is the client side. That is an instance
+        charging its own users for its own product. <Link href="/docs/plugins">The plugins page</Link> has the three.
+      </p>
+
+      <h2>What is promised</h2>
       <ul>
         <li>
           <strong>You keep what you earn.</strong> If you publish something worth paying for, you should be able to
@@ -36,7 +46,8 @@ export default function DocsMarketplaceGettingPaid() {
       </ul>
       <p>
         The same commitments from the other side, along with what voidbase itself costs, are on{" "}
-        <Link href="/docs/pricing">the pricing page</Link>.
+        <Link href="/docs/pricing">the pricing page</Link>. If creators are ever able to charge through the
+        marketplace, it will be written down there before it is built.
       </p>
 
       <h2>What is not decided</h2>
@@ -44,11 +55,10 @@ export default function DocsMarketplaceGettingPaid() {
         Quite a lot, and it is better to say so than to imply a design exists.
       </p>
       <ul>
-        <li>How money moves: which payment provider, who the merchant of record is, and therefore who carries the tax obligation.</li>
-        <li>What can be charged for. A one-off price, a subscription, per-instance, or something else entirely.</li>
+        <li>How money would move: which payment provider, who the merchant of record is, and therefore who carries the tax obligation.</li>
+        <li>What could be charged for. A one-off price, a subscription, per-instance, or something else entirely.</li>
         <li>Whether a paid listing needs a licence check, and what happens to an instance when a subscription lapses.</li>
         <li>Refunds, disputes, and what happens when a paid plugin stops being maintained.</li>
-        <li>Whether any of it is worth building before the plugin format exists. Probably not.</li>
       </ul>
 
       <h2>If this matters to you</h2>

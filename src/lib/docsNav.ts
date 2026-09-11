@@ -136,14 +136,14 @@ export const DOCS_NAV: DocsLink[] = [
     title: "Templates",
     group: "extending",
     icon: "ri-file-copy-2-line",
-    summary: "Start from somebody's working project, or publish one of your own.",
+    summary: "Start from somebody's working project, from GitHub, the CLI or the cloud page, or publish your own.",
   },
   {
     href: "/docs/plugins",
     title: "Plugins",
     group: "extending",
     icon: "ri-puzzle-line",
-    summary: "The design, before the code. Not built yet.",
+    summary: "What a plugin is, the sixteen that ship and their knobs, and how one is installed.",
   },
   {
     href: "/docs/marketplace",
@@ -152,10 +152,10 @@ export const DOCS_NAV: DocsLink[] = [
     icon: "ri-store-2-line",
     summary: "Templates and plugins other people wrote, and how to publish your own.",
     children: [
-      { href: "/docs/marketplace", title: "What it is", summary: "What you can list, what you can use, and what is not built yet." },
+      { href: "/docs/marketplace", title: "What it is", summary: "What is listed, what you can install, and how a listing arrives and leaves." },
       { href: "/docs/marketplace/templates", title: "Publish a template", summary: "What makes one, what the audit checks, and how to submit it." },
-      { href: "/docs/marketplace/plugins", title: "Publish a plugin", summary: "Register one now; the format it will build against is still being designed." },
-      { href: "/docs/marketplace/getting-paid", title: "Getting paid", summary: "What is promised about charging for your work, and what is still undecided." },
+      { href: "/docs/marketplace/plugins", title: "Publish a plugin", summary: "A repository with a plugin.json: what the marketplace builds, audits and serves." },
+      { href: "/docs/marketplace/getting-paid", title: "Getting paid", summary: "Nothing is sold through the marketplace; what an instance can charge for, and what is promised." },
     ],
   },
   {
