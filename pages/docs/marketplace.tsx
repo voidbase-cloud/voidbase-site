@@ -38,7 +38,7 @@ export default function DocsMarketplace() {
             the registry protocol
           </a>
           , three GETs defined in voidbase that any marketplace can serve and any instance can read;{" "}
-          <code>--marketplace &lt;url&gt;</code> installs from another.
+          <code>--marketplace &lt;url&gt;</code> installs from another on your own checkout, and a running instance then trusts it for that plugin.
         </li>
         <li>
           <strong>There are no accounts, downloads or rankings, and nothing to pay.</strong> Nothing to sign in to

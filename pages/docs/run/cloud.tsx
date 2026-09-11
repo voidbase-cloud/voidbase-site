@@ -19,7 +19,7 @@ voidbase cloud repos create shop --template voidbase-site --name my-site --priva
 voidbase cloud repos link shop owner/name   # one you already have; unlink owner/name forgets it (GitHub keeps it)`;
 
 const PLUGINS = hl.bash`voidbase cloud plugins shop --email you@example.com --password ...              # what it runs
-voidbase cloud plugins shop install echo --email ... --password ...              # install name[@version] [--marketplace url]
+voidbase cloud plugins shop install echo --email ... --password ...              # install name[@version] [--marketplace url the project trusts]
 voidbase cloud plugins shop update --email ... --password ...                    # update [name]
 voidbase cloud plugins shop remove echo --email ... --password ...`;
 
@@ -85,7 +85,8 @@ export default function DocsCloud() {
             <td>
               What the instance runs and where each plugin came from, what our marketplace and any other one by URL
               serve, and install, update and remove through the instance's own installer. On an instance deployed
-              from a repository a change is a commit there, and its build deploys it.
+              from a repository a change is a commit there, and its build deploys it. An install names only a
+              marketplace the project's <code>voidbase.lock</code> already trusts.
             </td>
           </tr>
           <tr>

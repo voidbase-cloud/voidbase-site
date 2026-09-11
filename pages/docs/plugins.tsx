@@ -312,6 +312,15 @@ export default function DocsPlugins() {
         </table>
       </div>
       <p>
+        A request to the installer names only a marketplace the project already trusts: one{" "}
+        <code>voidbase.lock</code> lists under <code>marketplaces</code>, or, for a plugin already installed, the one its
+        own lock entry records. Anything else is refused before that marketplace is asked for anything, because an
+        installed plugin runs with the Worker's secrets and a superuser session is not the project's owner. The owner
+        trusts a new marketplace where the project lives: add it to the lockfile and commit, or run{" "}
+        <code>voidbase plugins add &lt;name&gt; --marketplace &lt;url&gt;</code> on a checkout, then commit and push.
+        Reading what a marketplace serves stays open, so an instance's page can show one before you trust it.
+      </p>
+      <p>
         That is the whole cloud story. A <Link href="/docs/run/cloud">cloud instance</Link> is your Worker in your
         account, deployed from a repository in your GitHub by your own Workers build; the instance's page on
         voidbase.cloud is a client of the instance's installer, signed in as its superuser, and{" "}
