@@ -5,17 +5,28 @@
 // provisioned, upgraded and deleted with `@voidbase-cloud/voidbase/cloud` against the user's Cloudflare account
 // (through /api/vbcloud/cf, since Cloudflare's API sends no CORS headers; the token stays on the site), a repository
 // is created, linked and unlinked against GitHub (through /api/vbcloud/gh), the rows are written through the
-// collections' rules, and an instance's plugins are changed by the instance's own installer, with a session the
-// user mints on the instance itself. The one thing the browser asks the site to do for it is to put the GitHub
+// collections' rules, and an instance's plugins, logs and superusers are read and changed on the instance itself,
+// with a session the user mints on it; its custom domains and its Worker's secrets go through the Cloudflare
+// pass-through like the provisioning. The one thing the browser asks the site to do for it is to put the GitHub
 // token on an instance's Worker (`wire`), because that token never comes here.
-import { CfApi, destroyInstance, provisionInstance, workerExists, type ReleaseManifest, type ReleaseSource } from "@voidbase-cloud/voidbase/cloud";
+import { attachCustomDomain, CfApi, destroyInstance, listCustomDomains, provisionInstance, workerExists, type CustomDomain, type ReleaseManifest, type ReleaseSource } from "@voidbase-cloud/voidbase/cloud";
 
 export interface Instance { id: string; name: string; url?: string; status: string; error?: string; release?: string; account: { id: string; name?: string }; owner?: string; system?: boolean; self?: boolean; superuserEmail?: string; plugins?: unknown[]; canDelete?: boolean; canLink?: boolean }
 export interface Repo { id: string; instance: string; fullName: string; htmlUrl: string; defaultBranch?: string; status: string; system?: boolean; private?: boolean; template?: string; templateName?: string; templateTitle?: string; canUnlink?: boolean; instanceName?: string; instanceUrl?: string }
 export interface Template { id: string; name: string; repo: string; title: string; kind: string; variables: { name: string; source: string; value?: string }[] }
 export interface Credentials { url: string; superuserEmail: string; superuserPassword?: string; panel: string }
+export interface LogEntry { id: string; created: string; level: number; message: string; data?: Record<string, unknown> }
+export interface LogPage { page: number; perPage: number; totalItems: number; totalPages: number; items: LogEntry[] }
+export interface Superuser { id: string; email: string; created?: string }
+export interface Zone { id: string; name: string }
+export interface WorkerSecret { name: string; managed: boolean }
+export type { CustomDomain };
 /** carried over rather than resupplied on an upgrade: what the instance was given when it was created */
 const INHERITED = ["VOIDBASE_SUPERUSER_EMAIL", "VOIDBASE_SUPERUSER_PASSWORD"];
+/** the Worker's secrets this site manages (creation, wiring): listed, never set or removed from the page */
+const MANAGED = (name: string) => /^VOIDBASE_SUPERUSER_|^VOIDBASE_PROJECT_|^VOIDBASE_GH_TOKEN$/.test(name);
+/** PocketBase's log levels, as the logs API numbers them */
+export const LOG_LEVELS: Record<number, string> = { [-4]: "debug", 0: "info", 4: "warn", 8: "error" };
 
 export class CloudError extends Error { constructor(message: string, public status = 400, public log: string[] = []) { super(message); } }
 const randomPassword = () => { const a = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"; return Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => a[b % a.length]).join(""); };
@@ -188,27 +199,94 @@ export class CloudClient {
     return { exists: true, connected: !!inst?.url && value === inst.url, backendUrl: value, private: r.data.private, defaultBranch: r.data.default_branch };
   }
 
-  // ---- plugins: the instance's own installer, with a session minted on the instance -------------------------
+  // ---- the instance itself, with a session minted on it: plugins, logs, superusers ------------------------
   async instanceSession(inst: Instance, email: string, password: string): Promise<string> {
     const r = await this.fetchImpl(`${(inst.url ?? "").replace(/\/+$/, "")}/api/collections/_superusers/auth-with-password`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ identity: email, password }) });
     const j = (await r.json().catch(() => ({}))) as { token?: string; message?: string };
     if (!r.ok || !j.token) throw new CloudError(j.message ?? `The instance refused the sign-in (${r.status}).`, r.status);
     return j.token;
   }
-  plugins(inst: Instance, session: string) {
+  /** one call on the instance's own API with the owner's session; the instance's answer is the answer */
+  private onInstance(inst: Instance, session: string) {
     const base = (inst.url ?? "").replace(/\/+$/, "");
-    const call = async <T>(method: string, path: string, body?: unknown): Promise<T> => {
+    return async <T>(method: string, path: string, body?: unknown): Promise<T> => {
       const r = await this.fetchImpl(`${base}${path}`, { method, headers: { authorization: session, ...(body !== undefined ? { "content-type": "application/json" } : {}) }, body: body === undefined ? undefined : JSON.stringify(body) });
+      if (r.status === 204) return {} as T;
       const j = (await r.json().catch(() => ({}))) as Record<string, unknown>;
       if (!r.ok) throw new CloudError(String(j.message ?? `${path}: ${r.status}`), r.status);
       return j as T;
     };
+  }
+  plugins(inst: Instance, session: string) {
+    const call = this.onInstance(inst, session);
     return {
       running: () => call<{ names: string[]; origins: Record<string, string>; disabled: string[]; installer: { mode: string; repository?: string; branch?: string; hint?: string } }>("GET", "/api/plugins"),
       available: (marketplace?: string) => call<{ available: { marketplace: string; plugins: { name: string; title: string; summary: string; latest: string }[]; error?: string }[] }>("GET", `/api/plugins/available${marketplace ? `?marketplace=${encodeURIComponent(marketplace)}` : ""}`),
       install: (name: string, o: { version?: string; marketplace?: string } = {}) => call<Record<string, unknown>>("POST", "/api/plugins/install", { name, ...o }),
       remove: (name: string) => call<Record<string, unknown>>("POST", "/api/plugins/remove", { name }),
       update: (name?: string) => call<Record<string, unknown>>("POST", "/api/plugins/update", name ? { name } : {}),
+    };
+  }
+  /** the instance's own logs (PocketBase's logs API): newest first, filtered with PocketBase's filter syntax */
+  logs(inst: Instance, session: string) {
+    const call = this.onInstance(inst, session);
+    return {
+      list: (o: { filter?: string; sort?: string; page?: number; perPage?: number } = {}) => {
+        const q = new URLSearchParams({ page: String(o.page ?? 1), perPage: String(o.perPage ?? 50), sort: o.sort ?? "-created" });
+        if (o.filter?.trim()) q.set("filter", o.filter.trim());
+        return call<LogPage>("GET", `/api/logs?${q}`);
+      },
+      stats: (filter?: string) => call<{ total: number; date: string }[]>("GET", `/api/logs/stats${filter?.trim() ? `?filter=${encodeURIComponent(filter.trim())}` : ""}`),
+    };
+  }
+  /** the instance's superusers (_superusers): who can open its panel; the last one stays */
+  superusers(inst: Instance, session: string) {
+    const call = this.onInstance(inst, session);
+    const list = async () => (await call<{ items: Superuser[] }>("GET", "/api/collections/_superusers/records?perPage=200&sort=created")).items ?? [];
+    return {
+      list,
+      add: async (email: string, password: string) => {
+        const e = email.trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) throw new CloudError("Give the superuser an email address.");
+        if (password.length < 8) throw new CloudError("A superuser password is at least 8 characters.");
+        return call<Superuser>("POST", "/api/collections/_superusers/records", { email: e, password, passwordConfirm: password });
+      },
+      remove: async (id: string) => {
+        const all = await list();
+        if (all.length <= 1 && all.some((s) => s.id === id)) throw new CloudError("The last superuser stays: the instance would have nobody to sign in to its panel.");
+        await call("DELETE", `/api/collections/_superusers/records/${id}`);
+      },
+    };
+  }
+
+  // ---- the instance's Worker, in the user's account: custom domains and secrets -----------------------------
+  /** Workers Custom Domains on the instance's Worker: Cloudflare adds the DNS record and the certificate */
+  domains(inst: Instance) {
+    const cf = this.cf(); const account = inst.account.id;
+    return {
+      zones: async () => (await cf.json<Zone[]>("GET", `/zones?account.id=${account}&per_page=50`)).result?.map((z) => ({ id: z.id, name: z.name })) ?? [],
+      list: () => listCustomDomains(cf, account, { service: inst.name }),
+      attach: async (hostname: string, zoneId?: string) => {
+        const h = hostname.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+        if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(h)) throw new CloudError("Give a hostname like api.example.com, on a zone of this account.");
+        return attachCustomDomain(cf, account, { hostname: h, service: inst.name, environment: "production", zoneId: zoneId || undefined });
+      },
+      detach: async (id: string) => { await cf.json("DELETE", `/accounts/${account}/workers/domains/${encodeURIComponent(id)}`); },
+    };
+  }
+  /** the Worker's secrets by name: values are written and never read back; the ones this site manages stay */
+  secrets(inst: Instance) {
+    const cf = this.cf(); const base = `/accounts/${inst.account.id}/workers/scripts/${inst.name}/secrets`;
+    const guard = (name: string) => { if (MANAGED(name)) throw new CloudError(`${name} is managed by voidbase.cloud and is not changed from here.`); };
+    return {
+      list: async (): Promise<WorkerSecret[]> => ((await cf.json<{ name: string }[]>("GET", base)).result ?? []).map((s) => ({ name: s.name, managed: MANAGED(s.name) })).sort((a, b) => a.name.localeCompare(b.name)),
+      set: async (name: string, text: string) => {
+        const n = name.trim();
+        if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(n)) throw new CloudError("A secret name is letters, digits and underscores, and does not start with a digit.");
+        guard(n); if (!text) throw new CloudError("Give the secret a value.");
+        await cf.json("PUT", base, { name: n, text, type: "secret_text" });
+      },
+      remove: async (name: string) => { guard(name); await cf.json("DELETE", `${base}/${encodeURIComponent(name)}`); },
     };
   }
 }

@@ -1,6 +1,7 @@
 // End-to-end test of voidbase.cloud on the Bun runtime, against voidbase's mocks. The site keeps sign-in, sealed
 // tokens, rows and two pass-throughs; the work is done by the browser client (src/lib/cloud.ts), which this test
-// drives the way the page does, against:
+// drives the way the page does (instances, repositories, then the life of one: plugins, logs, superusers, domains,
+// secrets), against:
 // test/mock-oidc.ts (a Cloudflare-shaped OAuth client: userinfo = {sub}, access token = the cf-mock bearer) and
 // test/cf-mock.ts (the Cloudflare REST API). Boots `bun main.ts` on a temporary data directory.
 //   bun test/cloud.ts
@@ -10,8 +11,9 @@ import { join, resolve } from "node:path";
 import { assetHash, contentTypeFor, type ReleaseManifest } from "@voidbase-cloud/voidbase/cloud";
 import { CloudClient, CloudError, type Instance } from "../src/lib/cloud";
 const VOIDBASE = resolve(import.meta.dir, "../node_modules/@voidbase-cloud/voidbase");
-// The npm package ships no test/; the mocks come from a sibling voidbase checkout when the package lacks them.
-const MOCKS = [`${VOIDBASE}/test`, resolve(import.meta.dir, "../../voidbase/test")].find((d) => existsSync(`${d}/cf-mock.ts`)) ?? `${VOIDBASE}/test`;
+// The npm package ships no test/; the mocks come from a sibling voidbase checkout when the package lacks them
+// (a sibling of the site, or of the site a worktree under .claude/worktrees/ belongs to).
+const MOCKS = [`${VOIDBASE}/test`, resolve(import.meta.dir, "../../voidbase/test"), resolve(import.meta.dir, "../../../../../voidbase/test")].find((d) => existsSync(`${d}/cf-mock.ts`)) ?? `${VOIDBASE}/test`;
 const freePort = () => { const s = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch: () => new Response() }); const p = s.port; s.stop(true); return p; };
 const OIDC_PORT = freePort(), CF_PORT = freePort(), VB_PORT = freePort(), GH_PORT = freePort();
 const OIDC = `http://127.0.0.1:${OIDC_PORT}`, CF = `http://127.0.0.1:${CF_PORT}`, VB = `http://127.0.0.1:${VB_PORT}`, GH = `http://127.0.0.1:${GH_PORT}`;
@@ -139,10 +141,23 @@ try {
 
   // ---- plugins: the instance's own installer, with a session minted on the instance itself
   const calls: { path: string; auth: string; body: unknown }[] = [];
+  // what the instance also serves: PocketBase's logs API and its _superusers collection
+  const logRows = [{ id: "l1", created: "2026-09-10 10:00:00.000Z", level: 0, message: "GET /api/health", data: { status: 200 } }, { id: "l2", created: "2026-09-10 10:01:00.000Z", level: 8, message: "POST /api/collections/x/records", data: { status: 500 } }, { id: "l3", created: "2026-09-10 10:02:00.000Z", level: 4, message: "slow query", data: {} }];
+  const logCalls: string[] = [];
+  const superusers = [{ id: "su1", email: "owner@example.com", created: "2026-09-01 00:00:00.000Z" }];
   const instance = Bun.serve({ port: 0, hostname: "127.0.0.1", async fetch(req) {
-    const p = new URL(req.url).pathname; const auth = req.headers.get("authorization") ?? "";
+    const url = new URL(req.url); const p = url.pathname; const auth = req.headers.get("authorization") ?? "";
     if (p === "/api/collections/_superusers/auth-with-password") { const b = (await req.json()) as { identity: string; password: string }; return b.password === created.credentials.superuserPassword ? Response.json({ token: "inst-session" }) : Response.json({ message: "Failed to authenticate." }, { status: 400 }); }
     if (auth !== "inst-session") return Response.json({ message: "The request requires valid record authorization token." }, { status: 401 });
+    if (p === "/api/logs" || p === "/api/logs/stats") {
+      logCalls.push(`${p}?${url.searchParams}`); const filter = url.searchParams.get("filter") ?? "";
+      const items = [...logRows].filter((l) => !filter || (/level\s*>=\s*4/.test(filter) ? l.level >= 4 : true)).sort((a, b) => (url.searchParams.get("sort") === "-created" ? b.created.localeCompare(a.created) : a.created.localeCompare(b.created)));
+      if (p === "/api/logs/stats") return Response.json([{ total: items.length, date: "2026-09-10 10:00:00.000Z" }]);
+      return Response.json({ page: 1, perPage: Number(url.searchParams.get("perPage") ?? 30), totalItems: items.length, totalPages: 1, items });
+    }
+    if (p === "/api/collections/_superusers/records" && req.method === "GET") return Response.json({ page: 1, perPage: 200, totalItems: superusers.length, totalPages: 1, items: superusers });
+    if (p === "/api/collections/_superusers/records" && req.method === "POST") { const b = (await req.json()) as { email: string; password: string; passwordConfirm: string }; if (!b.email || b.password !== b.passwordConfirm || b.password.length < 8) return Response.json({ message: "Failed to create record.", data: { password: { message: "invalid" } } }, { status: 400 }); if (superusers.some((s) => s.email === b.email)) return Response.json({ message: "Failed to create record.", data: { email: { message: "Value must be unique." } } }, { status: 400 }); const row = { id: `su${superusers.length + 1}`, email: b.email, created: new Date().toISOString() }; superusers.push(row); return Response.json(row); }
+    { const m = p.match(/^\/api\/collections\/_superusers\/records\/([^/]+)$/); if (m && req.method === "DELETE") { const i = superusers.findIndex((s) => s.id === m[1]); if (i < 0) return Response.json({ message: "The requested resource wasn't found." }, { status: 404 }); superusers.splice(i, 1); return new Response(null, { status: 204 }); } }
     if (p === "/api/plugins") return Response.json({ names: ["auth", "realtime", "hardening", "backups", "installer", "echo"], origins: { auth: "shipped", realtime: "shipped", hardening: "shipped", backups: "shipped", installer: "shipped", echo: "http://market.test 0.1.0" }, disabled: [], installer: { mode: "repository", repository: "octo-tester/existing", branch: "master" } });
     if (p === "/api/plugins/available") return Response.json({ installer: { mode: "repository" }, available: [{ marketplace: "https://marketplace.voidbase.cloud", plugins: [{ name: "echo", title: "Echo", summary: "x", latest: "0.2.0" }] }] });
     const body = await req.json().catch(() => null); calls.push({ path: p, auth, body });
@@ -161,6 +176,27 @@ try {
   check("the instance says what runs and where its plugins live; the marketplace's list comes through the instance", running.installer.mode === "repository" && running.origins.echo.startsWith("http://market.test") && available.available[0]?.plugins[0]?.name === "echo", JSON.stringify(running).slice(0, 200));
   const installed = await plugins.install("echo", { marketplace: "https://marketplace.voidbase.cloud" }); await plugins.remove("echo"); await plugins.update();
   check("install, remove and update reach the instance with the instance's own session, and the instance answers with its commit", calls.length === 3 && calls.every((c) => c.auth === "inst-session") && (calls[0]!.body as { name: string }).name === "echo" && (installed.committed as { sha: string }).sha === "abc", JSON.stringify(calls));
+
+  // ---- logs: the instance's own logs API, with the same session; the filter and the sort travel as given
+  const logsApi = client.logs(reachable, session);
+  const lastLogs = await logsApi.list(); const errorsOnly = await logsApi.list({ filter: "level >= 4" }); const stats = await logsApi.stats("level >= 4");
+  check("logs: the last entries newest first, a filter narrows them, stats come back", lastLogs.totalItems === 3 && lastLogs.items[0]!.id === "l3" && errorsOnly.items.length === 2 && errorsOnly.items.every((l) => l.level >= 4) && stats[0]!.total === 2, JSON.stringify({ last: lastLogs.items.map((l) => l.id), errors: errorsOnly.items.map((l) => l.id), stats }));
+  check("logs: sort=-created and the filter reach the instance verbatim", logCalls[0]!.includes("sort=-created") && !logCalls[0]!.includes("filter") && new URLSearchParams(logCalls[1]!.split("?")[1]).get("filter") === "level >= 4" && logCalls[2]!.startsWith("/api/logs/stats?filter="), JSON.stringify(logCalls));
+  const noSession = await client.logs(reachable, "stale").list().then(() => "listed", (e) => (e instanceof Error ? e.message : String(e)));
+  check("logs: a stale session is the instance's refusal", /valid record authorization/.test(String(noSession)), String(noSession));
+
+  // ---- superusers: the instance's _superusers, with the same session; the last one stays
+  const suApi = client.superusers(reachable, session);
+  const su0 = await suApi.list();
+  const lastOne = await suApi.remove("su1").then(() => "removed", (e) => (e instanceof Error ? e.message : String(e)));
+  check("superusers: the owner is listed, and the last superuser is not removed", su0.length === 1 && su0[0]!.email === "owner@example.com" && /last superuser stays/.test(String(lastOne)) && superusers.length === 1, String(lastOne));
+  const badEmail = await suApi.add("nope", "long-enough-1").then(() => "added", (e) => (e instanceof Error ? e.message : String(e)));
+  const shortPw = await suApi.add("second@example.com", "short").then(() => "added", (e) => (e instanceof Error ? e.message : String(e)));
+  const added = await suApi.add("second@example.com", "second-password-1");
+  check("superusers: a bad email or a short password is refused here; a good one is created with passwordConfirm", /email address/.test(String(badEmail)) && /8 characters/.test(String(shortPw)) && added.email === "second@example.com" && (await suApi.list()).length === 2, JSON.stringify({ badEmail, shortPw, added }));
+  await suApi.remove("su1");
+  const su2 = await suApi.list();
+  check("superusers: with two, the first can go", su2.length === 1 && su2[0]!.email === "second@example.com", JSON.stringify(su2));
   instance.stop(true);
   await api("PATCH", `/api/collections/vb_instances/records/${inst.id}`, { url: inst.url }, U);
 
@@ -203,6 +239,34 @@ try {
   check("the instance url and the domain were written as repository variables", ghs.variables["octo-tester/my-site"]?.PB_VB_URL === inst.url && ghs.variables["octo-tester/my-site"]?.PAGES_CNAME === "site.example.com", JSON.stringify(ghs.variables));
   const wiredScript = (await cfState()).scripts["vb-my-shop"];
   check("the instance's Worker was wired: repository, branch and the user's GitHub token as its secrets", ["VOIDBASE_PROJECT_REPO", "VOIDBASE_PROJECT_BRANCH", "VOIDBASE_GH_TOKEN"].every((k) => (wiredScript?.secrets ?? []).includes(k)) && mk.wired.length === 3, JSON.stringify(wiredScript?.secrets));
+
+  // ---- custom domains: the account's zones, a hostname put on the Worker, taken off again
+  const domApi = client.domains(inst);
+  const zones = await domApi.zones();
+  const attached = await domApi.attach("Shop.example.com");
+  const attachedAgain = await domApi.attach("shop.example.com");
+  const stDom = await cfState();
+  check("domains: the account's zones are listed; a hostname is attached to the Worker on its zone, once", zones.some((z) => z.name === "example.com") && attached.created === true && attached.hostname === "shop.example.com" && attached.zone_id === "zone123" && attached.service === "vb-my-shop" && attachedAgain.created === false && attachedAgain.id === attached.id && stDom.domains.length === 1 && stDom.domains[0].environment === "production", JSON.stringify({ zones, attached, again: attachedAgain.created, domains: stDom.domains }));
+  const listedDom = await domApi.list();
+  const noZone = await domApi.attach("api.nozone.test").then(() => "attached", (e) => (e instanceof Error ? e.message : String(e)));
+  const badHost = await domApi.attach("not a host").then(() => "attached", (e) => (e instanceof Error ? e.message : String(e)));
+  check("domains: the Worker's domains are listed; a hostname off the account's zones or malformed is refused", listedDom.length === 1 && listedDom[0]!.hostname === "shop.example.com" && /no zone on account/.test(String(noZone)) && /hostname like/.test(String(badHost)), JSON.stringify({ listedDom, noZone, badHost }));
+  await domApi.detach(attached.id);
+  check("domains: detached, the Worker has none", (await domApi.list()).length === 0 && (await cfState()).domains.length === 0);
+
+  // ---- secrets: names on the Worker; the ones this site manages are listed and left alone
+  const secApi = client.secrets(inst);
+  const sec0 = await secApi.list();
+  check("secrets: the Worker's secret names, the wired ones marked managed", sec0.some((s) => s.name === "VOIDBASE_GH_TOKEN" && s.managed) && sec0.some((s) => s.name === "VOIDBASE_PROJECT_REPO" && s.managed), JSON.stringify(sec0));
+  await secApi.set("MY_API_KEY", "shh");
+  const sec1 = await secApi.list();
+  const guardSet = await secApi.set("VOIDBASE_GH_TOKEN", "x").then(() => "set", (e) => (e instanceof Error ? e.message : String(e)));
+  const guardDel = await secApi.remove("VOIDBASE_SUPERUSER_PASSWORD").then(() => "removed", (e) => (e instanceof Error ? e.message : String(e)));
+  const badName = await secApi.set("1bad name", "x").then(() => "set", (e) => (e instanceof Error ? e.message : String(e)));
+  const secScript = (await cfState()).scripts["vb-my-shop"];
+  check("secrets: a secret is set by name on the Worker; managed names and bad names are refused before any call", sec1.some((s) => s.name === "MY_API_KEY" && !s.managed) && (secScript?.secrets ?? []).includes("MY_API_KEY") && /managed by voidbase.cloud/.test(String(guardSet)) && /managed by voidbase.cloud/.test(String(guardDel)) && /letters, digits and underscores/.test(String(badName)) && (secScript?.secrets ?? []).includes("VOIDBASE_GH_TOKEN"), JSON.stringify({ sec1, guardSet, guardDel, badName }));
+  await secApi.remove("MY_API_KEY");
+  check("secrets: removed by name, the managed ones still there", !(await secApi.list()).some((s) => s.name === "MY_API_KEY") && ((await cfState()).scripts["vb-my-shop"]?.secrets ?? []).includes("VOIDBASE_PROJECT_BRANCH"));
   const pipeline = await client.pipelineOf(inst);
   // the mock's Builds API takes user tokens only, as the live one does, and the mock's OAuth token is account-shaped: unreadable here, so null
   check("the pipeline check: readable or not, the link goes to the Worker's Builds settings", (pipeline.connected === false || pipeline.connected === null) && pipeline.link === "https://dash.cloudflare.com/acc123/workers/services/view/vb-my-shop/settings", JSON.stringify(pipeline));

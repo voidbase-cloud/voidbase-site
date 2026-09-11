@@ -1,10 +1,11 @@
 // The cloud control plane: sign in with Cloudflare, list the visitor's instances, create and delete them, connect
-// GitHub, and create or link the repositories wired to an instance. Everything goes through /api/vbcloud/* on the
-// site's own voidbase backend. Ported from the SvelteKit page at src/routes/(app)/cloud/+page.svelte.
+// GitHub, and create or link the repositories wired to an instance; then the life of one: its plugins, logs and
+// superusers through the instance itself, its domains and secrets through the Cloudflare pass-through. Ported
+// from the SvelteKit page at src/routes/(app)/cloud/+page.svelte.
 import { useEffect, useMemo, useRef, useState } from "react";
 import CloudflareSignIn from "@/components/CloudflareSignIn";
 import { cloud, errorMessage, vb, VB_URL } from "@/lib/vb";
-import { CloudClient } from "@/lib/cloud";
+import { CloudClient, LOG_LEVELS, type CustomDomain, type LogPage, type Superuser, type WorkerSecret, type Zone } from "@/lib/cloud";
 
 // ---- what /api/vbcloud/* hands back -----------------------------------------------------------------------------
 
@@ -127,33 +128,58 @@ const wiredText: Record<WiredState, string> = {
   no: "points elsewhere",
 };
 
-/**
- * The plugins of one instance, through the instance's own installer (voidbase's `installer` plugin). This site
- * holds no session on an instance: the owner signs in to it here, in the browser, and the panel talks to the
- * instance directly. On a project instance a change is a commit its repository's build deploys; on one built
- * without a repository the instance says so.
- */
-function PluginsPanel({ inst, client }: { inst: Instance; client: CloudClient }) {
-  const [open, setOpen] = useState(false);
-  const [session, setSession] = useState("");
+/** a button in the card's row and, when it is the open one, a body below the row */
+function Collapsible({ id, label, open, setOpen, children }: { id: string; label: string; open: string; setOpen: (id: string) => void; children: React.ReactNode }) {
+  const on = open === id;
+  return (
+    <>
+      <button type="button" className={`btn btn-xs ${on ? "btn-outline" : "btn-secondary"}`} aria-expanded={on} onClick={() => setOpen(on ? "" : id)}>
+        {on ? `Hide ${label.toLowerCase()}` : label}
+      </button>
+      {on && <div className="tool-panel">{children}</div>}
+    </>
+  );
+}
+
+/** the owner signs in to the instance itself, here in the browser; this site keeps nothing of the session */
+function InstanceSignIn({ inst, client, onSession }: { inst: Instance; client: CloudClient; onSession: (token: string) => void }) {
   const [login, setLogin] = useState({ email: inst.superuserEmail || "", password: "" });
+  const [error, setError] = useState("");
+  async function signIn(e: React.FormEvent) {
+    e.preventDefault(); setError("");
+    try { onSession(await client.instanceSession(inst, login.email, login.password)); }
+    catch (err) { setError(errorMessage(err)); }
+  }
+  return (
+    <form className="tool-login" onSubmit={signIn}>
+      {error && <p className="node-error">{error}</p>}
+      <p className="txt-hint">Sign in to the instance as its superuser: this page talks to the instance itself, and this site keeps nothing of it.</p>
+      <input type="email" placeholder="superuser email" value={login.email} onChange={(e) => setLogin({ ...login, email: e.target.value })} required />
+      <input type="password" placeholder="password" value={login.password} onChange={(e) => setLogin({ ...login, password: e.target.value })} required />
+      <button type="submit" className="btn btn-xs btn-secondary">Sign in to {inst.name}</button>
+    </form>
+  );
+}
+
+/**
+ * The plugins of one instance, through the instance's own installer (voidbase's `installer` plugin). On a
+ * project instance a change is a commit its repository's build deploys; on one built without a repository the
+ * instance says so.
+ */
+function PluginsPanel({ inst, client, session }: { inst: Instance; client: CloudClient; session: string }) {
   const [running, setRunning] = useState<Awaited<ReturnType<ReturnType<CloudClient["plugins"]>["running"]>> | null>(null);
   const [available, setAvailable] = useState<Awaited<ReturnType<ReturnType<CloudClient["plugins"]>["available"]>>["available"]>([]);
   const [marketplace, setMarketplace] = useState("");
   const [working, setWorking] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const api = client.plugins(inst, session);
 
-  async function refresh(token = session, extra = marketplace) {
-    const api = client.plugins(inst, token);
+  async function refresh(extra = marketplace) {
     const [r, a] = await Promise.all([api.running(), api.available(extra.trim() || undefined)]);
     setRunning(r); setAvailable(a.available);
   }
-  async function signIn(e: React.FormEvent) {
-    e.preventDefault(); setError("");
-    try { const token = await client.instanceSession(inst, login.email, login.password); setSession(token); setLogin({ ...login, password: "" }); await refresh(token); }
-    catch (err) { setError(errorMessage(err)); }
-  }
+  useEffect(() => { refresh().catch((err) => setError(errorMessage(err))); }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
   async function act(step: string, fn: () => Promise<Record<string, unknown>>) {
     setWorking(step); setError(""); setNotice("");
     try { const r = await fn(); setNotice(String(r.message ?? "Done.")); await refresh(); }
@@ -163,67 +189,226 @@ function PluginsPanel({ inst, client }: { inst: Instance; client: CloudClient })
 
   const installer = running?.installer;
   const installed = new Set(running ? running.names.filter((n) => running.origins[n] !== "shipped") : []);
-  const api = session ? client.plugins(inst, session) : null;
   return (
-    <div className="node-plugins">
-      <button type="button" className="btn btn-xs btn-secondary" aria-expanded={open} onClick={() => setOpen(!open)}>
-        {open ? "Hide plugins" : "Plugins"}
-      </button>
-      {open && (
-        <div className="plugins-panel">
-          {error && <p className="node-error">{error}</p>}
-          {!session ? (
-            <form className="plugins-login" onSubmit={signIn}>
-              <p className="txt-hint">Sign in to the instance as its superuser: this page talks to the instance itself, and this site keeps nothing of it.</p>
-              <input type="email" placeholder="superuser email" value={login.email} onChange={(e) => setLogin({ ...login, email: e.target.value })} required />
-              <input type="password" placeholder="password" value={login.password} onChange={(e) => setLogin({ ...login, password: e.target.value })} required />
-              <button type="submit" className="btn btn-xs btn-secondary">Sign in to {inst.name}</button>
-            </form>
-          ) : (
-            <>
-              {installer && (
-                <p className="txt-hint">
-                  {installer.mode === "repository" ? <>Deployed from <code>{installer.repository}</code>: a change here is a commit there, and its build deploys it.</> : installer.mode === "filesystem" ? "Changed on disk; the instance loads the change when it restarts." : installer.hint}
-                </p>
-              )}
-              {notice && <p className="txt-hint">{notice}</p>}
-              <ul className="plugins-installed">
-                {running?.names.map((n) => (
-                  <li key={n}>
-                    <code>{n}</code> <span className="txt-hint">{running.origins[n]}</span>{" "}
-                    {running.origins[n] !== "shipped" && api && installer?.mode !== "fixed" && (
-                      <>
-                        <button type="button" className="btn btn-xs btn-outline" disabled={!!working} onClick={() => act("update:" + n, () => api.update(n))}>{working === "update:" + n ? "Updating…" : "Update"}</button>{" "}
-                        <button type="button" className="btn btn-xs btn-secondary btn-danger" disabled={!!working} onClick={() => act("remove:" + n, () => api.remove(n))}>{working === "remove:" + n ? "Removing…" : "Remove"}</button>
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ul>
-              {available.map((m) => (
-                <div key={m.marketplace} className="plugins-available">
-                  <h4><a href={m.marketplace} target="_blank" rel="noopener noreferrer">{m.marketplace.replace(/^https?:\/\//, "")}</a></h4>
-                  {m.error && <p className="node-error">{m.error}</p>}
-                  <ul>
-                    {m.plugins.map((p) => (
-                      <li key={p.name}>
-                        <code>{p.name}</code> {p.latest} <span className="txt-hint">{p.summary}</span>{" "}
-                        {installed.has(p.name) ? <span className="label label-sm">installed</span> : api && installer?.mode !== "fixed" ? (
-                          <button type="button" className="btn btn-xs btn-outline" disabled={!!working} onClick={() => act("add:" + p.name, () => api.install(p.name, { marketplace: m.marketplace }))}>{working === "add:" + p.name ? "Installing…" : "Install"}</button>
-                        ) : null}
-                      </li>
-                    ))}
-                    {!m.plugins.length && !m.error && <li className="txt-hint">nothing served yet</li>}
-                  </ul>
-                </div>
-              ))}
-              <form className="plugins-marketplace" onSubmit={(e) => { e.preventDefault(); refresh().catch((err) => setError(errorMessage(err))); }}>
-                <input type="url" placeholder="another marketplace: https://…" value={marketplace} onChange={(e) => setMarketplace(e.target.value)} />
-                <button type="submit" className="btn btn-xs btn-secondary">Read it</button>
-              </form>
-            </>
-          )}
+    <>
+      {error && <p className="node-error">{error}</p>}
+      {installer && (
+        <p className="txt-hint">
+          {installer.mode === "repository" ? <>Deployed from <code>{installer.repository}</code>: a change here is a commit there, and its build deploys it.</> : installer.mode === "filesystem" ? "Changed on disk; the instance loads the change when it restarts." : installer.hint}
+        </p>
+      )}
+      {notice && <p className="txt-hint">{notice}</p>}
+      <ul className="plugins-installed">
+        {running?.names.map((n) => (
+          <li key={n}>
+            <code>{n}</code> <span className="txt-hint">{running.origins[n]}</span>{" "}
+            {running.origins[n] !== "shipped" && installer?.mode !== "fixed" && (
+              <>
+                <button type="button" className="btn btn-xs btn-outline" disabled={!!working} onClick={() => act("update:" + n, () => api.update(n))}>{working === "update:" + n ? "Updating…" : "Update"}</button>{" "}
+                <button type="button" className="btn btn-xs btn-secondary btn-danger" disabled={!!working} onClick={() => act("remove:" + n, () => api.remove(n))}>{working === "remove:" + n ? "Removing…" : "Remove"}</button>
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+      {available.map((m) => (
+        <div key={m.marketplace} className="plugins-available">
+          <h4><a href={m.marketplace} target="_blank" rel="noopener noreferrer">{m.marketplace.replace(/^https?:\/\//, "")}</a></h4>
+          {m.error && <p className="node-error">{m.error}</p>}
+          <ul>
+            {m.plugins.map((p) => (
+              <li key={p.name}>
+                <code>{p.name}</code> {p.latest} <span className="txt-hint">{p.summary}</span>{" "}
+                {installed.has(p.name) ? <span className="label label-sm">installed</span> : installer?.mode !== "fixed" ? (
+                  <button type="button" className="btn btn-xs btn-outline" disabled={!!working} onClick={() => act("add:" + p.name, () => api.install(p.name, { marketplace: m.marketplace }))}>{working === "add:" + p.name ? "Installing…" : "Install"}</button>
+                ) : null}
+              </li>
+            ))}
+            {!m.plugins.length && !m.error && <li className="txt-hint">nothing served yet</li>}
+          </ul>
         </div>
+      ))}
+      <form className="tool-row" onSubmit={(e) => { e.preventDefault(); refresh().catch((err) => setError(errorMessage(err))); }}>
+        <input type="url" placeholder="another marketplace: https://…" value={marketplace} onChange={(e) => setMarketplace(e.target.value)} />
+        <button type="submit" className="btn btn-xs btn-secondary">Read it</button>
+      </form>
+    </>
+  );
+}
+
+/** the instance's own logs: the last entries, newest first, and a filter in PocketBase's syntax */
+function LogsPanel({ inst, client, session }: { inst: Instance; client: CloudClient; session: string }) {
+  const [filter, setFilter] = useState("");
+  const [page, setPage] = useState<LogPage | null>(null);
+  const [stats, setStats] = useState<{ total: number; date: string }[]>([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const api = client.logs(inst, session);
+  async function refresh(f = filter) {
+    setLoading(true); setError("");
+    try { const [p, s] = await Promise.all([api.list({ filter: f, perPage: 50 }), api.stats(f)]); setPage(p); setStats(s); }
+    catch (err) { setError(errorMessage(err)); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { refresh(); }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
+  const total = stats.reduce((n, s) => n + (s.total || 0), 0);
+  return (
+    <>
+      {error && <p className="node-error">{error}</p>}
+      <form className="tool-row" onSubmit={(e) => { e.preventDefault(); refresh(); }}>
+        <input type="text" placeholder={'filter, e.g. level >= 4 || data.status >= 500'} value={filter} onChange={(e) => setFilter(e.target.value)} />
+        <button type="submit" className="btn btn-xs btn-secondary" disabled={loading}>{loading ? "Reading…" : "Filter"}</button>
+        <button type="button" className="btn btn-xs btn-outline" disabled={loading} onClick={() => refresh()}>Refresh</button>
+      </form>
+      {page && (
+        <p className="txt-hint">
+          {page.totalItems} {page.totalItems === 1 ? "entry" : "entries"}{stats.length ? <> over {stats.length} {stats.length === 1 ? "hour" : "hours"} ({total} in the stats)</> : null}; showing the last {page.items.length}.
+        </p>
+      )}
+      <ul className="tool-logs">
+        {page?.items.map((l) => (
+          <li key={l.id} className={`log-level-${LOG_LEVELS[l.level] ?? "other"}`}>
+            <span className="log-when">{l.created.replace(/\.\d+Z?$/, "").replace("T", " ")}</span>
+            <span className="label label-sm">{LOG_LEVELS[l.level] ?? l.level}</span>
+            <span className="log-message" title={l.data ? JSON.stringify(l.data) : undefined}>{l.message}</span>
+          </li>
+        ))}
+        {page && !page.items.length && <li className="txt-hint">nothing logged{filter ? " for that filter" : " yet"}</li>}
+      </ul>
+    </>
+  );
+}
+
+/** the instance's superusers: who can open its panel; the last one cannot be removed */
+function SuperusersPanel({ inst, client, session }: { inst: Instance; client: CloudClient; session: string }) {
+  const [list, setList] = useState<Superuser[]>([]);
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [error, setError] = useState("");
+  const [working, setWorking] = useState("");
+  const api = client.superusers(inst, session);
+  const refresh = () => api.list().then(setList).catch((err) => setError(errorMessage(err)));
+  useEffect(() => { refresh(); }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
+  async function act(step: string, fn: () => Promise<unknown>) {
+    setWorking(step); setError("");
+    try { await fn(); await refresh(); } catch (err) { setError(errorMessage(err)); } finally { setWorking(""); }
+  }
+  return (
+    <>
+      {error && <p className="node-error">{error}</p>}
+      <ul>
+        {list.map((s) => (
+          <li key={s.id}>
+            <code>{s.email}</code>{" "}
+            <button type="button" className="btn btn-xs btn-secondary btn-danger" disabled={!!working || list.length <= 1} title={list.length <= 1 ? "The last superuser stays" : undefined} onClick={() => { if (confirm(`Remove ${s.email} from ${inst.name}'s superusers?`)) act("remove:" + s.id, () => api.remove(s.id)); }}>{working === "remove:" + s.id ? "Removing…" : "Remove"}</button>
+          </li>
+        ))}
+      </ul>
+      <form className="tool-row" onSubmit={(e) => { e.preventDefault(); act("add", async () => { await api.add(form.email, form.password); setForm({ email: "", password: "" }); }); }}>
+        <input type="email" placeholder="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+        <input type="password" placeholder="password (8+ characters)" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={8} />
+        <button type="submit" className="btn btn-xs btn-secondary" disabled={!!working}>{working === "add" ? "Adding…" : "Add superuser"}</button>
+      </form>
+    </>
+  );
+}
+
+/** the instance's custom domains: hostnames on the account's zones, put on the Worker through Cloudflare */
+function DomainsPanel({ inst, client }: { inst: Instance; client: CloudClient }) {
+  const [list, setList] = useState<CustomDomain[]>([]);
+  const [zones, setZones] = useState<Zone[]>([]);
+  const [form, setForm] = useState({ hostname: "", zone: "" });
+  const [error, setError] = useState("");
+  const [working, setWorking] = useState("");
+  const api = useMemo(() => client.domains(inst), [client, inst]);
+  const refresh = () => Promise.all([api.list(), api.zones()]).then(([d, z]) => { setList(d); setZones(z); }).catch((err) => setError(errorMessage(err)));
+  useEffect(() => { refresh(); }, [inst.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  async function act(step: string, fn: () => Promise<unknown>) {
+    setWorking(step); setError("");
+    try { await fn(); await refresh(); } catch (err) { setError(errorMessage(err)); } finally { setWorking(""); }
+  }
+  const zoneName = (id: string) => zones.find((z) => z.id === id)?.name ?? id;
+  return (
+    <>
+      {error && <p className="node-error">{error}</p>}
+      <p className="txt-hint">A hostname on one of the account's zones, pointed at the Worker: Cloudflare adds the DNS record and the certificate.</p>
+      <ul>
+        {list.map((d) => (
+          <li key={d.id}>
+            <a href={`https://${d.hostname}`} target="_blank" rel="noopener noreferrer">{d.hostname}</a> <span className="txt-hint">{zoneName(d.zone_id)}</span>{" "}
+            <button type="button" className="btn btn-xs btn-secondary btn-danger" disabled={!!working} onClick={() => { if (confirm(`Detach ${d.hostname} from ${inst.name}?`)) act("detach:" + d.id, () => api.detach(d.id)); }}>{working === "detach:" + d.id ? "Detaching…" : "Detach"}</button>
+          </li>
+        ))}
+        {!list.length && <li className="txt-hint">no custom domain; the Worker answers on {host(inst.url)}</li>}
+      </ul>
+      <form className="tool-row" onSubmit={(e) => { e.preventDefault(); act("attach", async () => { await api.attach(form.hostname, form.zone); setForm({ hostname: "", zone: "" }); }); }}>
+        <input type="text" placeholder="api.example.com" value={form.hostname} onChange={(e) => setForm({ ...form, hostname: e.target.value })} required />
+        <select value={form.zone} onChange={(e) => setForm({ ...form, zone: e.target.value })}>
+          <option value="">zone: from the hostname</option>
+          {zones.map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}
+        </select>
+        <button type="submit" className="btn btn-xs btn-secondary" disabled={!!working}>{working === "attach" ? "Attaching…" : "Attach"}</button>
+      </form>
+      {!zones.length && <p className="txt-hint">The account has no zones this token can read; add the domain to Cloudflare first.</p>}
+    </>
+  );
+}
+
+/** the Worker's secrets by name: a value is written and never shown again; the managed ones are listed only */
+function SecretsPanel({ inst, client }: { inst: Instance; client: CloudClient }) {
+  const [list, setList] = useState<WorkerSecret[]>([]);
+  const [form, setForm] = useState({ name: "", text: "" });
+  const [error, setError] = useState("");
+  const [working, setWorking] = useState("");
+  const api = useMemo(() => client.secrets(inst), [client, inst]);
+  const refresh = () => api.list().then(setList).catch((err) => setError(errorMessage(err)));
+  useEffect(() => { refresh(); }, [inst.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  async function act(step: string, fn: () => Promise<unknown>) {
+    setWorking(step); setError("");
+    try { await fn(); await refresh(); } catch (err) { setError(errorMessage(err)); } finally { setWorking(""); }
+  }
+  return (
+    <>
+      {error && <p className="node-error">{error}</p>}
+      <p className="txt-hint">Names only: a value goes to the Worker and is never read back. Setting a name that exists replaces its value.</p>
+      <ul>
+        {list.map((s) => (
+          <li key={s.name}>
+            <code>{s.name}</code>{" "}
+            {s.managed ? <span className="label label-sm" title="Set by voidbase.cloud when the instance was created or wired">managed</span> : (
+              <button type="button" className="btn btn-xs btn-secondary btn-danger" disabled={!!working} onClick={() => { if (confirm(`Remove the secret ${s.name} from ${inst.name}?`)) act("remove:" + s.name, () => api.remove(s.name)); }}>{working === "remove:" + s.name ? "Removing…" : "Remove"}</button>
+            )}
+          </li>
+        ))}
+        {!list.length && <li className="txt-hint">no secrets on the Worker</li>}
+      </ul>
+      <form className="tool-row" onSubmit={(e) => { e.preventDefault(); act("set", async () => { await api.set(form.name, form.text); setForm({ name: "", text: "" }); }); }}>
+        <input type="text" placeholder="NAME" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required pattern="[A-Za-z_][A-Za-z0-9_]*" />
+        <input type="password" placeholder="value" value={form.text} onChange={(e) => setForm({ ...form, text: e.target.value })} required autoComplete="off" />
+        <button type="submit" className="btn btn-xs btn-secondary" disabled={!!working}>{working === "set" ? "Setting…" : "Set secret"}</button>
+      </form>
+    </>
+  );
+}
+
+/**
+ * What the owner does to an instance after it exists: plugins, logs and superusers through the instance itself,
+ * with one session minted on it and shared by those three panels; domains and secrets on its Worker through the
+ * Cloudflare pass-through, with the user's own token. This site holds nothing of any of it.
+ */
+function InstancePanels({ inst, client }: { inst: Instance; client: CloudClient }) {
+  const [open, setOpen] = useState("");
+  const [session, setSession] = useState("");
+  const onInstance = (body: (s: string) => React.ReactNode) => (session ? body(session) : <InstanceSignIn inst={inst} client={client} onSession={setSession} />);
+  return (
+    <div className="node-tools">
+      <Collapsible id="plugins" label="Plugins" open={open} setOpen={setOpen}>{onInstance((s) => <PluginsPanel inst={inst} client={client} session={s} />)}</Collapsible>
+      <Collapsible id="logs" label="Logs" open={open} setOpen={setOpen}>{onInstance((s) => <LogsPanel inst={inst} client={client} session={s} />)}</Collapsible>
+      <Collapsible id="superusers" label="Superusers" open={open} setOpen={setOpen}>{onInstance((s) => <SuperusersPanel inst={inst} client={client} session={s} />)}</Collapsible>
+      {!inst.system && (
+        <>
+          <Collapsible id="domains" label="Domains" open={open} setOpen={setOpen}><DomainsPanel inst={inst} client={client} /></Collapsible>
+          <Collapsible id="secrets" label="Secrets" open={open} setOpen={setOpen}><SecretsPanel inst={inst} client={client} /></Collapsible>
+        </>
       )}
     </div>
   );
@@ -791,7 +976,7 @@ export default function Cloud() {
                   </div>
                   {inst.error && <p className="node-error">{inst.error}</p>}
                   {!me?.user?.superuser && inst.status === "live" && (
-                    <PluginsPanel inst={inst} client={client} />
+                    <InstancePanels inst={inst} client={client} />
                   )}
                   {creds[inst.id] && (
                     <p className="node-creds">
