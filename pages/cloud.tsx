@@ -1,13 +1,13 @@
 // The cloud control plane: sign in with Cloudflare, list the visitor's instances, create and delete them, connect
 // GitHub, and create or link the repositories wired to an instance; then the life of one: its plugins, logs,
-// metrics, backups and superusers through the instance itself, its domains and secrets through the Cloudflare
-// pass-through; and the sign-in's own token as a CLI login, for the same session. Ported from the SvelteKit page
-// at src/routes/(app)/cloud/+page.svelte.
-import { useEffect, useMemo, useRef, useState } from "react";
+// metrics, backups, superusers and payments through the instance itself, its domains and secrets through the
+// Cloudflare pass-through (with what the domains plugin reports read from the instance); and the sign-in's own
+// token as a CLI login, for the same session. Ported from the SvelteKit page at src/routes/(app)/cloud/+page.svelte.
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import CloudflareSignIn from "@/components/CloudflareSignIn";
 import { CopyButton } from "@/components/CodeBlock";
 import { cloud, errorMessage, vb, VB_URL } from "@/lib/vb";
-import { CloudClient, LOG_LEVELS, type Backup, type CustomDomain, type LogPage, type Metrics, type Superuser, type WorkerSecret, type Zone } from "@/lib/cloud";
+import { CloudClient, LOG_LEVELS, type BackupItem, type BackupKind, type CustomDomain, type DomainsReport, type LogPage, type Metrics, type PaymentsReport, type PaymentsSummary, type PluginsReport, type Superuser, type WorkerSecret, type Zone } from "@/lib/cloud";
 
 // ---- what /api/vbcloud/* hands back -----------------------------------------------------------------------------
 
@@ -121,6 +121,15 @@ interface CloudForm {
 type WiredState = "unknown" | "gone" | "yes" | "no";
 
 const host = (url?: string) => (url || "").replace(/^https?:\/\//, "");
+/** a PocketBase timestamp without its fraction, for a row */
+const when = (date: string) => date.replace(/\.\d+Z?$/, "").replace("T", " ");
+/** a payment's amount, from the minor unit the row holds, in the currency's own digits (JPY has none, USD two) */
+const money = (amount: number, currency: string) => {
+  try { const f = new Intl.NumberFormat(undefined, { style: "currency", currency: currency.toUpperCase() }); return f.format(amount / 10 ** (f.resolvedOptions().maximumFractionDigits ?? 2)); }
+  catch { return `${amount} ${currency}`; }
+};
+/** the docs page a knob's hint points at: the plugins page, or the secrets page for the knobs that are secrets */
+const DOCS = { plugins: "/docs/plugins", secrets: "/docs/run/stack/secrets" };
 const wired = (repo: Repo): WiredState =>
   !repo.live?.checked ? "unknown" : !repo.live.exists ? "gone" : repo.live.connected ? "yes" : "no";
 const wiredText: Record<WiredState, string> = {
@@ -163,13 +172,87 @@ function InstanceSignIn({ inst, client, onSession }: { inst: Instance; client: C
   );
 }
 
+/** a value with a copy button beside it: a URL the owner registers somewhere else */
+function Copyable({ text }: { text: string }) {
+  const from = useRef<HTMLDivElement>(null);
+  return <span className="copyable"><code>{text}</code> <CopyButton text={text} from={from} /></span>;
+}
+
+/** the knob that sets one of the things an instance reports, and the docs page that covers it */
+function Knob({ children, href = DOCS.plugins }: { children: React.ReactNode; href?: string }) {
+  return <span className="txt-hint">{children} <a href={href}>docs</a></span>;
+}
+
+/**
+ * What the instance reports about its shipped plugins on /api/plugins, beyond the installer: where its mail goes,
+ * the AI binding, the translations it serves, the payments provider and the hostnames the deploy attached. Each
+ * line ends with the knob that sets it; seo's knobs are not reported, so they are not here.
+ */
+function RunsBlock({ inst, report }: { inst: Instance; report: PluginsReport }) {
+  const { mail, ai, translations, payments, domains } = report;
+  const tr = translations && translations.source && translations.locales?.length ? translations : null;
+  const declared = Object.entries(tr?.collections ?? {}).map(([c, f]) => `${c}: ${f.join(", ")}`).join("; ");
+  if (!mail && !ai && !translations && !payments && !domains) return null;
+  return (
+    <>
+      <h4>What this instance runs</h4>
+      <ul className="plugins-runs">
+        {mail && (
+          <li>
+            <strong>Mail</strong>
+            {mail.via === "plugin" ? <span>{mail.carrier}{mail.sender && <>, sender <code>{mail.sender}</code></>}</span>
+              : mail.via === "log" ? <span>logged, not sent{mail.refused && <>: {mail.refused}</>}</span>
+              : <span>{mail.via === "http" ? "an HTTP mail API" : mail.via === "smtp" ? "SMTP" : mail.via} at <code>{mail.host}</code>{mail.sender && <>, sender <code>{mail.sender}</code></>}</span>}
+            <Knob>Set <code>VOIDBASE_MAIL_DOMAIN</code> to a domain of the account and redeploy; the sender in the settings has to be on it.</Knob>
+          </li>
+        )}
+        {ai && (
+          <li>
+            <strong>AI</strong>
+            {ai.via === "workers-ai" ? <span>Workers AI, model <code>{ai.model}</code>{ai.conversations !== undefined && <>, conversations {ai.conversations ? "on" : "off"}</>}</span> : <span>not bound</span>}
+            <Knob>Set <code>VOIDBASE_AI=1</code>, or a model name, and redeploy.</Knob>
+          </li>
+        )}
+        {translations && (
+          <li>
+            <strong>Translations</strong>
+            {tr ? <span>source <code>{tr.source}</code>, locales {tr.locales!.join(", ")}; {declared || "no collection declared"}</span> : <span>idle: no locales or no fields declared</span>}
+            <Knob>Set <code>VOIDBASE_LOCALES</code> (the first is the source) and <code>VOIDBASE_TRANSLATABLE</code> (<code>posts:title,body</code>).</Knob>
+          </li>
+        )}
+        {payments && (
+          <li>
+            <strong>Payments</strong>
+            {payments.via === "none" ? <span>no provider key set</span> : (
+              <span>
+                {payments.via}, {payments.livemode ? "live" : "test"} mode; webhook <Copyable text={`${inst.url}${payments.webhook}`} />
+                {payments.also?.length ? <> Also set: {payments.also.join(", ")}{payments.reason && <> ({payments.reason})</>}.</> : null}
+              </span>
+            )}
+            <Knob href={DOCS.secrets}>One key as a secret: <code>STRIPE_SECRET_KEY</code>, <code>POLAR_ACCESS_TOKEN</code> or <code>LEMONSQUEEZY_API_KEY</code>, with its webhook secret.</Knob>
+          </li>
+        )}
+        {domains && (
+          <li>
+            <strong>Domains</strong>
+            {domains.hostnames.length ? (
+              <span>{domains.hostnames.map((h) => <Fragment key={h}><code>{h}</code>{h === domains.canonical && <> <span className="label label-sm">canonical</span></>}{" "}</Fragment>)}</span>
+            ) : <span>none attached by the deploy; the Worker answers on {host(inst.url)}</span>}
+            <Knob>Set <code>VOIDBASE_DOMAINS</code>, comma separated, the first canonical, and redeploy.</Knob>
+          </li>
+        )}
+      </ul>
+    </>
+  );
+}
+
 /**
  * The plugins of one instance, through the instance's own installer (voidbase's `installer` plugin). On a
  * project instance a change is a commit its repository's build deploys; on one built without a repository the
- * instance says so.
+ * instance says so. Below the installed list, what the instance reports about its shipped plugins.
  */
 function PluginsPanel({ inst, client, session }: { inst: Instance; client: CloudClient; session: string }) {
-  const [running, setRunning] = useState<Awaited<ReturnType<ReturnType<CloudClient["plugins"]>["running"]>> | null>(null);
+  const [running, setRunning] = useState<PluginsReport | null>(null);
   const [available, setAvailable] = useState<Awaited<ReturnType<ReturnType<CloudClient["plugins"]>["available"]>>["available"]>([]);
   const [marketplace, setMarketplace] = useState("");
   const [working, setWorking] = useState("");
@@ -213,6 +296,7 @@ function PluginsPanel({ inst, client, session }: { inst: Instance; client: Cloud
           </li>
         ))}
       </ul>
+      {running && <RunsBlock inst={inst} report={running} />}
       {available.map((m) => (
         <div key={m.marketplace} className="plugins-available">
           <h4><a href={m.marketplace} target="_blank" rel="noopener noreferrer">{m.marketplace.replace(/^https?:\/\//, "")}</a></h4>
@@ -337,13 +421,35 @@ function MetricsPanel({ inst, client, session }: { inst: Instance; client: Cloud
   );
 }
 
+/** what the listing says about an archive's verification, and about its restore if one ran */
+function BackupState({ b }: { b: BackupItem }) {
+  return (
+    <>
+      {b.verified === true ? <span className="backup-ok" title="Read back after the write; every entry matches its manifest"><i className="ri-check-line" aria-hidden="true" /> verified</span>
+        : b.verified === false ? <span className="backup-bad" title={b.verifyError}>{b.kind === "legacy" ? "not verifiable: no manifest" : b.verifyError ?? "not verified"}</span>
+        : null}
+      {b.offsite === true ? <span className="label label-sm" title="Copied to the off-site bucket">off-site</span> : b.offsite === false ? <span className="backup-bad" title={b.offsiteError}>off-site copy failed</span> : null}
+      {b.restore && (
+        <span className="txt-hint" title={b.restore.skipped.map((s) => `${s.collection}: ${s.reason}`).join("\n") || undefined}>
+          restored {when(b.restore.at)}: {b.restore.restored.length} {b.restore.restored.length === 1 ? "collection" : "collections"}{b.restore.created.length ? `, ${b.restore.created.length} created` : ""}{b.restore.skipped.length ? `, ${b.restore.skipped.length} skipped` : ""}{b.restore.settings ? ", settings" : ""}
+        </span>
+      )}
+    </>
+  );
+}
+
 /**
- * The instance's backups: the archives in its storage, one taken on demand, downloaded through a file token in a
- * new tab, deleted, or restored, which replaces the instance's data and restarts it.
+ * The instance's backups: the archives in its storage, one taken on demand as a full archive or a data one,
+ * verified after the write and again on demand, downloaded through a file token in a new tab, deleted, or
+ * restored: a full archive replaces the instance's data and restarts it, a data archive lands on the existing
+ * collections and may create the ones the instance lacks.
  */
 function BackupsPanel({ inst, client, session }: { inst: Instance; client: CloudClient; session: string }) {
-  const [list, setList] = useState<Backup[] | null>(null);
+  const [list, setList] = useState<BackupItem[] | null>(null);
   const [name, setName] = useState("");
+  const [kind, setKind] = useState<BackupKind>("full");
+  /** per data archive: create the collections the instance lacks on restore */
+  const [createMissing, setCreateMissing] = useState<Record<string, boolean>>({});
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [working, setWorking] = useState("");
@@ -361,24 +467,51 @@ function BackupsPanel({ inst, client, session }: { inst: Instance; client: Cloud
     try { const url = await api.downloadUrl(key); if (tab) tab.location.href = url; else window.open(url, "_blank", "noopener,noreferrer"); }
     catch (err) { tab?.close(); setError(errorMessage(err)); }
   }
+  const verify = (b: BackupItem) => act("verify:" + b.key, async () => {
+    const v = await api.verify(b.key);
+    if (v.verified) return `${b.key} verified: ${v.entries} ${v.entries === 1 ? "entry" : "entries"}${v.voidbase ? `, written by voidbase ${v.voidbase}` : ""}.`;
+    return `${b.key} did not verify: ${v.error ?? (v.corrupted.length ? `corrupted: ${v.corrupted.join(", ")}` : v.missing.length ? `missing: ${v.missing.join(", ")}` : "checksum mismatch")}`;
+  });
+  function restore(b: BackupItem) {
+    const data = b.kind === "data";
+    const missing = data && !!createMissing[b.key];
+    const text = data
+      ? `Restore ${b.key} on ${inst.name}?\n\nA data archive replaces the rows and files of every collection it holds that the instance has${missing ? ", and creates the ones the instance lacks from the archive's definitions" : "; one the instance lacks is skipped"}. The settings and the superusers stay. What those collections hold now is lost unless it is in another backup.`
+      : `Restore ${b.key} on ${inst.name}?\n\nEverything on the instance is replaced by what the archive holds (collections, rows and files), and the instance restarts. What is on it now is lost unless it is in another backup.`;
+    if (!confirm(text)) return;
+    act("restore:" + b.key, async () => { await api.restore(b.key, { createMissing: missing }); return `Restoring ${b.key}; ${data ? "its collections take the archive's rows" : "the instance restarts with it"}.`; });
+  }
   return (
     <>
       {error && <p className="node-error">{error}</p>}
       {notice && <p className="txt-hint">{notice}</p>}
-      <p className="txt-hint">Archives in the instance's own storage: its collections, rows and files. A restore replaces all of them with the archive's and restarts the instance.</p>
+      <p className="txt-hint">Archives in the instance's own storage, each read back and verified after it is written. A full archive is everything: collections, rows, files, settings and schema; a restore replaces all of it and restarts the instance. A data archive is the rows and files of the non-system collections, for moving content between instances; a restore lands on the collections the instance has.</p>
       <ul>
         {list?.map((b) => (
           <li key={b.key}>
-            <code>{b.key}</code> <span className="txt-hint">{sizeOf(b.size)} · {b.modified.replace(/\.\d+Z?$/, "")}</span>{" "}
+            <code>{b.key}</code>
+            {b.kind && <span className="label label-sm">{b.kind}</span>}
+            <span className="txt-hint">{sizeOf(b.size)} · {b.modified.replace(/\.\d+Z?$/, "")}{b.voidbase ? ` · voidbase ${b.voidbase}` : ""}</span>
+            <BackupState b={b} />
             <button type="button" className="btn btn-xs btn-outline" disabled={!!working} onClick={() => download(b.key)}>Download</button>{" "}
-            <button type="button" className="btn btn-xs btn-outline" disabled={!!working} onClick={() => { if (confirm(`Restore ${b.key} on ${inst.name}?\n\nEverything on the instance is replaced by what the archive holds (collections, rows and files), and the instance restarts. What is on it now is lost unless it is in another backup.`)) act("restore:" + b.key, async () => { await api.restore(b.key); return `Restoring ${b.key}; the instance restarts with it.`; }); }}>{working === "restore:" + b.key ? "Restoring…" : "Restore"}</button>{" "}
+            <button type="button" className="btn btn-xs btn-outline" disabled={!!working} onClick={() => verify(b)}>{working === "verify:" + b.key ? "Verifying…" : "Verify"}</button>{" "}
+            <button type="button" className="btn btn-xs btn-outline" disabled={!!working} onClick={() => restore(b)}>{working === "restore:" + b.key ? "Restoring…" : "Restore"}</button>{" "}
+            {b.kind === "data" && (
+              <label className="txt-hint">
+                <input type="checkbox" checked={!!createMissing[b.key]} onChange={(e) => setCreateMissing((m) => ({ ...m, [b.key]: e.target.checked }))} /> create the collections the instance lacks
+              </label>
+            )}
             <button type="button" className="btn btn-xs btn-secondary btn-danger" disabled={!!working} onClick={() => { if (confirm(`Delete the backup ${b.key}?`)) act("remove:" + b.key, () => api.remove(b.key)); }}>{working === "remove:" + b.key ? "Deleting…" : "Delete"}</button>
           </li>
         ))}
         {list && !list.length && <li className="txt-hint">no backups yet</li>}
       </ul>
-      <form className="tool-row" onSubmit={(e) => { e.preventDefault(); act("create", async () => { const r = await api.create(name); setName(""); return r.name ? `Backup ${r.name} taken.` : "Backup taken."; }); }}>
+      <form className="tool-row" onSubmit={(e) => { e.preventDefault(); act("create", async () => { const r = await api.create(name, kind); setName(""); return r.name ? `Backup ${r.name} taken (${r.kind}).` : `Backup taken (${r.kind}).`; }); }}>
         <input type="text" placeholder="name (optional): nightly.zip" value={name} onChange={(e) => setName(e.target.value)} pattern="[A-Za-z0-9_-]+(\.zip)?" />
+        <select value={kind} onChange={(e) => setKind(e.target.value as BackupKind)} aria-label="Archive kind">
+          <option value="full">full: everything</option>
+          <option value="data">data: the collections' rows and files</option>
+        </select>
         <button type="submit" className="btn btn-xs btn-secondary" disabled={!!working}>{working === "create" ? "Taking…" : "Take a backup"}</button>
       </form>
     </>
@@ -438,8 +571,15 @@ function SuperusersPanel({ inst, client, session }: { inst: Instance; client: Cl
   );
 }
 
-/** the instance's custom domains: hostnames on the account's zones, put on the Worker through Cloudflare */
-function DomainsPanel({ inst, client }: { inst: Instance; client: CloudClient }) {
+/**
+ * The instance's domains, in two halves: what the domains plugin reports from the instance (the hostnames the
+ * deploy attached and the canonical one, read with the owner's session), and the Workers Custom Domains on the
+ * account's zones, attached and detached from here through Cloudflare. The deploy-side plugin is not reachable
+ * from the browser, so the redirects it sets are only described.
+ */
+function DomainsPanel({ inst, client, session, onSession }: { inst: Instance; client: CloudClient; session: string; onSession: (token: string) => void }) {
+  const [report, setReport] = useState<DomainsReport | null>(null);
+  const [reportError, setReportError] = useState("");
   const [list, setList] = useState<CustomDomain[]>([]);
   const [zones, setZones] = useState<Zone[]>([]);
   const [form, setForm] = useState({ hostname: "", zone: "" });
@@ -448,6 +588,11 @@ function DomainsPanel({ inst, client }: { inst: Instance; client: CloudClient })
   const api = useMemo(() => client.domains(inst), [client, inst]);
   const refresh = () => Promise.all([api.list(), api.zones()]).then(([d, z]) => { setList(d); setZones(z); }).catch((err) => setError(errorMessage(err)));
   useEffect(() => { refresh(); }, [inst.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    setReport(null); setReportError("");
+    if (!session) return;
+    client.plugins(inst, session).running().then((r) => setReport(r.domains ?? { hostnames: [], canonical: null })).catch((err) => setReportError(errorMessage(err)));
+  }, [session, inst.id]); // eslint-disable-line react-hooks/exhaustive-deps
   async function act(step: string, fn: () => Promise<unknown>) {
     setWorking(step); setError("");
     try { await fn(); await refresh(); } catch (err) { setError(errorMessage(err)); } finally { setWorking(""); }
@@ -455,6 +600,26 @@ function DomainsPanel({ inst, client }: { inst: Instance; client: CloudClient })
   const zoneName = (id: string) => zones.find((z) => z.id === id)?.name ?? id;
   return (
     <>
+      <h4>What the domains plugin reports</h4>
+      {session ? (
+        <>
+          {reportError && <p className="node-error">{reportError}</p>}
+          {report && (report.hostnames.length ? (
+            <ul>
+              {report.hostnames.map((h) => (
+                <li key={h}>
+                  <a href={`https://${h}`} target="_blank" rel="noopener noreferrer">{h}</a>
+                  {h === report.canonical && <span className="label label-sm" title="The hostname the others redirect to, and the URL the deploy reports">canonical</span>}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="txt-hint">The deploy attached no hostname; the Worker answers on {host(inst.url)}. Set <code>VOIDBASE_DOMAINS</code> (comma separated, the first canonical) and redeploy. <a href={DOCS.plugins}>docs</a></p>
+          ))}
+          <p className="txt-hint">Redirects to the canonical hostname are set at deploy time by the domains plugin, one Redirect Rule on the zone per other hostname; nothing here changes them.</p>
+        </>
+      ) : <InstanceSignIn inst={inst} client={client} onSession={onSession} />}
+      <h4>On the Worker, through Cloudflare</h4>
       {error && <p className="node-error">{error}</p>}
       <p className="txt-hint">A hostname on one of the account's zones, pointed at the Worker: Cloudflare adds the DNS record and the certificate.</p>
       <ul>
@@ -517,9 +682,74 @@ function SecretsPanel({ inst, client }: { inst: Instance; client: CloudClient })
 }
 
 /**
- * What the owner does to an instance after it exists: plugins, logs, metrics, backups and superusers through the
- * instance itself, with one session minted on it and shared by those panels; domains and secrets on its Worker
- * through the Cloudflare pass-through, with the user's own token. This site holds nothing of any of it.
+ * The payments plugin, as the instance reports it: with a provider's key set, the webhook URL to register at the
+ * provider and the three collections the plugin owns, read with the superuser's session (counts, and the latest
+ * payments); without one, the knobs that would set a provider.
+ */
+function PaymentsPanel({ inst, client, session }: { inst: Instance; client: CloudClient; session: string }) {
+  const [report, setReport] = useState<PaymentsReport | null>(null);
+  const [summary, setSummary] = useState<PaymentsSummary | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  async function refresh() {
+    setLoading(true); setError("");
+    try {
+      const r = (await client.plugins(inst, session).running()).payments ?? { via: "none" };
+      setReport(r);
+      setSummary(r.via === "none" ? null : await client.payments(inst, session).summary());
+    } catch (err) { setError(errorMessage(err)); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { refresh(); }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <>
+      {error && <p className="node-error">{error}</p>}
+      {report?.via === "none" && (
+        <>
+          <p className="txt-hint">No provider key is set, so the payments interface is idle: its routes answer 503 and the customers, subscriptions and payments collections are not created. Set one provider's key and its webhook secret as secrets on the Worker (the Secrets panel here, or the app's own secrets on a project), then redeploy:</p>
+          <ul>
+            <li><code>STRIPE_SECRET_KEY</code> <span className="txt-hint">with <code>STRIPE_WEBHOOK_SECRET</code></span></li>
+            <li><code>POLAR_ACCESS_TOKEN</code> <span className="txt-hint">with <code>POLAR_WEBHOOK_SECRET</code>; <code>POLAR_SANDBOX=1</code> for the sandbox</span></li>
+            <li><code>LEMONSQUEEZY_API_KEY</code> <span className="txt-hint">with <code>LEMONSQUEEZY_STORE_ID</code> and <code>LEMONSQUEEZY_WEBHOOK_SECRET</code></span></li>
+          </ul>
+          <p className="txt-hint">One key means that provider; with two, the first in the shipped order answers and the instance says so. <a href={DOCS.secrets}>docs</a></p>
+        </>
+      )}
+      {report && report.via !== "none" && (
+        <>
+          <p className="txt-hint">
+            <strong>{report.via}</strong>, {report.livemode ? "live" : "test"} mode. Register the webhook at the provider: <Copyable text={`${inst.url}${report.webhook}`} />
+            {report.also?.length ? <> Also set: {report.also.join(", ")}{report.reason && <> ({report.reason})</>}.</> : null}
+          </p>
+          {summary && (
+            <>
+              <p className="txt-hint"><strong>{summary.customers}</strong> {summary.customers === 1 ? "customer" : "customers"}, <strong>{summary.subscriptions}</strong> {summary.subscriptions === 1 ? "subscription" : "subscriptions"}, <strong>{summary.payments}</strong> {summary.payments === 1 ? "payment" : "payments"}{summary.latest.length ? <>; the latest {summary.latest.length}:</> : "."}</p>
+              <ul className="tool-payments">
+                {summary.latest.map((p) => (
+                  <li key={p.id}>
+                    <span>{money(p.amount, p.currency)}</span>
+                    <span className={`label label-sm payment-${p.status}`}>{p.status}</span>
+                    <span className="txt-hint">{when(p.created)}{p.subscription ? " · subscription" : ""}</span>
+                  </li>
+                ))}
+                {!summary.latest.length && <li className="txt-hint">no payment yet</li>}
+              </ul>
+            </>
+          )}
+        </>
+      )}
+      <div className="tool-row">
+        <button type="button" className="btn btn-xs btn-outline" disabled={loading} onClick={() => refresh()}>{loading ? "Reading…" : "Refresh"}</button>
+      </div>
+    </>
+  );
+}
+
+/**
+ * What the owner does to an instance after it exists: plugins, logs, metrics, backups, superusers and payments
+ * through the instance itself, with one session minted on it and shared by those panels; domains and secrets on
+ * its Worker through the Cloudflare pass-through, with the user's own token (the domains panel reads the plugin's
+ * report with the same instance session). This site holds nothing of any of it.
  */
 function InstancePanels({ inst, client }: { inst: Instance; client: CloudClient }) {
   const [open, setOpen] = useState("");
@@ -532,9 +762,10 @@ function InstancePanels({ inst, client }: { inst: Instance; client: CloudClient 
       <Collapsible id="metrics" label="Metrics" open={open} setOpen={setOpen}>{onInstance((s) => <MetricsPanel inst={inst} client={client} session={s} />)}</Collapsible>
       <Collapsible id="backups" label="Backups" open={open} setOpen={setOpen}>{onInstance((s) => <BackupsPanel inst={inst} client={client} session={s} />)}</Collapsible>
       <Collapsible id="superusers" label="Superusers" open={open} setOpen={setOpen}>{onInstance((s) => <SuperusersPanel inst={inst} client={client} session={s} />)}</Collapsible>
+      <Collapsible id="payments" label="Payments" open={open} setOpen={setOpen}>{onInstance((s) => <PaymentsPanel inst={inst} client={client} session={s} />)}</Collapsible>
       {!inst.system && (
         <>
-          <Collapsible id="domains" label="Domains" open={open} setOpen={setOpen}><DomainsPanel inst={inst} client={client} /></Collapsible>
+          <Collapsible id="domains" label="Domains" open={open} setOpen={setOpen}><DomainsPanel inst={inst} client={client} session={session} onSession={setSession} /></Collapsible>
           <Collapsible id="secrets" label="Secrets" open={open} setOpen={setOpen}><SecretsPanel inst={inst} client={client} /></Collapsible>
         </>
       )}

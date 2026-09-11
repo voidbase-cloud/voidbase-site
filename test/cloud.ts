@@ -1,7 +1,7 @@
 // End-to-end test of voidbase.cloud on the Bun runtime, against voidbase's mocks. The site keeps sign-in, sealed
 // tokens, rows and two pass-throughs; the work is done by the browser client (src/lib/cloud.ts), which this test
-// drives the way the page does (instances, repositories, then the life of one: plugins, logs, metrics, backups,
-// superusers, domains, secrets), against:
+// drives the way the page does (instances, repositories, then the life of one: plugins and what the instance reports
+// it runs, logs, metrics, backups, superusers, payments, domains, secrets), against:
 // test/mock-oidc.ts (a Cloudflare-shaped OAuth client: userinfo = {sub}, access token = the cf-mock bearer) and
 // test/cf-mock.ts (the Cloudflare REST API). Boots `bun main.ts` on a temporary data directory.
 //   bun test/cloud.ts
@@ -142,12 +142,19 @@ try {
   // ---- plugins: the instance's own installer, with a session minted on the instance itself
   const calls: { path: string; auth: string; body: unknown }[] = [];
   // what the instance also serves: PocketBase's logs API (entries and hourly stats), its backups API with the file
-  // token a download needs, and its _superusers collection
+  // token a download needs, the backups plugin's kinds and verification, its _superusers collection, and the
+  // payments plugin's three collections
   const logRows = [{ id: "l0", created: "2026-09-10 09:30:00.000Z", level: 0, message: "GET /", data: { status: 200 } }, { id: "l1", created: "2026-09-10 10:00:00.000Z", level: 0, message: "GET /api/health", data: { status: 200 } }, { id: "l2", created: "2026-09-10 10:01:00.000Z", level: 8, message: "POST /api/collections/x/records", data: { status: 500 } }, { id: "l3", created: "2026-09-10 10:02:00.000Z", level: 4, message: "slow query", data: {} }];
   const logCalls: string[] = [];
-  const backups: { key: string; modified: string; size: number }[] = [];
+  const backups: { key: string; modified: string; size: number; kind: string; verified: boolean; voidbase: string | null; restore?: Record<string, unknown> }[] = [];
   const backupCalls: string[] = [];
   const restored: string[] = [];
+  const paymentRows = {
+    customers: [{ id: "c1", email: "a@example.com", created: "2026-09-01 10:00:00.000Z" }, { id: "c2", email: "b@example.com", created: "2026-09-02 10:00:00.000Z" }],
+    subscriptions: [{ id: "s1", customer: "c1", status: "active", created: "2026-09-03 10:00:00.000Z" }],
+    payments: [{ id: "p1", customer: "c1", amount: 500, currency: "usd", status: "succeeded", created: "2026-09-04 10:00:00.000Z" }, { id: "p2", customer: "c2", amount: 1200, currency: "eur", status: "failed", created: "2026-09-05 10:00:00.000Z" }, { id: "p3", customer: "c1", subscription: "s1", amount: 1999, currency: "usd", status: "succeeded", created: "2026-09-06 10:00:00.000Z" }],
+  } as Record<string, Record<string, unknown>[]>;
+  const paymentCalls: string[] = [];
   const superusers = [{ id: "su1", email: "owner@example.com", created: "2026-09-01 00:00:00.000Z" }];
   const instance = Bun.serve({ port: 0, hostname: "127.0.0.1", async fetch(req) {
     const url = new URL(req.url); const p = url.pathname; const auth = req.headers.get("authorization") ?? "";
@@ -166,16 +173,22 @@ try {
     if (p === "/api/files/token" && req.method === "POST") return Response.json({ token: "file-token" });
     if (p === "/api/backups" && req.method === "GET") return Response.json(backups);
     if (p === "/api/backups" && req.method === "POST") {
-      const b = (await req.json().catch(() => ({}))) as { name?: string }; backupCalls.push(`POST /api/backups ${JSON.stringify(b)}`);
+      const b = (await req.json().catch(() => ({}))) as { kind?: string; name?: string }; backupCalls.push(`POST /api/backups ${JSON.stringify(b)}`);
       const name = b.name || `pb_backup_test_${backups.length + 1}.zip`;
       if (!/^[a-z0-9_-]+\.zip$/.test(name) || backups.some((x) => x.key === name)) return Response.json({ message: "An error occurred while validating the submitted data.", data: { name: { code: "validation_backup_name_exists", message: "The backup file name is invalid or already exists." } } }, { status: 400 });
-      backups.push({ key: name, modified: "2026-09-10 12:00:00.000Z", size: 2048 }); return new Response(null, { status: 204 });
+      // written, then read back and verified, as the backups plugin does; the listing carries the sidecar's fields
+      backups.push({ key: name, modified: "2026-09-10 12:00:00.000Z", size: 2048, kind: b.kind ?? "full", verified: true, voidbase: "0.9.0-beta.31" }); return new Response(null, { status: 204 });
     }
-    { const m = p.match(/^\/api\/backups\/([^/]+)(\/restore)?$/); if (m && (req.method === "DELETE" || (req.method === "POST" && m[2]))) { backupCalls.push(`${req.method} ${p}`); const key = decodeURIComponent(m[1]!); const i = backups.findIndex((x) => x.key === key); if (i < 0) return Response.json({ message: "The requested resource wasn't found." }, { status: 404 }); if (m[2]) restored.push(key); else backups.splice(i, 1); return new Response(null, { status: 204 }); } }
+    { const m = p.match(/^\/api\/backups\/([^/]+)\/verify$/); if (m && req.method === "POST") { backupCalls.push(`POST ${p}`); const b = backups.find((x) => x.key === decodeURIComponent(m[1]!)); if (!b) return Response.json({ message: "The requested resource wasn't found." }, { status: 404 }); return Response.json({ key: b.key, kind: b.kind, verified: b.verified, voidbase: b.voidbase, checksum: "sha256-of-the-entries", entries: 5, corrupted: [], missing: [] }); } }
+    { const m = p.match(/^\/api\/backups\/([^/]+)(\/restore)?$/); if (m && (req.method === "DELETE" || (req.method === "POST" && m[2]))) { const raw = req.method === "POST" ? await req.text() : ""; backupCalls.push(`${req.method} ${p}${raw ? " " + raw : ""}`); const key = decodeURIComponent(m[1]!); const i = backups.findIndex((x) => x.key === key); if (i < 0) return Response.json({ message: "The requested resource wasn't found." }, { status: 404 }); if (m[2]) { restored.push(key); const o = (raw ? JSON.parse(raw) : {}) as { createMissing?: boolean }; const b = backups[i]!; b.restore = { at: "2026-09-10 12:30:00.000Z", kind: b.kind, restored: o.createMissing ? ["posts", "tags"] : ["posts"], created: o.createMissing ? ["tags"] : [], skipped: o.createMissing ? [] : [{ collection: "tags", reason: "the instance has no such collection (pass createMissing to create it from the archive's definition)" }], settings: b.kind === "full" }; } else backups.splice(i, 1); return new Response(null, { status: 204 }); } }
+    { const m = p.match(/^\/api\/collections\/(customers|subscriptions|payments)\/records$/); if (m && req.method === "GET") { paymentCalls.push(`${p}?${url.searchParams}`); const rows = [...paymentRows[m[1]!]!]; if (url.searchParams.get("sort") === "-created") rows.sort((a, b) => String(b.created).localeCompare(String(a.created))); const perPage = Number(url.searchParams.get("perPage") ?? 30); return Response.json({ page: 1, perPage, totalItems: rows.length, totalPages: 1, items: rows.slice(0, perPage) }); } }
     if (p === "/api/collections/_superusers/records" && req.method === "GET") return Response.json({ page: 1, perPage: 200, totalItems: superusers.length, totalPages: 1, items: superusers });
     if (p === "/api/collections/_superusers/records" && req.method === "POST") { const b = (await req.json()) as { email: string; password: string; passwordConfirm: string }; if (!b.email || b.password !== b.passwordConfirm || b.password.length < 8) return Response.json({ message: "Failed to create record.", data: { password: { message: "invalid" } } }, { status: 400 }); if (superusers.some((s) => s.email === b.email)) return Response.json({ message: "Failed to create record.", data: { email: { message: "Value must be unique." } } }, { status: 400 }); const row = { id: `su${superusers.length + 1}`, email: b.email, created: new Date().toISOString() }; superusers.push(row); return Response.json(row); }
     { const m = p.match(/^\/api\/collections\/_superusers\/records\/([^/]+)$/); if (m && req.method === "DELETE") { const i = superusers.findIndex((s) => s.id === m[1]); if (i < 0) return Response.json({ message: "The requested resource wasn't found." }, { status: 404 }); superusers.splice(i, 1); return new Response(null, { status: 204 }); } }
-    if (p === "/api/plugins") return Response.json({ names: ["auth", "realtime", "hardening", "backups", "installer", "echo"], origins: { auth: "shipped", realtime: "shipped", hardening: "shipped", backups: "shipped", installer: "shipped", echo: "http://market.test 0.1.0" }, disabled: [], installer: { mode: "repository", repository: "octo-tester/existing", branch: "master" } });
+    // the inventory, with what the shipped plugins report about themselves on 0.9.0-beta.31
+    if (p === "/api/plugins") return Response.json({ names: ["auth", "realtime", "hardening", "backups", "installer", "echo"], origins: { auth: "shipped", realtime: "shipped", hardening: "shipped", backups: "shipped", installer: "shipped", echo: "http://market.test 0.1.0" }, disabled: [], installer: { mode: "repository", repository: "octo-tester/existing", branch: "master" },
+      mail: { via: "plugin", carrier: "Cloudflare Email Service, from example.com", sender: "hello@example.com" }, ai: { via: "workers-ai", model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast" }, translations: { source: "en", locales: ["en", "ar"], collections: { posts: ["title", "body"] } }, domains: { hostnames: ["shop.example.com", "www.shop.example.com"], canonical: "shop.example.com" },
+      payments: { via: "stripe", webhook: "/api/payments/stripe/webhook", livemode: false, also: ["polar"], reason: "POLAR_ACCESS_TOKEN is set too; stripe answers because it comes first in the shipped order" } });
     if (p === "/api/plugins/available") return Response.json({ installer: { mode: "repository" }, available: [{ marketplace: "https://marketplace.voidbase.cloud", plugins: [{ name: "echo", title: "Echo", summary: "x", latest: "0.2.0" }] }] });
     const body = await req.json().catch(() => null); calls.push({ path: p, auth, body });
     if (p === "/api/plugins/install") return Response.json({ applied: "repository", committed: { sha: "abc", url: "https://github.example/octo-tester/existing/commit/abc" }, message: "Committed." });
@@ -191,6 +204,7 @@ try {
   const plugins = client.plugins(reachable, session);
   const running = await plugins.running(); const available = await plugins.available();
   check("the instance says what runs and where its plugins live; the marketplace's list comes through the instance", running.installer.mode === "repository" && running.origins.echo.startsWith("http://market.test") && available.available[0]?.plugins[0]?.name === "echo", JSON.stringify(running).slice(0, 200));
+  check("the instance reports what it runs: where its mail goes, the ai binding, the translations, the hostnames with the canonical one, and the payments provider with the second key's reason", running.mail?.via === "plugin" && String(running.mail.carrier).startsWith("Cloudflare Email Service") && running.mail.sender === "hello@example.com" && running.ai?.via === "workers-ai" && running.ai.model === "@cf/meta/llama-3.3-70b-instruct-fp8-fast" && running.translations?.source === "en" && running.translations.locales?.length === 2 && running.translations.collections?.posts?.length === 2 && running.domains?.canonical === "shop.example.com" && running.domains.hostnames.length === 2 && running.payments?.via === "stripe" && running.payments.webhook === "/api/payments/stripe/webhook" && running.payments.livemode === false && running.payments.also?.[0] === "polar" && /POLAR_ACCESS_TOKEN/.test(running.payments.reason ?? ""), JSON.stringify(running));
   const installed = await plugins.install("echo", { marketplace: "https://marketplace.voidbase.cloud" }); await plugins.remove("echo"); await plugins.update();
   check("install, remove and update reach the instance with the instance's own session, and the instance answers with its commit", calls.length === 3 && calls.every((c) => c.auth === "inst-session") && (calls[0]!.body as { name: string }).name === "echo" && (installed.committed as { sha: string }).sha === "abc", JSON.stringify(calls));
 
@@ -233,6 +247,21 @@ try {
   check("backups: deleting an unknown key is the instance's refusal; a known one goes", /wasn't found/.test(String(removeUnknown)) && bk2.length === 1 && !bk2.some((b) => b.key === "nightly.zip"), JSON.stringify({ removeUnknown, bk2 }));
   const bkStale = await client.backups(reachable, "stale").list().then(() => "listed", (e) => (e instanceof Error ? e.message : String(e)));
   check("backups: a stale session is the instance's refusal", /valid record authorization/.test(String(bkStale)), String(bkStale));
+  // ---- the backups plugin on 0.9.0-beta.31: an archive of one kind, the listing's verification, a verify on demand,
+  // a data restore that creates the collections the instance lacks when asked
+  const dataBackup = await bkApi.create("Content", "data");
+  const bk3 = await bkApi.list();
+  const content = bk3.find((b) => b.key === "content.zip");
+  check("backups: a data archive is asked for by kind (full travels as no kind), and the listing says each archive's kind, verification and voidbase", dataBackup.kind === "data" && dataBackup.name === "content.zip" && backupCalls.includes('POST /api/backups {"kind":"data","name":"content.zip"}') && content?.kind === "data" && content.verified === true && content.voidbase === "0.9.0-beta.31" && bk3.length === 2 && bk3.every((b) => b.kind === "full" || b.kind === "data"), JSON.stringify({ dataBackup, bk3 }));
+  const verified = await bkApi.verify("content.zip");
+  const verifyUnknown = await bkApi.verify("gone.zip").then(() => "verified", (e) => (e instanceof Error ? e.message : String(e)));
+  check("backups: verify reaches the instance for the key and answers with the check; an unknown key is the instance's refusal", verified.key === "content.zip" && verified.verified === true && verified.kind === "data" && verified.entries === 5 && verified.corrupted.length === 0 && backupCalls.includes("POST /api/backups/content.zip/verify") && /wasn't found/.test(String(verifyUnknown)), JSON.stringify({ verified, verifyUnknown }));
+  await bkApi.restore("content.zip", { createMissing: true });
+  const restoredContent = (await bkApi.list()).find((b) => b.key === "content.zip");
+  check("backups: a data restore sends createMissing when asked, and the listing then carries the restore report", backupCalls.includes('POST /api/backups/content.zip/restore {"createMissing":true}') && restored.at(-1) === "content.zip" && restoredContent?.restore?.kind === "data" && restoredContent.restore.created.length === 1 && restoredContent.restore.skipped.length === 0 && restoredContent.restore.settings === false, JSON.stringify({ calls: backupCalls.slice(-2), restore: restoredContent?.restore }));
+  await bkApi.restore("content.zip");
+  check("backups: without the option a restore sends no body, and a skipped collection is reported with its reason", backupCalls.at(-1) === "POST /api/backups/content.zip/restore" && (await bkApi.list()).find((b) => b.key === "content.zip")?.restore?.skipped[0]?.collection === "tags", JSON.stringify(backupCalls.slice(-1)));
+  await bkApi.remove("content.zip");
 
   // ---- superusers: the instance's _superusers, with the same session; the last one stays
   const suApi = client.superusers(reachable, session);
@@ -246,6 +275,14 @@ try {
   await suApi.remove("su1");
   const su2 = await suApi.list();
   check("superusers: with two, the first can go", su2.length === 1 && su2[0]!.email === "second@example.com", JSON.stringify(su2));
+
+  // ---- payments: the plugin's three collections read with the same session; the counts, and the latest payments newest first
+  const pay = await client.payments(reachable, session).summary();
+  const payQuery = paymentCalls.filter((c) => c.startsWith("/api/collections/payments/records?")).map((c) => new URLSearchParams(c.split("?")[1]));
+  check("payments: the counts of customers, subscriptions and payments, and the latest payments newest first with amount, currency, status and date", pay.customers === 2 && pay.subscriptions === 1 && pay.payments === 3 && pay.latest.length === 3 && pay.latest[0]!.id === "p3" && pay.latest[0]!.amount === 1999 && pay.latest[0]!.currency === "usd" && pay.latest[0]!.status === "succeeded" && pay.latest[0]!.created.startsWith("2026-09-06") && pay.latest[0]!.subscription === "s1", JSON.stringify(pay));
+  check("payments: ten at most, sorted -created, the fields the panel shows; the counts cost one row each", payQuery.length === 1 && payQuery[0]!.get("perPage") === "10" && payQuery[0]!.get("sort") === "-created" && (payQuery[0]!.get("fields") ?? "").includes("amount") && paymentCalls.filter((c) => c.startsWith("/api/collections/customers/")).every((c) => new URLSearchParams(c.split("?")[1]).get("perPage") === "1"), JSON.stringify(paymentCalls));
+  const payStale = await client.payments(reachable, "stale").summary().then(() => "listed", (e) => (e instanceof Error ? e.message : String(e)));
+  check("payments: a stale session is the instance's refusal", /valid record authorization/.test(String(payStale)), String(payStale));
   instance.stop(true);
   await api("PATCH", `/api/collections/vb_instances/records/${inst.id}`, { url: inst.url }, U);
 
