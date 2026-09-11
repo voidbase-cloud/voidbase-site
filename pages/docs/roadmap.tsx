@@ -245,7 +245,7 @@ export default function DocsRoadmap() {
       <Item
         title="Workers AI and Think, as official plugins"
         from="The instance already runs on the network that serves the models, and it already runs a Durable Object for realtime. Calling a third-party API to add a chat box is the long way round."
-        now="Nothing. A hook can call Workers AI because a hook can call anything, and that is the whole of the support."
+        now="The stateless half shipped in 0.9.0-beta.30 as the ai plugin. VOIDBASE_AI=1 makes the deploy add the Workers AI binding, and POST /api/ai/chat runs a tool-calling loop whose tools are the MCP server's list for the caller's own token: anonymous sees the public API, a user their reach, a superuser everything, and every call runs the instance's own route in process so the rules judge it. The client side is client.ai from @voidbase-cloud/sdk/ai. Think, with its persistent conversation, is what sits on top of this later."
         plan="Plugins built on Cloudflare's Think harness, which is a chat agent over Durable Object SQLite with Workers AI behind it. One puts a chat in the admin panel that can read the instance's own schema, records and logs, so finding where something lives is a question rather than a search. One does the same inside a preview environment, where the thing worth asking about is the change under review. And because a Think agent can be driven as a sub-agent over RPC, the third is a chat your own app mounts, scoped to the collections you let it read. None of them needs a hand-written tool list: the MCP server above already describes the instance, scoped to whoever is asking, which is the same scoping these three need anyway."
         size="Medium each, and all three want the plugin loader first."
       />
@@ -254,7 +254,7 @@ export default function DocsRoadmap() {
       <Item
         title="Payment providers, as official plugins"
         from="Taking money is the first thing most projects add and the last thing anyone wants to write a second time."
-        now="Nothing in the box. The webhook endpoint is a hook you write, and the reconciliation is yours to get right."
+        now="The first provider shipped in 0.9.0-beta.30 as the stripe plugin, providing payments@1 over Stripe's REST API with no SDK. With STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET set it owns customers, subscriptions and payments collections a signed-in user reads for their own rows, answers checkout, portal and cancel under /api/payments/stripe, and verifies and applies the webhook events idempotently by provider id. Polar and Lemon Squeezy are the next two behind the same interface."
         plan="One plugin per provider, all of them providing the same payment interface, starting with Stripe, Polar and Lemon Squeezy. Each owns its webhook route, verifies signatures, and writes customers, subscriptions and payments into collections you query like any other. Changing provider becomes changing which plugin is installed, and the shared shape is what makes the next provider cheap to add."
         size="Medium for the first. Small for each one after it."
       />
@@ -263,7 +263,7 @@ export default function DocsRoadmap() {
       <Item
         title="Rich text you edit where it renders"
         from="Editing a markdown field in an admin panel means editing it away from the page it appears on."
-        now="The plain-text half shipped in @voidbase-cloud/sdk 0.2.0 as the editable plugin: an element marked data-vb-edit set to collection:id:field becomes contenteditable for a signed-in user, saves through the same update call and rules as any other write, shows saving, saved or error on the element, reverts on Escape or a refused save, and can follow the record over realtime. The markdown toolbar over it is the part still to come."
+        now="The plain-text half shipped in @voidbase-cloud/sdk 0.2.0 as the editable plugin: an element marked data-vb-edit set to collection:id:field becomes contenteditable for a signed-in user, saves through the same update call and rules as any other write, shows saving, saved or error on the element, reverts on Escape or a refused save, and can follow the record over realtime. Since 0.3.0 an element marked data-vb-edit-markdown edits the field's markdown source in a textarea with a small toolbar and renders it back through whatever renderer the app passes."
         plan="A plugin that binds a block on your own site to the field it came from. A signed-in admin gets contenteditable on that block with a markdown toolbar over it, edits in place, and the save writes the field back through the same rules as any other write. The content stays markdown in a collection, so it is still queryable and still exports, and none of it turns into a document only one editor can open."
         size="Medium. A small client script, a field-level permission check, and a toolbar."
       />
@@ -290,7 +290,7 @@ export default function DocsRoadmap() {
       <Item
         title="Translations, as an official plugin"
         from="Every application that reaches a second country rebuilds this, and what gets rebuilt is usually a JSON file per language and a helper that cannot tell you which keys are missing."
-        now="Nothing. A translated field is a field you named yourself, following a convention only your own code knows about."
+        now="The content half shipped in 0.9.0-beta.30 as the translations plugin. VOIDBASE_TRANSLATABLE names the fields per collection and VOIDBASE_LOCALES the locales in fallback order; translations live in a collection the plugin owns, and the records API answers list and view (expands included) in the locale the request asks for, with Content-Language and a per-record note of which fields were swapped, in one batched lookup. Superusers get the missing report and the status per locale. Interface strings, a locale in the route and hreflang are still to come."
         plan="Two halves, because they are two problems. Interface strings live in the project, are typed, and fail the build when a key is missing rather than rendering the key to a user. Content translations live in the collections: a field is declared translatable once and the API answers in the language the request asks for, falling back the way you said rather than the way we guessed. Then the parts around both, which is a locale in the route, hreflang and canonical tags handled by the SEO plugin above, and a panel screen showing what is untranslated so you find out before a reader does."
         size="Large. The content half reaches into the query path, which is the part of the server we change most carefully."
       />
