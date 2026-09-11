@@ -118,6 +118,9 @@ export default function DocsSdk() {
         the map and types <code>collection(name)</code> from it, so a renamed field is a compile error at the call
         rather than an empty value at runtime. The file imports nothing, so it compiles against whichever SDK the
         project installed. There is no watch mode: run it again when the collections change, or put it in the build.
+       <code>--watch</code> keeps it in step while you
+        work: it polls the instance and rewrites the file only when the generated types actually change, naming what
+        moved.
       </p>
       <CodeBlock {...TYPES} />
       <CodeBlock {...TYPED} />

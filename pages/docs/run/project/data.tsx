@@ -52,6 +52,8 @@ export default function DocsProjectData() {
         <code>VOIDBASE_BACKUP_KEEP</code> says how many scheduled ones to keep, and <code>VOIDBASE_BACKUP_S3_*</code>{" "}
         copies each one to a bucket outside the account. <code>voidbase update --backup</code> zips the directory
         before the executable replaces itself.
+       A restore reads the archive as one stream and loads it in
+        batches, so an archive larger than the instance's memory still goes back in.
       </p>
       <p>
         To bring a deployed instance's data onto your machine, or send yours up, <code>migrate</code> takes a backup

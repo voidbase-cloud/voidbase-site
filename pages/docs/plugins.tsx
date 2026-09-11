@@ -138,7 +138,9 @@ export default function DocsPlugins() {
         <strong>Three tiers</strong>, differing in what happens if you do nothing. A <code>core</code> plugin is one
         the instance is not usable without: <code>auth</code> is the one there is, and an instance running without a
         provider of <code>auth@1</code> loads, runs with nobody signed in, and says what it is missing at boot and on{" "}
-        <code>/api/plugins</code>. An <code>official</code> plugin is ours, versioned with voidbase, and can be turned
+        <code>/api/plugins</code>. Taking one out is deliberate: the CLI refuses without <code>--yes</code> and says
+        what stops working, and the installer route answers 409 unless the call carries <code>force</code>. The same
+        guard covers a plugin another installed plugin depends on. An <code>official</code> plugin is ours, versioned with voidbase, and can be turned
         off or replaced. A <code>community</code> plugin is somebody else's, from{" "}
         <Link href="/docs/marketplace">the marketplace</Link> or a marketplace of your own.
       </p>
@@ -177,7 +179,7 @@ export default function DocsPlugins() {
             <tr><th>Plugin</th><th>What it does</th><th>What turns it on</th></tr>
           </thead>
           <tbody>
-            <Row name="auth" on={<>On by default, tier core. <code>voidbase plugins remove auth</code> is an instance with nobody signed in.</>}>
+            <Row name="auth" on={<>On by default, tier core. <code>voidbase plugins remove auth</code> refuses without <code>--yes</code>, because it is an instance with nobody signed in.</>}>
               Provides <code>auth@1</code>: who is making a request, the fields an auth record answers to in a rule, which collections hold accounts. Owns the five auth collections and mounts every auth route (password, OAuth2, refresh, the flows, passkeys).
             </Row>
             <Row name="realtime" on="On by default.">
@@ -187,7 +189,7 @@ export default function DocsPlugins() {
               Provides <code>hardening@1</code>: the body limit, the rate limit and the response policy, the headers every answer carries. Naming CORS origins also turns on the CSRF rule for cookie-carrying writes. Remove it and there is no policy at all.
             </Row>
             <Row name="backups" on={<>On by default. <code>VOIDBASE_BACKUP_KIND</code>, <code>VOIDBASE_BACKUP_KEEP</code> and <code>VOIDBASE_BACKUP_S3_*</code> shape the schedule and the off-site copy.</>}>
-              PocketBase's backups routes plus <code>verify</code>: full, data and schema archives with a manifest, each read back and verified after it is written, restore per kind, retention, and a copy to any S3-compatible bucket outside the account.
+              PocketBase's backups routes plus <code>verify</code>: full, data and schema archives with a manifest, each read back and verified after it is written, restore per kind read as one stream so an archive larger than memory loads, retention, and a copy to any S3-compatible bucket outside the account.
             </Row>
             <Row name="installer" on={<>On by default. <code>VOIDBASE_PROJECT_REPO</code> and <code>VOIDBASE_GH_TOKEN</code> on the Worker make a change a commit.</>}>
               How an instance changes its own plugins: <code>POST /api/plugins/install</code>, <code>remove</code>, <code>update</code> and <code>GET /api/plugins/available</code>, for superusers. Below, "Installing one".
@@ -198,8 +200,9 @@ export default function DocsPlugins() {
             <Row name="mcp" on="On by default.">
               <code>POST /api/mcp</code>, a stateless MCP server whose tools are the routes the caller's token may call, derived per request from the same scoped document; every call runs through the instance's own route and rules.
             </Row>
-            <Row name="seo" on={<>On by default. <code>VOIDBASE_SITEMAP</code>, <code>VOIDBASE_SEO</code>, <code>VOIDBASE_SITE_URL</code>, <code>VOIDBASE_ROBOTS_DISALLOW</code> and <code>VOIDBASE_LLMS_NOTE</code> shape the answers.</>}>
+            <Row name="seo" on={<>On by default. <code>VOIDBASE_SITEMAP</code>, <code>VOIDBASE_SEO</code>, <code>VOIDBASE_SITE_URL</code>, <code>VOIDBASE_ROBOTS_DISALLOW</code> and <code>VOIDBASE_LLMS_NOTE</code> shape the answers; <code>VOIDBASE_SEO_PNG=1</code> renders the share cards as PNG.</>}>
               <code>robots.txt</code>, <code>sitemap.xml</code> from public records, <code>llms.txt</code>, <code>GET /api/seo/meta</code> (canonical, title, JSON-LD, OpenGraph and Twitter tags, a ready head fragment) and share cards rendered on request at <code>/api/seo/og</code>. A real file in <code>pb_public</code> wins.
+             The cards are SVG by default; the PNG knob carries a WebAssembly rasteriser and a subset font into the Worker, about a megabyte compressed, which is why it is a choice rather than a default.
             </Row>
             <Row name="mail" on={<><code>VOIDBASE_MAIL_DOMAIN=example.com</code></>}>
               Provides <code>mail@1</code>: outbound mail from the instance's own domain through Cloudflare's Email Service. The deploy adds the binding; a sender off the domain falls back to SMTP or is refused with the reason on <code>/api/plugins</code>.
