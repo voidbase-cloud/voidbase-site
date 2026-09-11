@@ -109,6 +109,7 @@ interface CloudForm {
   name?: string;
   account?: string;
   template?: string;
+  repoName?: string;
   domain?: string;
   private?: boolean;
   fullName?: string;
@@ -238,6 +239,7 @@ export default function Cloud() {
   const [release, setRelease] = useState<Release | null>(null);
   const [instances, setInstances] = useState<Instance[]>([]);
   const [github, setGithub] = useState<Github | null>(null);
+  const [pipelines, setPipelines] = useState<Record<string, { connected: boolean | null; link: string }>>({});
   const [templates, setTemplates] = useState<Template[]>([]);
   const [repos, setRepos] = useState<Repo[]>([]);
   const [error, setError] = useState("");
@@ -290,8 +292,10 @@ export default function Cloud() {
       setTemplates(templateList);
       const repoRows = meData?.user?.superuser ? [] : await cloud<{ repos: Repo[] }>("GET", "/api/vbcloud/repos").then((r) => r.repos).catch(() => [] as Repo[]);
       setRepos(repoRows);
-      // what GitHub says about each linked repository, asked from here (the site keeps rows, not opinions)
+      // what GitHub says about each linked repository, and whether its instance deploys on push, asked from here
       for (const repo of repoRows.filter((r) => !r.system)) {
+        const owner = instanceList.find((i) => i.id === repo.instance);
+        if (owner && !owner.system) client.pipelineOf(owner).then((p) => setPipelines((m) => ({ ...m, [repo.instance]: p }))).catch(() => undefined);
         client.checkRepo(repo, instanceList.find((i) => i.id === repo.instance) ?? null)
           .then((live) => setRepos((list) => list.map((r) => (r.id === repo.id ? { ...r, live: { checked: true, ...live, htmlUrl: r.htmlUrl } } : r))))
           .catch((err) => setRepos((list) => list.map((r) => (r.id === repo.id ? { ...r, live: { checked: false, error: errorMessage(err) } } : r))));
@@ -313,7 +317,7 @@ export default function Cloud() {
       return;
     }
     setPanel({ kind, instance: inst?.id || null, name: inst?.name || "" });
-    if (kind === "instance") setForm({ name: "", account: form.account || me?.connection?.accounts?.[0]?.id || "" });
+    if (kind === "instance") setForm({ name: "", account: form.account || me?.connection?.accounts?.[0]?.id || "", template: github?.connected && templates.length ? templates[0]!.name : "", repoName: "", private: false });
     if (kind === "template") setForm({ template: templates[0]?.name || "", name: "", domain: "", private: false });
     if (kind === "link") setForm({ fullName: "" });
   }
@@ -353,7 +357,17 @@ export default function Cloud() {
       setLogs([]);
       const account = me?.connection?.accounts?.find((a) => a.id === form.account) ?? { id: form.account || "", name: "" };
       const r = await client.createInstance({ name: form.name || "", account, owner: meId(), superuserEmail: me?.user.email || "admin@example.com", prefix: me?.prefix, log: (l) => setLogs((ls) => [...ls, l]) });
-      setNotice(`${r.instance.name} is live at ${r.instance.url}`);
+      let notice = `${r.instance.name} is live at ${r.instance.url}`;
+      // a project by default: the repository is made in the same click, from the template, and wired to the instance
+      const tpl = form.template ? templates.find((t) => t.name === form.template) : undefined;
+      if (tpl && github?.connected) {
+        try {
+          const repo = await client.createRepo({ template: tpl as unknown as Parameters<CloudClient["createRepo"]>[0]["template"], name: form.repoName || form.name || "", private: !!form.private, instance: r.instance, user: meId(), inputs: form as Record<string, unknown> });
+          const pipeline = await client.pipelineOf(r.instance);
+          notice += `; ${repo.repo.fullName} created from ${tpl.title} and wired to it${pipeline.connected ? "; a push deploys it" : `. One step left, in Cloudflare's dashboard: connect the repository under Builds so a push deploys it (${pipeline.link})`}`;
+        } catch (err) { notice += `; the repository was not created: ${errorMessage(err)}`; }
+      }
+      setNotice(notice);
       setCreated(r.credentials); // shown once: the password is not stored anywhere but the new instance
       setPanel(null);
       await load();
@@ -641,6 +655,28 @@ export default function Cloud() {
                     ))}
                   </select>
                 </label>
+                <label className="fld">
+                  <span>Start from</span>
+                  {github?.connected ? (
+                    <select value={form.template ?? ""} onChange={(e) => patchForm({ template: e.target.value })}>
+                      <option value="">nothing: a bare instance</option>
+                      {templates.map((t) => (
+                        <option key={t.name} value={t.name}>{t.title} (a repository in your GitHub, wired to the instance)</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="txt-hint">Connect GitHub to start from a template: the instance then deploys from a repository of your own, and its plugins are commits.</span>
+                  )}
+                </label>
+                {github?.connected && form.template && (
+                  <label className="fld">
+                    <span>Repository name</span>
+                    <input type="text" value={form.repoName ?? ""} onChange={(e) => patchForm({ repoName: e.target.value })} placeholder={form.name || "my-app"} />
+                    <span className="txt-hint">
+                      <input type="checkbox" checked={!!form.private} onChange={(e) => patchForm({ private: e.target.checked })} /> private
+                    </span>
+                  </label>
+                )}
               </div>
               <div className="sheet-foot">
                 <button type="submit" className="btn btn-primary" disabled={busy === "create"}>
@@ -799,6 +835,11 @@ export default function Cloud() {
                                   <span>from {repo.templateTitle || repo.templateName}</span>
                                 )}
                                 <span className="wired">{wiredText[w]}</span>
+                                {!repo.system && pipelines[repo.instance] && (
+                                  pipelines[repo.instance]!.connected === true ? <span className="wired">deploys on push</span>
+                                  : pipelines[repo.instance]!.connected === false ? <a className="wired" href={pipelines[repo.instance]!.link} target="_blank" rel="noopener noreferrer">connect it under Builds so a push deploys it</a>
+                                  : <span className="txt-hint">pipeline: not readable with this token</span>
+                                )}
                               </div>
                               <div className="branch-actions">
                                 <a

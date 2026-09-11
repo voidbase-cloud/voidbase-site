@@ -115,6 +115,22 @@ export class CloudClient {
     }
   }
 
+  /**
+   * Whether the instance's Worker has a Workers Builds trigger, so a push to its repository deploys it. Connecting
+   * the repository (which installs Cloudflare's GitHub App for it) is the one step only the dashboard can do; the
+   * link goes straight to it. null when the user's token cannot read builds.
+   */
+  async pipelineOf(inst: Instance): Promise<{ connected: boolean | null; link: string }> {
+    const link = `https://dash.cloudflare.com/${inst.account.id}/workers/services/view/${inst.name}/settings`;
+    try {
+      const cf = this.cf();
+      const tag = (await cf.json<{ id: string; tag?: string }[]>("GET", `/accounts/${inst.account.id}/workers/scripts`)).result?.find((s) => s.id === inst.name)?.tag;
+      if (!tag) return { connected: null, link };
+      const triggers = (await cf.json<{ trigger_uuid: string }[]>("GET", `/accounts/${inst.account.id}/builds/workers/${tag}/triggers`)).result ?? [];
+      return { connected: triggers.length > 0, link };
+    } catch { return { connected: null, link }; }
+  }
+
   credentials(inst: Instance): Credentials { return { url: inst.url ?? "", superuserEmail: inst.superuserEmail ?? "", panel: inst.url ? `${inst.url}/_/` : "" }; }
 
   // ---- repositories: the user's GitHub, wired to their instance --------------------------------------------

@@ -203,6 +203,9 @@ try {
   check("the instance url and the domain were written as repository variables", ghs.variables["octo-tester/my-site"]?.PB_VB_URL === inst.url && ghs.variables["octo-tester/my-site"]?.PAGES_CNAME === "site.example.com", JSON.stringify(ghs.variables));
   const wiredScript = (await cfState()).scripts["vb-my-shop"];
   check("the instance's Worker was wired: repository, branch and the user's GitHub token as its secrets", ["VOIDBASE_PROJECT_REPO", "VOIDBASE_PROJECT_BRANCH", "VOIDBASE_GH_TOKEN"].every((k) => (wiredScript?.secrets ?? []).includes(k)) && mk.wired.length === 3, JSON.stringify(wiredScript?.secrets));
+  const pipeline = await client.pipelineOf(inst);
+  // the mock's Builds API takes user tokens only, as the live one does, and the mock's OAuth token is account-shaped: unreadable here, so null
+  check("the pipeline check: readable or not, the link goes to the Worker's Builds settings", (pipeline.connected === false || pipeline.connected === null) && pipeline.link === "https://dash.cloudflare.com/acc123/workers/services/view/vb-my-shop/settings", JSON.stringify(pipeline));
   const dupRepo = await client.createRepo({ template: siteTpl, name: "my-site", instance: inst, user: uid }).then(() => "made", (e) => (e instanceof Error ? e.message : String(e)));
   check("the same repository cannot be created twice", /already exists|Name already/.test(String(dupRepo)), String(dupRepo));
   const repos = await api("GET", "/api/vbcloud/repos", undefined, U);
