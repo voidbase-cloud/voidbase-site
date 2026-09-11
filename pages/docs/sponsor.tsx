@@ -41,6 +41,11 @@ export default function DocsSponsor() {
         backend worth installing, and the unglamorous half of a project that only gets done when someone can afford
         to do it.
       </p>
+      <p>
+        It is also what the marketplace is meant to run on. Anyone who publishes there charges for their own work and
+        keeps it, and we take no cut of it, which only works if the listing itself is paid for some other way.{" "}
+        <Link href="/docs/marketplace/getting-paid">Getting paid</Link> is that commitment from the creator&apos;s side.
+      </p>
 
       <h2>What it does not buy</h2>
       <p>

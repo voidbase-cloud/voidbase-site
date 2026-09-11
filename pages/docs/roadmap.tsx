@@ -404,11 +404,12 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Paying the people who build it</h3>
       <Item
         title="Creators keeping what they earn, and us not taking a cut of the ecosystem"
-        status="open"
+        status="shipped"
         from="Free plugin ecosystems get abandoned and paid ones get gouged. The difference is usually who is being paid and for what."
-        now="Nothing to sell and nowhere to sell it, which is at least honest."
+        now="The policy is written down, which is what this item was: nothing is sold through the marketplace, it has no accounts, no billing and no payouts, and it takes no cut; official plugins and themes stay free; anyone who publishes charges for their own work under their own licence and keeps it; and we would rather the marketplace be paid for by sponsors than by a percentage of everyone in it. Nothing that is free today becomes paid. An instance takes money through the payment plugins, which is a different thing from the marketplace taking money. What is not decided is listed on the page rather than implied: who the merchant of record would be, what could be charged for, licence checks, and refunds."
         plan="Official plugins and themes stay free, as many as we can write, because an ecosystem does not start behind a paywall. Later a subscription may cover a growing basket of specialised official ones, and specialised is the word doing the work there: things most projects will never need, and never something that used to be free. Anyone can charge for what they publish and keep what they earn. We would rather the marketplace itself be paid for by sponsors than by a percentage of everybody in it, which is also the answer on the pricing page."
         size="This is a policy before it is code, and the policy is easier to keep if we write it down now."
+      left="The mechanism, if creators ever charge through the marketplace itself, which is not designed and is listed as undecided on the page."
       />
 
       <h2>Not on this list</h2>
