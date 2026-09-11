@@ -8,7 +8,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import CloudflareSignIn from "@/components/CloudflareSignIn";
 import { CopyButton } from "@/components/CodeBlock";
 import { cloud, errorMessage, vb, VB_URL } from "@/lib/vb";
-import { CloudClient, hostnamesOf, LOG_LEVELS, rollbackTarget, ROLLBACK_WINDOW_DAYS, type BackupItem, type BackupKind, type CustomDomain, type DomainsReport, type LogPage, type Metrics, type PaymentsReport, type PaymentsSummary, type PluginsReport, type Superuser, type WorkerSecret, type Zone } from "@/lib/cloud";
+import { CloudClient, hostnamesOf, LOG_LEVELS, rollbackTarget, ROLLBACK_WINDOW_DAYS, routeMissing, type BackupItem, type BackupKind, type CustomDomain, type DomainsReport, type LogEntry, type LogPage, type Metrics, type ObservabilityLogs, type ObservabilitySource, type ObservabilitySummary, type ObservabilityWindow, type PaymentsReport, type PaymentsSummary, type PluginsReport, type Superuser, type WorkerSecret, type Zone } from "@/lib/cloud";
 
 // ---- what /api/vbcloud/* hands back -----------------------------------------------------------------------------
 
@@ -132,6 +132,17 @@ const money = (amount: number, currency: string) => {
   try { const f = new Intl.NumberFormat(undefined, { style: "currency", currency: currency.toUpperCase() }); return f.format(amount / 10 ** (f.resolvedOptions().maximumFractionDigits ?? 2)); }
   catch { return `${amount} ${currency}`; }
 };
+/** a share of 0 to 1 as a percentage, with the digits it needs and no trailing zeroes */
+const percent = (share: number) => `${Number((share * 100).toFixed(2))}%`;
+/** the windows the observability plugin answers for, in the order the switch offers them */
+const WINDOWS: { id: ObservabilityWindow; label: string }[] = [{ id: "hour", label: "Last hour" }, { id: "day", label: "Last day" }];
+/** the levels the log filter offers, as the instance numbers them (LOG_LEVELS); "" is every level */
+const LEVELS: { value: string; label: string }[] = [{ value: "", label: "every level" }, { value: "-4", label: "debug and up" }, { value: "0", label: "info and up" }, { value: "4", label: "warnings and up" }, { value: "8", label: "errors" }];
+/** which of the two sources answered, in one line, because they are not the same population */
+const SOURCE_LINE: Record<ObservabilitySource, string> = {
+  "analytics-engine": "From the Analytics Engine dataset the Worker samples its requests into.",
+  "request-log": "From the instance's own request log, which keeps entries at or above its log level, so this is what went wrong rather than everything that happened.",
+};
 /** the docs page a knob's hint points at: the plugins page, or the secrets page for the knobs that are secrets */
 const DOCS = { plugins: "/docs/plugins", secrets: "/docs/run/stack/secrets" };
 const wired = (repo: Repo): WiredState =>
@@ -189,14 +200,15 @@ function Knob({ children, href = DOCS.plugins }: { children: React.ReactNode; hr
 
 /**
  * What the instance reports about its shipped plugins on /api/plugins, beyond the installer: where its mail goes,
- * the AI binding, the translations it serves, the payments provider and the hostnames the deploy attached. Each
- * line ends with the knob that sets it; seo's knobs are not reported, so they are not here.
+ * the AI binding, the translations it serves, the payments provider, the hostnames the deploy attached and where
+ * the observability plugin's numbers come from. Each line ends with the knob that sets it; seo's knobs are not
+ * reported, so they are not here.
  */
 function RunsBlock({ inst, report }: { inst: Instance; report: PluginsReport }) {
-  const { mail, ai, translations, payments, domains } = report;
+  const { mail, ai, translations, payments, domains, observability } = report;
   const tr = translations && translations.source && translations.locales?.length ? translations : null;
   const declared = Object.entries(tr?.collections ?? {}).map(([c, f]) => `${c}: ${f.join(", ")}`).join("; ");
-  if (!mail && !ai && !translations && !payments && !domains) return null;
+  if (!mail && !ai && !translations && !payments && !domains && !observability) return null;
   return (
     <>
       <h4>What this instance runs</h4>
@@ -243,6 +255,17 @@ function RunsBlock({ inst, report }: { inst: Instance; report: PluginsReport }) 
               <span>{domains.hostnames.map((h) => <Fragment key={h}><code>{h}</code>{h === domains.canonical && <> <span className="label label-sm">canonical</span></>}{" "}</Fragment>)}</span>
             ) : <span>none attached by the deploy; the Worker answers on {host(inst.url)}</span>}
             <Knob>Set <code>VOIDBASE_DOMAINS</code>, comma separated, the first canonical, and redeploy.</Knob>
+          </li>
+        )}
+        {observability && (
+          <li>
+            <strong>Observability</strong>
+            <span>
+              {observability.via === "analytics-engine" ? "the Analytics Engine dataset" : "the instance's own request log"};{" "}
+              {observability.sampling >= 1 ? "every request sampled" : observability.sampling > 0 ? `${percent(observability.sampling)} of requests sampled` : "nothing sampled"}; request log{" "}
+              {observability.logs ? "kept" : "off, so the fallback has nothing to read"}
+            </span>
+            <Knob>Deploy with <code>--analytics</code> and set <code>VOIDBASE_OBSERVABILITY_TOKEN</code> to read the dataset; <code>VOIDBASE_OBSERVABILITY_SAMPLE</code> lowers how much of the path is sampled, <code>VOIDBASE_OBSERVABILITY=0</code> turns it off.</Knob>
           </li>
         )}
       </ul>
@@ -326,44 +349,99 @@ function PluginsPanel({ inst, client, session }: { inst: Instance; client: Cloud
   );
 }
 
-/** the instance's own logs: the last entries, newest first, and a filter in PocketBase's syntax */
+/**
+ * The instance's own log entries, newest first. On 0.9.0-beta.37 and later they come from the observability
+ * plugin's `/api/observability/logs`, with a level and a window, and from `/api/observability/errors` when the
+ * toggle asks for the errors alone (5xx answers plus anything the instance recorded an error for, which a level
+ * filter would miss). An instance without the plugin answers 404, and the panel falls back to what it read
+ * before: PocketBase's own logs API with a filter in its syntax.
+ */
 function LogsPanel({ inst, client, session }: { inst: Instance; client: CloudClient; session: string }) {
+  const [win, setWin] = useState<ObservabilityWindow>("hour");
+  const [level, setLevel] = useState("");
+  const [errorsOnly, setErrorsOnly] = useState(false);
+  const [rows, setRows] = useState<ObservabilityLogs | null>(null);
   const [filter, setFilter] = useState("");
   const [page, setPage] = useState<LogPage | null>(null);
   const [stats, setStats] = useState<{ total: number; date: string }[]>([]);
+  /** the instance has no observability route, so this panel is the older one */
+  const [older, setOlder] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const api = client.logs(inst, session);
-  async function refresh(f = filter) {
+
+  /** what the panel read before the plugin, and what it falls back to: the logs API with a filter */
+  async function fromLogs(f: string) {
+    const api = client.logs(inst, session);
+    const [p, s] = await Promise.all([api.list({ filter: f, perPage: 50 }), api.stats(f)]);
+    setPage(p); setStats(s); setRows(null);
+  }
+  async function refresh(o: { win?: ObservabilityWindow; level?: string; errorsOnly?: boolean; filter?: string } = {}) {
+    const w = o.win ?? win, lvl = o.level ?? level, only = o.errorsOnly ?? errorsOnly, f = o.filter ?? filter;
     setLoading(true); setError("");
-    try { const [p, s] = await Promise.all([api.list({ filter: f, perPage: 50 }), api.stats(f)]); setPage(p); setStats(s); }
-    catch (err) { setError(errorMessage(err)); }
-    finally { setLoading(false); }
+    try {
+      if (older) { await fromLogs(f); return; }
+      const api = client.observability(inst, session);
+      setRows(only ? await api.errors(undefined, w) : await api.logs({ window: w, level: lvl === "" ? undefined : Number(lvl) }));
+      setPage(null); setStats([]);
+    } catch (err) {
+      if (!routeMissing(err)) { setError(errorMessage(err)); return; }
+      setOlder(true);
+      try { await fromLogs(f); } catch (fallback) { setError(errorMessage(fallback)); }
+    } finally { setLoading(false); }
   }
   useEffect(() => { refresh(); }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
   const total = stats.reduce((n, s) => n + (s.total || 0), 0);
+  const items: LogEntry[] = rows?.items ?? page?.items ?? [];
+  const read = rows || page;
   return (
     <>
       {error && <p className="node-error">{error}</p>}
-      <form className="tool-row" onSubmit={(e) => { e.preventDefault(); refresh(); }}>
-        <input type="text" placeholder={'filter, e.g. level >= 4 || data.status >= 500'} value={filter} onChange={(e) => setFilter(e.target.value)} />
-        <button type="submit" className="btn btn-xs btn-secondary" disabled={loading}>{loading ? "Reading…" : "Filter"}</button>
-        <button type="button" className="btn btn-xs btn-outline" disabled={loading} onClick={() => refresh()}>Refresh</button>
-      </form>
+      {older ? (
+        <form className="tool-row" onSubmit={(e) => { e.preventDefault(); refresh(); }}>
+          <input type="text" placeholder={'filter, e.g. level >= 4 || data.status >= 500'} value={filter} onChange={(e) => setFilter(e.target.value)} />
+          <button type="submit" className="btn btn-xs btn-secondary" disabled={loading}>{loading ? "Reading…" : "Filter"}</button>
+          <button type="button" className="btn btn-xs btn-outline" disabled={loading} onClick={() => refresh()}>Refresh</button>
+        </form>
+      ) : (
+        <div className="tool-row tool-filters">
+          <label className="tool-field">
+            <span>Level</span>
+            <select value={level} disabled={errorsOnly || loading} onChange={(e) => { setLevel(e.target.value); refresh({ level: e.target.value }); }}>
+              {LEVELS.map((l) => <option key={l.value || "all"} value={l.value}>{l.label}</option>)}
+            </select>
+          </label>
+          <label className="tool-field">
+            <span>Since</span>
+            <select value={win} disabled={loading} onChange={(e) => { const w = e.target.value as ObservabilityWindow; setWin(w); refresh({ win: w }); }}>
+              {WINDOWS.map((w) => <option key={w.id} value={w.id}>{w.id === "hour" ? "an hour ago" : "a day ago"}</option>)}
+            </select>
+          </label>
+          <label className="tool-check">
+            <input type="checkbox" checked={errorsOnly} disabled={loading} onChange={(e) => { setErrorsOnly(e.target.checked); refresh({ errorsOnly: e.target.checked }); }} />
+            <span>Errors only</span>
+          </label>
+          <button type="button" className="btn btn-xs btn-outline" disabled={loading} onClick={() => refresh()}>{loading ? "Reading…" : "Refresh"}</button>
+        </div>
+      )}
+      {rows && (
+        <p className="txt-hint">
+          {rows.totalItems} {rows.totalItems === 1 ? "entry" : "entries"} since {when(rows.since)}{errorsOnly ? ", errors only" : level ? `, ${LEVELS.find((l) => l.value === level)?.label}` : ""}. {SOURCE_LINE[rows.source]}
+        </p>
+      )}
       {page && (
         <p className="txt-hint">
-          {page.totalItems} {page.totalItems === 1 ? "entry" : "entries"}{stats.length ? <> over {stats.length} {stats.length === 1 ? "hour" : "hours"} ({total} in the stats)</> : null}; showing the last {page.items.length}.
+          {page.totalItems} {page.totalItems === 1 ? "entry" : "entries"}{stats.length ? <> over {stats.length} {stats.length === 1 ? "hour" : "hours"} ({total} in the stats)</> : null}; showing the last {page.items.length}. This instance has no observability plugin, which arrived in 0.9.0-beta.37, so this is its logs API with a filter.
         </p>
       )}
       <ul className="tool-logs">
-        {page?.items.map((l) => (
+        {items.map((l) => (
           <li key={l.id} className={`log-level-${LOG_LEVELS[l.level] ?? "other"}`}>
             <span className="log-when">{l.created.replace(/\.\d+Z?$/, "").replace("T", " ")}</span>
             <span className="label label-sm">{LOG_LEVELS[l.level] ?? l.level}</span>
             <span className="log-message" title={l.data ? JSON.stringify(l.data) : undefined}>{l.message}</span>
           </li>
         ))}
-        {page && !page.items.length && <li className="txt-hint">nothing logged{filter ? " for that filter" : " yet"}</li>}
+        {read && !items.length && <li className="txt-hint">nothing logged{older ? (filter ? " for that filter" : " yet") : errorsOnly ? " went wrong in that window" : " in that window"}</li>}
       </ul>
     </>
   );
@@ -374,20 +452,38 @@ const hourOf = (date: string) => `${date.slice(11, 13)}:00`;
 const sizeOf = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : bytes >= 1024 ? `${Math.round(bytes / 1024)} KB` : `${bytes} B`);
 
 /**
- * Requests and errors over the last 24 hours, from the instance's own logs: one bar per hour with traffic,
- * the errors drawn over the requests in the second colour, and the totals as text. Inline SVG; no library.
+ * What the instance is doing, from the observability plugin's summary: the window's requests and errors, the
+ * error rate, the three percentiles, the status split and the five slowest routes, over an hour or a day. The
+ * summary carries no time series, so there is nothing here to draw as a curve; the numbers are the answer.
+ *
+ * An instance older than 0.9.0-beta.37 has no such route and answers 404, and the panel falls back to what it
+ * did before: requests and errors per hour over the last 24 hours, counted from the instance's own logs, one bar
+ * each with the errors drawn over them in the second colour. Inline SVG; no library.
  */
 function MetricsPanel({ inst, client, session }: { inst: Instance; client: CloudClient; session: string }) {
+  const [win, setWin] = useState<ObservabilityWindow>("hour");
+  const [summary, setSummary] = useState<ObservabilitySummary | null>(null);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
+  /** the instance has no observability route, so the panel does not ask for it again */
+  const [older, setOlder] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  async function refresh() {
+  async function refresh(w = win) {
     setLoading(true); setError("");
-    try { setMetrics(await client.metrics(inst, session)); }
-    catch (err) { setError(errorMessage(err)); }
+    try {
+      if (older) { setMetrics(await client.metrics(inst, session)); return; }
+      setSummary(await client.observability(inst, session).summary(w)); setMetrics(null);
+    }
+    catch (err) {
+      if (!routeMissing(err)) { setError(errorMessage(err)); return; }
+      setOlder(true); setSummary(null);
+      try { setMetrics(await client.metrics(inst, session)); }
+      catch (fallback) { setError(errorMessage(fallback)); }
+    }
     finally { setLoading(false); }
   }
   useEffect(() => { refresh(); }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
+  const statuses = Object.entries(summary?.statuses ?? {}).sort(([a], [b]) => a.localeCompare(b));
   const hours = metrics?.hours ?? [];
   const max = Math.max(1, ...hours.map((h) => h.total));
   const BAR = 10, GAP = 3, H = 48, TOP = 4, BASE = H - 12;
@@ -395,9 +491,44 @@ function MetricsPanel({ inst, client, session }: { inst: Instance; client: Cloud
   return (
     <>
       {error && <p className="node-error">{error}</p>}
+      {summary && (
+        <>
+          <div className="tool-row tool-windows">
+            {WINDOWS.map((w) => (
+              <button key={w.id} type="button" className={`btn btn-xs ${w.id === win ? "btn-outline" : "btn-secondary"}`} aria-pressed={w.id === win} disabled={loading} onClick={() => { setWin(w.id); refresh(w.id); }}>{w.label}</button>
+            ))}
+          </div>
+          <ul className="tool-figures">
+            <li><span className="figure">{summary.requests}</span> <span className="txt-hint">{summary.requests === 1 ? "request" : "requests"}</span></li>
+            <li><span className="figure">{summary.errors}</span> <span className="txt-hint">{summary.errors === 1 ? "error" : "errors"}</span></li>
+            <li><span className={`figure${summary.rate ? " figure-bad" : ""}`}>{percent(summary.rate)}</span> <span className="txt-hint">error rate</span></li>
+            <li><span className="figure">{summary.p50}</span> <span className="txt-hint">p50 ms</span></li>
+            <li><span className="figure">{summary.p95}</span> <span className="txt-hint">p95 ms</span></li>
+            <li><span className="figure">{summary.p99}</span> <span className="txt-hint">p99 ms</span></li>
+          </ul>
+          <p className="txt-hint">
+            {statuses.length ? <>Answers: {statuses.map(([k, n]) => `${k} ${n}`).join(", ")}. </> : null}
+            {summary.requests ? null : <>Nothing recorded in {win === "hour" ? "the last hour" : "the last day"}. </>}
+            {SOURCE_LINE[summary.source]}
+          </p>
+          {summary.slowest.length > 0 && (
+            <>
+              <h4>Slowest routes</h4>
+              <table className="tool-table">
+                <thead><tr><th>Route</th><th>p95</th><th>Requests</th></tr></thead>
+                <tbody>
+                  {summary.slowest.map((s) => (
+                    <tr key={s.route}><td><code>{s.route}</code></td><td>{s.p95} ms</td><td>{s.count}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+        </>
+      )}
       {metrics && (
         <p className="txt-hint">
-          <strong>{metrics.totals.requests}</strong> {metrics.totals.requests === 1 ? "request" : "requests"} and <strong>{metrics.totals.errors}</strong> {metrics.totals.errors === 1 ? "error" : "errors"} in the last 24 hours{hours.length ? <>, over {hours.length} {hours.length === 1 ? "hour" : "hours"} with traffic (UTC)</> : null}.
+          <strong>{metrics.totals.requests}</strong> {metrics.totals.requests === 1 ? "request" : "requests"} and <strong>{metrics.totals.errors}</strong> {metrics.totals.errors === 1 ? "error" : "errors"} in the last 24 hours{hours.length ? <>, over {hours.length} {hours.length === 1 ? "hour" : "hours"} with traffic (UTC)</> : null}. This instance has no observability plugin, which arrived in 0.9.0-beta.37, so these are its own logs by the hour.
         </p>
       )}
       {hours.length > 0 && (
@@ -772,17 +903,42 @@ function PaymentsPanel({ inst, client, session }: { inst: Instance; client: Clou
 }
 
 /**
+ * The summary each card shows, asked for once per instance and kept for the page's life: the panels below it
+ * refresh on demand, the card's line does not. An instance whose call fails, 404 or otherwise, is remembered as
+ * having nothing to show, so the card asks once and stays quiet.
+ */
+const cardNumbers = new Map<string, ObservabilitySummary | null>();
+
+/**
  * What the owner does to an instance after it exists: plugins, logs, metrics, backups, superusers and payments
  * through the instance itself, with one session minted on it and shared by those panels; domains through the
  * domains plugin, which on a project is a commit to its repository; secrets on its Worker through the Cloudflare
  * pass-through, with the user's own token. This site holds nothing of any of it.
+ *
+ * Above them, once the session exists, the last hour as three numbers. Not a sparkline: the summary answers with
+ * totals and percentiles and no time series, and a curve drawn from those would be one this page made up.
  */
 function InstancePanels({ inst, client, repo }: { inst: Instance; client: CloudClient; repo: Repo | null }) {
   const [open, setOpen] = useState("");
   const [session, setSession] = useState("");
+  const [numbers, setNumbers] = useState<ObservabilitySummary | null>(() => cardNumbers.get(inst.id) ?? null);
+  useEffect(() => {
+    if (!session) return;
+    if (cardNumbers.has(inst.id)) { setNumbers(cardNumbers.get(inst.id) ?? null); return; }
+    let live = true;
+    client.observability(inst, session).summary("hour")
+      .then((s) => { cardNumbers.set(inst.id, s); if (live) setNumbers(s); })
+      .catch(() => { cardNumbers.set(inst.id, null); if (live) setNumbers(null); });
+    return () => { live = false; };
+  }, [session, inst.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const onInstance = (body: (s: string) => React.ReactNode) => (session ? body(session) : <InstanceSignIn inst={inst} client={client} onSession={setSession} />);
   return (
     <div className="node-tools">
+      {numbers && (
+        <p className="node-numbers txt-hint">
+          Last hour: <strong>{numbers.requests}</strong> {numbers.requests === 1 ? "request" : "requests"}, <strong>{percent(numbers.rate)}</strong> errors, p95 <strong>{numbers.p95} ms</strong>.
+        </p>
+      )}
       <Collapsible id="plugins" label="Plugins" open={open} setOpen={setOpen}>{onInstance((s) => <PluginsPanel inst={inst} client={client} session={s} />)}</Collapsible>
       <Collapsible id="logs" label="Logs" open={open} setOpen={setOpen}>{onInstance((s) => <LogsPanel inst={inst} client={client} session={s} />)}</Collapsible>
       <Collapsible id="metrics" label="Metrics" open={open} setOpen={setOpen}>{onInstance((s) => <MetricsPanel inst={inst} client={client} session={s} />)}</Collapsible>

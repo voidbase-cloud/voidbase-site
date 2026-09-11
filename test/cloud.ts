@@ -9,7 +9,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readdirSync, statSync, e
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { assetHash, contentTypeFor, type ReleaseManifest } from "@voidbase-cloud/voidbase/cloud";
-import { CloudClient, CloudError, rollbackTarget, ROLLBACK_WINDOW_DAYS, type Instance } from "../src/lib/cloud";
+import { CloudClient, CloudError, rollbackTarget, ROLLBACK_WINDOW_DAYS, routeMissing, type Instance } from "../src/lib/cloud";
 const VOIDBASE = resolve(import.meta.dir, "../node_modules/@voidbase-cloud/voidbase");
 // The npm package ships no test/; the mocks come from a sibling voidbase checkout when the package lacks them
 // (a sibling of the site, or of the site a worktree under .claude/worktrees/ belongs to).
@@ -159,6 +159,11 @@ try {
   // payments plugin's three collections
   const logRows = [{ id: "l0", created: "2026-09-10 09:30:00.000Z", level: 0, message: "GET /", data: { status: 200 } }, { id: "l1", created: "2026-09-10 10:00:00.000Z", level: 0, message: "GET /api/health", data: { status: 200 } }, { id: "l2", created: "2026-09-10 10:01:00.000Z", level: 8, message: "POST /api/collections/x/records", data: { status: 500 } }, { id: "l3", created: "2026-09-10 10:02:00.000Z", level: 4, message: "slow query", data: {} }];
   const logCalls: string[] = [];
+  // the observability plugin (voidbase 0.9.0-beta.37): its three routes, and the switch that takes them away again,
+  // which is what an instance older than the plugin answers to all three
+  let obsOn = true;
+  let obsSource: "analytics-engine" | "request-log" = "analytics-engine";
+  const obsCalls: string[] = [];
   const backups: { key: string; modified: string; size: number; kind: string; verified: boolean; voidbase: string | null; restore?: Record<string, unknown> }[] = [];
   const backupCalls: string[] = [];
   const restored: string[] = [];
@@ -183,6 +188,26 @@ try {
       if (p === "/api/logs/stats") { const hours = new Map<string, number>(); for (const l of items) { const h = `${l.created.slice(0, 13)}:00:00.000Z`; hours.set(h, (hours.get(h) ?? 0) + 1); } return Response.json([...hours].map(([date, total]) => ({ total, date }))); }
       return Response.json({ page: 1, perPage: Number(url.searchParams.get("perPage") ?? 30), totalItems: items.length, totalPages: 1, items });
     }
+    if (p.startsWith("/api/observability/")) {
+      // an instance older than the plugin has no such route; the site reads the 404 as "fall back", not as a failure
+      if (!obsOn) return Response.json({ message: "The requested resource wasn't found." }, { status: 404 });
+      obsCalls.push(`${p}?${url.searchParams}`);
+      const window = url.searchParams.get("window") === "day" ? "day" : "hour";
+      if (p === "/api/observability/summary") {
+        const requests = window === "day" ? 40 : 10;
+        return Response.json({ source: obsSource, window, requests, errors: 1, rate: Number((1 / requests).toFixed(4)), p50: 12, p95: 48, p99: 120,
+          slowest: [{ route: "/api/collections/:collection/records", p95: 48, count: 4 }, { route: "/api/health", p95: 3, count: 6 }],
+          statuses: { "2xx": requests - 1, "5xx": 1 } });
+      }
+      const since = url.searchParams.get("since") || (window === "day" ? "2026-09-09 10:00:00.000Z" : "2026-09-10 09:30:00.000Z");
+      const raw = url.searchParams.get("level") ?? "";
+      const level = raw === "" ? null : Number(raw);
+      const kept = p === "/api/observability/errors"
+        ? logRows.filter((l) => Number((l.data as Record<string, unknown>).status ?? 0) >= 500)
+        : logRows.filter((l) => level === null || l.level >= level);
+      const items = [...kept].sort((a, b) => b.created.localeCompare(a.created));
+      return Response.json({ source: "request-log", since, ...(p === "/api/observability/logs" ? { level } : {}), items, totalItems: items.length });
+    }
     if (p === "/api/files/token" && req.method === "POST") return Response.json({ token: "file-token" });
     if (p === "/api/backups" && req.method === "GET") return Response.json(backups);
     if (p === "/api/backups" && req.method === "POST") {
@@ -201,7 +226,8 @@ try {
     // the inventory, with what the shipped plugins report about themselves on 0.9.0-beta.31
     if (p === "/api/plugins") return Response.json({ names: ["auth", "realtime", "hardening", "backups", "installer", "echo"], origins: { auth: "shipped", realtime: "shipped", hardening: "shipped", backups: "shipped", installer: "shipped", echo: "http://market.test 0.1.0" }, disabled: [], installer: { mode: "repository", repository: "octo-tester/existing", branch: "master" },
       mail: { via: "plugin", carrier: "Cloudflare Email Service, from example.com", sender: "hello@example.com" }, ai: { via: "workers-ai", model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast" }, translations: { source: "en", locales: ["en", "ar"], collections: { posts: ["title", "body"] } }, domains: { hostnames: ["shop.example.com", "www.shop.example.com"], canonical: "shop.example.com" },
-      payments: { via: "stripe", webhook: "/api/payments/stripe/webhook", livemode: false, also: ["polar"], reason: "POLAR_ACCESS_TOKEN is set too; stripe answers because it comes first in the shipped order" } });
+      payments: { via: "stripe", webhook: "/api/payments/stripe/webhook", livemode: false, also: ["polar"], reason: "POLAR_ACCESS_TOKEN is set too; stripe answers because it comes first in the shipped order" },
+      observability: { via: "analytics-engine", sampling: 0.5, logs: true } });
     if (p === "/api/plugins/available") return Response.json({ installer: { mode: "repository" }, available: [{ marketplace: "https://marketplace.voidbase.cloud", plugins: [{ name: "echo", title: "Echo", summary: "x", latest: "0.2.0" }] }] });
     const body = await req.json().catch(() => null); calls.push({ path: p, auth, body });
     if (p === "/api/plugins/install") return Response.json({ applied: "repository", committed: { sha: "abc", url: "https://github.example/octo-tester/existing/commit/abc" }, message: "Committed." });
@@ -235,6 +261,37 @@ try {
   const statsCalls = logCalls.slice(statsBefore).map((c) => new URLSearchParams(c.split("?")[1]).get("filter") ?? "");
   check("metrics: requests and errors per hour, joined by the hour, with the totals", metrics.hours.length === 2 && metrics.hours[0]!.date.startsWith("2026-09-10 09:") && metrics.hours[0]!.total === 1 && metrics.hours[0]!.errors === 0 && metrics.hours[1]!.total === 3 && metrics.hours[1]!.errors === 1 && metrics.totals.requests === 4 && metrics.totals.errors === 1, JSON.stringify(metrics));
   check("metrics: two stats calls on the instance, both bounded to the last 24 hours, the second at the error level", statsCalls.length === 2 && statsCalls.every((f) => /^created >= "\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d{3}Z"/.test(f)) && !/level/.test(statsCalls[0]!) && /level >= 8/.test(statsCalls[1]!), JSON.stringify(statsCalls));
+
+  // ---- observability (0.9.0-beta.37): the summary over a window, the errors, the log with a level, what the
+  // plugin reports on /api/plugins, and the 404 an older instance answers, which is what the panels fall back on
+  check("observability: /api/plugins carries the plugin's line: where the numbers come from, how much of the path is sampled, and whether the request log is kept", running.observability?.via === "analytics-engine" && running.observability.sampling === 0.5 && running.observability.logs === true, JSON.stringify(running.observability));
+  const obs = client.observability(reachable, session);
+  const hour = await obs.summary();
+  const day = await obs.summary("day");
+  check("observability: the summary answers with the window's requests and errors, the error rate, the three percentiles, the status split and the slowest routes", hour.window === "hour" && hour.requests === 10 && hour.errors === 1 && hour.rate === 0.1 && hour.p50 === 12 && hour.p95 === 48 && hour.p99 === 120 && hour.statuses["5xx"] === 1 && hour.slowest.length === 2 && hour.slowest[0]!.route === "/api/collections/:collection/records" && hour.slowest[0]!.count === 4, JSON.stringify(hour));
+  check("observability: the window travels as given and the answer says which source read it, the Analytics Engine dataset or the instance's own request log", day.window === "day" && day.requests === 40 && day.source === "analytics-engine" && obsCalls[0] === "/api/observability/summary?window=hour" && obsCalls[1] === "/api/observability/summary?window=day", JSON.stringify({ day: { window: day.window, requests: day.requests, source: day.source }, calls: obsCalls }));
+  obsSource = "request-log";
+  const fromLog = await obs.summary();
+  check("observability: an instance with no Analytics Engine credentials answers from its request log and says so", fromLog.source === "request-log" && fromLog.requests === 10, JSON.stringify({ source: fromLog.source }));
+  const obsErrors = await obs.errors();
+  const sinceGiven = await obs.errors("2026-09-10 00:00:00.000Z", "day");
+  const warnings = await obs.logs({ window: "day", level: 4 });
+  const everyLevel = await obs.logs();
+  check("observability: errors are the 5xx answers newest first; the log takes a level, and without one it is every level", obsErrors.items.length === 1 && obsErrors.items[0]!.id === "l2" && obsErrors.source === "request-log" && obsErrors.totalItems === 1 && warnings.items.length === 2 && warnings.items.every((l) => l.level >= 4) && warnings.items[0]!.id === "l3" && everyLevel.items.length === 4, JSON.stringify({ errors: obsErrors.items.map((l) => l.id), warnings: warnings.items.map((l) => l.id), every: everyLevel.items.length }));
+  const obsQuery = obsCalls.slice(3).map((c) => c.split("?")[1] ?? "");
+  check("observability: the since, the level and the window reach the instance verbatim, and no level is sent when none is picked", sinceGiven.since === "2026-09-10 00:00:00.000Z" && obsQuery[1] === "since=2026-09-10+00%3A00%3A00.000Z&window=day" && obsQuery[2] === "window=day&level=4" && obsQuery[3] === "window=hour", JSON.stringify(obsQuery));
+  const obsStale = await client.observability(reachable, "stale").summary().then(() => "read", (e) => (e instanceof Error ? e.message : String(e)));
+  check("observability: a stale session is the instance's refusal", /valid record authorization/.test(String(obsStale)), String(obsStale));
+  // an instance older than the plugin: all three routes 404, and that is what the panels read as "fall back"
+  obsOn = false;
+  const noSummary = await obs.summary().then(() => null, (e: unknown) => e);
+  const noLogs = await obs.logs().then(() => null, (e: unknown) => e);
+  const noErrors = await obs.errors().then(() => null, (e: unknown) => e);
+  check("observability: an instance older than the plugin answers 404 to all three, and routeMissing tells that apart from a call that failed", routeMissing(noSummary) && routeMissing(noLogs) && routeMissing(noErrors) && !routeMissing(new Error("something else")) && !routeMissing(new CloudError("refused", 401)), JSON.stringify({ summary: String(noSummary), status: (noSummary as CloudError).status }));
+  const fellBackMetrics = await client.metrics(reachable, session);
+  const fellBackLogs = await client.logs(reachable, session).list({ filter: "level >= 4" });
+  check("observability: with the routes gone the panels fall back to what they read before, the instance's own logs by the hour and its logs API with a filter", fellBackMetrics.totals.requests === 4 && fellBackMetrics.totals.errors === 1 && fellBackMetrics.hours.length === 2 && fellBackLogs.items.length === 2 && fellBackLogs.items.every((l) => l.level >= 4), JSON.stringify({ totals: fellBackMetrics.totals, logs: fellBackLogs.items.map((l) => l.id) }));
+  obsOn = true;
 
   // ---- backups: the instance's archives, taken, downloaded through a file token, restored, deleted
   const bkApi = client.backups(reachable, session);

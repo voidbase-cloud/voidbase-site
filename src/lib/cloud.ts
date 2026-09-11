@@ -1,9 +1,10 @@
 // The cloud page's client lives in the voidbase package now (`@voidbase-cloud/voidbase/cloud-client`, the same
 // code the `voidbase cloud` CLI drives); this module keeps the page's import path, and adds the thin layer the
 // page needs before the shared client gains it: what an instance reports on `/api/plugins` beyond the installer
-// (mail, ai, translations, domains, payments), the backups plugin's archive kinds, verification and per-kind
-// restore, the payments collections read as a superuser, an upgrade onto a named release with the one it left
-// recorded (so it can be undone), and the domains plugin's knob set where a deploy reads it. Each override is a
+// (mail, ai, translations, domains, payments, observability), the backups plugin's archive kinds, verification and
+// per-kind restore, the payments collections read as a superuser, the observability plugin's summary, errors and
+// logs, an upgrade onto a named release with the one it left recorded (so it can be undone), and the domains
+// plugin's knob set where a deploy reads it. Each override is a
 // superset of the shared shape, so the page and the test see one `CloudClient`; when the shared client catches
 // up, the overrides go.
 //
@@ -11,11 +12,13 @@
 // with the report fields below (`PluginsReport`); `backups().list()` returning `BackupItem` (kind, verified,
 // voidbase, verifyError, offsite, restore); `backups().create(name, kind)`; `backups().verify(key)`;
 // `backups().restore(key, { createMissing })`; `payments(inst, session)` over the three collections;
+// `observability(inst, session)` over the observability plugin's three routes (`summary(window)`, `errors(since)`,
+// `logs(o)`), with the 404 an instance older than 0.9.0-beta.37 answers left for the caller to fall back on;
 // `upgradeInstance(inst, { release })`, the release to put the instance on rather than always the active one, with
 // the release it left recorded on the row, which is what makes an upgrade reversible; and `setDomains(inst,
 // hostnames, repo)`, the domains plugin's knob written where that instance's deploy reads it.
 import { provisionInstance, workerExists } from "@voidbase-cloud/voidbase/cloud";
-import { CloudClient as SharedClient, CloudError, type Backup, type Instance } from "@voidbase-cloud/voidbase/cloud-client";
+import { CloudClient as SharedClient, CloudError, type Backup, type Instance, type LogEntry } from "@voidbase-cloud/voidbase/cloud-client";
 export * from "@voidbase-cloud/voidbase/cloud-client";
 
 /** what PocketBase accepts as a backup file name (the shared client's rule, kept here for `create` with a kind) */
@@ -106,6 +109,8 @@ export interface TranslationsReport { source?: string; locales?: string[]; colle
 export interface DomainsReport { hostnames: string[]; canonical: string | null }
 /** payments@1: `none`, or the provider whose key these bindings carry, with `also`/`reason` when two keys are set */
 export interface PaymentsReport { via: "none" | string; webhook?: string; livemode?: boolean; also?: string[]; reason?: string }
+/** the observability plugin: which source its numbers come from, how much of the path it samples, whether the log is kept */
+export interface ObservabilityReport { via: ObservabilitySource; sampling: number; logs: boolean }
 /** `GET /api/plugins`: what runs, where it lives, and what each shipped plugin reports about itself */
 export interface PluginsReport {
   names: string[];
@@ -117,7 +122,46 @@ export interface PluginsReport {
   translations?: TranslationsReport;
   domains?: DomainsReport;
   payments?: PaymentsReport;
+  /** null on an instance that runs the plugin with nothing to report; absent before 0.9.0-beta.37 */
+  observability?: ObservabilityReport | null;
 }
+
+// ---- the observability plugin: the numbers, the errors and the log -----------------------------------------------
+
+/**
+ * Which of the two sources answered. `analytics-engine` is the dataset the Worker samples every request into, so
+ * the numbers are about all the traffic; `request-log` is the instance's own `_logs` table, which keeps entries at
+ * or above the log level (warnings and errors, by default), so the numbers are about what went wrong. The plugin
+ * says which it used rather than pretending they are the same population.
+ */
+export type ObservabilitySource = "analytics-engine" | "request-log";
+/** how far back the plugin looks */
+export type ObservabilityWindow = "hour" | "day";
+/** one of the five slowest routes over the window, as a route pattern rather than a path */
+export interface SlowRoute { route: string; p95: number; count: number }
+/** `GET /api/observability/summary`: the window's traffic, its error share, its percentiles and its slowest routes */
+export interface ObservabilitySummary {
+  source: ObservabilitySource;
+  window: ObservabilityWindow;
+  requests: number;
+  errors: number;
+  /** the share of requests that answered 5xx, 0 to 1 */
+  rate: number;
+  p50: number;
+  p95: number;
+  p99: number;
+  slowest: SlowRoute[];
+  /** `2xx`, `4xx`, `5xx` and what else the window saw, to their counts */
+  statuses: Record<string, number>;
+}
+/** `GET /api/observability/errors` and `/logs`: rows of the instance's request log, newest first */
+export interface ObservabilityLogs { source: ObservabilitySource; since: string; level?: number | null; items: LogEntry[]; totalItems: number }
+
+/**
+ * Whether an instance answered "there is no such route", which is what one older than 0.9.0-beta.37 says to every
+ * observability call: the plugin is not on it. A panel reads this as "fall back", not as "something went wrong".
+ */
+export const routeMissing = (err: unknown): boolean => err instanceof CloudError && err.status === 404;
 
 // ---- the backups plugin: two archive kinds, verified, restored per kind -------------------------------------------
 
@@ -257,6 +301,25 @@ export class CloudClient extends SharedClient {
       },
       verify: (key: string) => call<BackupVerify>("POST", `/api/backups/${encodeURIComponent(key)}/verify`),
       restore: async (key: string, o: { createMissing?: boolean } = {}) => { await call("POST", `/api/backups/${encodeURIComponent(key)}/restore`, o.createMissing ? { createMissing: true } : undefined); },
+    };
+  }
+
+  /**
+   * The observability plugin's three routes, read with the superuser's session: the window's numbers, the errors
+   * in it, and the log itself. An instance older than 0.9.0-beta.37 does not have them and answers 404, which is
+   * left as it is: `routeMissing` is how a panel tells that apart from a call that failed, and falls back.
+   */
+  observability(inst: Instance, session: string) {
+    const call = this.onInstanceHere(inst, session);
+    const query = (o: Record<string, string | number | undefined>) => {
+      const q = new URLSearchParams();
+      for (const [k, v] of Object.entries(o)) if (v !== undefined && v !== "") q.set(k, String(v));
+      return q.toString() ? `?${q}` : "";
+    };
+    return {
+      summary: (window: ObservabilityWindow = "hour") => call<ObservabilitySummary>("GET", `/api/observability/summary${query({ window })}`),
+      errors: (since?: string, window: ObservabilityWindow = "hour") => call<ObservabilityLogs>("GET", `/api/observability/errors${query({ since, window })}`),
+      logs: (o: { since?: string; window?: ObservabilityWindow; level?: number } = {}) => call<ObservabilityLogs>("GET", `/api/observability/logs${query({ since: o.since, window: o.window ?? "hour", level: o.level })}`),
     };
   }
 

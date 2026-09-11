@@ -90,11 +90,32 @@ export default function DocsCloud() {
           </tr>
           <tr>
             <td>Logs</td>
-            <td>The last entries, newest first, with a filter in PocketBase's syntax.</td>
+            <td>
+              The last entries, newest first, with a level and a window, and an "errors only" toggle that asks for
+              the 5xx answers and anything the instance recorded an error for. On an instance without the{" "}
+              <code>observability</code> plugin: the last entries with a filter in PocketBase's syntax.
+            </td>
           </tr>
           <tr>
             <td>Metrics</td>
-            <td>Requests and errors over the last 24 hours, one bar per hour, from the instance's own logs.</td>
+            <td>
+              The window's requests and errors, the error rate, p50, p95 and p99, the status split and the five
+              slowest routes, over an hour or a day. On an instance without the <code>observability</code> plugin:
+              requests and errors over the last 24 hours, one bar per hour, from the instance's own logs.
+            </td>
+          </tr>
+          <tr>
+            <td>Observability</td>
+            <td>
+              Not a panel of its own: the <code>observability</code> plugin is what Logs and Metrics read, and the
+              plugin answers from one of two sources. The Analytics Engine dataset, when the instance was deployed
+              with <code>--analytics</code> and carries a token to query it, holds one sampled data point per
+              request, so those numbers are about all the traffic. The instance's own request log is always there
+              and needs nothing, but it keeps entries at or above the log level, which is warnings and errors by
+              default, so those numbers are about what went wrong rather than everything that happened. Each answer
+              says which one it used, and the panel repeats it in a line. The card itself carries the last hour as
+              three numbers, asked for once when you sign in to the instance.
+            </td>
           </tr>
           <tr>
             <td>Backups</td>

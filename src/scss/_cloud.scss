@@ -159,6 +159,8 @@
 .node-tools { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;
   .label.build-queued, .label.build-building { opacity: 0.85; }
   .label.build-failed { color: var(--dangerColor, #c0392b); }
+  // the last hour on the card itself: three numbers, asked for once, on a line of their own above the buttons
+  .node-numbers { flex-basis: 100%; margin: 0 0 0.25rem; font-size: var(--smFontSize); strong { color: var(--txtPrimaryColor); font-variant-numeric: tabular-nums; } }
 }
 .tool-panel { flex-basis: 100%; margin-top: 0.5rem; padding: 0.75rem; border: 1px solid var(--baseAlt2Color, #e4e4e4); border-radius: var(--baseRadius, 6px); font-size: 0.92rem;
   h4 { margin: 0.75rem 0 0.25rem; font-size: 0.85rem; font-weight: 600; }
@@ -183,6 +185,28 @@
     .log-message { overflow-wrap: anywhere; }
     .log-level-warn .label { color: var(--warningColor, #b7791f); }
     .log-level-error .label { color: var(--dangerColor, #c0392b); }
+  }
+  // the observability summary: the window switch, the numbers, the slowest routes, and the log's own filters
+  .tool-windows { margin-top: 0; }
+  .tool-figures { display: flex; gap: 1.25rem; flex-wrap: wrap; margin: 0.5rem 0 0.25rem;
+    li { display: block; padding: 0; }
+    .figure { font-size: 1.15rem; font-weight: 600; color: var(--txtPrimaryColor); font-variant-numeric: tabular-nums; }
+    .figure-bad { color: var(--broken); }
+    .txt-hint { font-size: var(--smFontSize); }
+  }
+  .tool-table { width: 100%; border-collapse: collapse; margin: 0.25rem 0; font-size: var(--smFontSize);
+    th { text-align: left; font-weight: 600; color: var(--txtHintColor); }
+    th, td { padding: 0.2rem 0.6rem 0.2rem 0; border-bottom: 1px solid var(--baseAlt1Color); }
+    td:not(:first-child), th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    code { overflow-wrap: anywhere; }
+  }
+  .tool-filters { align-items: flex-end; }
+  .tool-field { display: grid; gap: 0.2rem; flex: 0 1 auto;
+    > span { font-size: var(--smFontSize); color: var(--txtHintColor); }
+    select { flex: none; min-width: 9rem; }
+  }
+  .tool-check { display: flex; align-items: center; gap: 0.35rem; font-size: var(--smFontSize); height: var(--smBtnHeight);
+    input { flex: none; min-width: 0; }
   }
   // one bar per hour: requests in the rail colour, the errors of that hour over them in the broken colour
   .tool-metrics { display: block; max-width: 100%; height: auto; margin: 0.5rem 0 0.25rem; overflow: visible;
