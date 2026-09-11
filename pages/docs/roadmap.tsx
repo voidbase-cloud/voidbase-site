@@ -362,11 +362,12 @@ export default function DocsRoadmap() {
       <h3 className="why-group">Commerce</h3>
       <Item
         title="A shop the other plugins plug into"
-        status="open"
+        status="shipped"
         from="Once payments, files, auth and editable content are all in the box, what is left of a shop is the part nobody enjoys building."
-        now="Nothing. You build it on collections, and everybody builds it differently."
+        now="Shipped in 0.9.0-beta.44 as the commerce plugin, off unless VOIDBASE_COMMERCE is set. It owns ten collections (products, variants, inventory, carts, cart items, orders, order items, shipments, refunds and an append-only audit trail) and the routes over them: a cart anyone can open, an address that answers the tax and shipping quotes, a checkout that reserves stock and hands the line items to whichever payment provider the instance runs, fulfilment and refunds for a superuser. It requires payments@1, tax@1 and shipping@1 rather than any particular plugin, and ships a flat-rate tax and a flat-rate shipping so a shop works out of the box; a payment provider learns commerce about a paid order through a callback the shared payment path now offers. What it does not do is named rather than implied: no discounts, no multi-warehouse, no partial shipments, and the tax and shipping it computes are recorded on the order rather than charged at the provider."
         plan="An official commerce plugin holding the parts that are the same everywhere: products and variants, inventory, carts, orders, tax, shipping, refunds and an audit trail. It requires interfaces rather than particular plugins, so a payment plugin supplies checkout, a shipping plugin supplies rates, and a plugin of your own supplies whatever your business does that nobody else's does, without commerce knowing which."
         size="Large, and last, because it is the one that assumes all the others exist."
+        left="Charging the computed tax and shipping at the provider, which needs a price the provider knows about rather than one just computed."
       />
 
       <h2>The ecosystem</h2>

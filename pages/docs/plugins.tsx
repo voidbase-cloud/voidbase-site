@@ -229,6 +229,13 @@ export default function DocsPlugins() {
             <Row name="lemonsqueezy" on={<><code>LEMONSQUEEZY_API_KEY</code>, <code>LEMONSQUEEZY_STORE_ID</code> and <code>LEMONSQUEEZY_WEBHOOK_SECRET</code>.</>}>
               The same four routes under <code>/api/payments/lemonsqueezy/</code>, same rows, same rule about which provider answers.
             </Row>
+            <Row name="commerce" on={<>Off unless <code>VOIDBASE_COMMERCE=1</code>. <code>VOIDBASE_TAX_RATE</code>, <code>VOIDBASE_SHIPPING_FLAT</code> and <code>VOIDBASE_SHIPPING_FREE_OVER</code> shape the two flat-rate defaults.</>}>
+              A shop over ten collections: products, variants, inventory, carts, orders, shipments, refunds and an
+              append-only audit trail, with a cart, an address that quotes tax and shipping, a checkout that reserves
+              stock and hands the line items to whichever payment provider runs, and fulfilment and refunds for a
+              superuser. It requires <code>payments@1</code>, <code>tax@1</code> and <code>shipping@1</code>, so the
+              provider of each is yours to choose; <code>tax-flat</code> and <code>shipping-flat</code> ship with it.
+            </Row>
             <Row name="domains" on={<><code>VOIDBASE_DOMAINS=example.com,www.example.com</code>, or <code>voidbase deploy --domain</code>.</>}>
               Deploy time: validates the hostnames, turns workers.dev off, attaches each through the Custom Domains API, waits for the certificate, redirects every other hostname to the canonical one, and detaches all of it on <code>voidbase deploy --remove</code>.
             </Row>
