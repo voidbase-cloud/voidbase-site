@@ -146,7 +146,16 @@
     .sheet.nested { margin-left: 18px; }
 }
 
-// the panels of a cloud instance (pages/cloud.tsx, InstancePanels): plugins, logs, superusers, domains, secrets
+// the CLI login for the signed-in user (pages/cloud.tsx, CliToken): the session token as a command, under the accounts
+.cli {
+    margin: -6px 0 20px;
+    .eyebrow { margin-bottom: 8px; }
+    .cli-command { margin: 0 0 8px; }
+    .code-body pre.plain { padding-right: 90px; font-size: 13px; line-height: 20px; }
+    .txt-hint { margin: 0; font-size: var(--smFontSize); }
+}
+
+// the panels of a cloud instance (pages/cloud.tsx, InstancePanels): plugins, logs, metrics, backups, superusers, domains, secrets
 .node-tools { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;
   .label.build-queued, .label.build-building { opacity: 0.85; }
   .label.build-failed { color: var(--dangerColor, #c0392b); }
@@ -166,5 +175,11 @@
     .log-message { overflow-wrap: anywhere; }
     .log-level-warn .label { color: var(--warningColor, #b7791f); }
     .log-level-error .label { color: var(--dangerColor, #c0392b); }
+  }
+  // one bar per hour: requests in the rail colour, the errors of that hour over them in the broken colour
+  .tool-metrics { display: block; max-width: 100%; height: auto; margin: 0.5rem 0 0.25rem; overflow: visible;
+    .metrics-requests { fill: var(--baseAlt4Color, #bbb); }
+    .metrics-errors { fill: var(--broken, #c0392b); }
+    .metrics-hour { fill: var(--txtHintColor, #888); font-family: var(--monospaceFontFamily, monospace); font-size: 8px; }
   }
 }

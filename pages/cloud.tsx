@@ -1,11 +1,13 @@
 // The cloud control plane: sign in with Cloudflare, list the visitor's instances, create and delete them, connect
-// GitHub, and create or link the repositories wired to an instance; then the life of one: its plugins, logs and
-// superusers through the instance itself, its domains and secrets through the Cloudflare pass-through. Ported
-// from the SvelteKit page at src/routes/(app)/cloud/+page.svelte.
+// GitHub, and create or link the repositories wired to an instance; then the life of one: its plugins, logs,
+// metrics, backups and superusers through the instance itself, its domains and secrets through the Cloudflare
+// pass-through; and the sign-in's own token as a CLI login, for the same session. Ported from the SvelteKit page
+// at src/routes/(app)/cloud/+page.svelte.
 import { useEffect, useMemo, useRef, useState } from "react";
 import CloudflareSignIn from "@/components/CloudflareSignIn";
+import { CopyButton } from "@/components/CodeBlock";
 import { cloud, errorMessage, vb, VB_URL } from "@/lib/vb";
-import { CloudClient, LOG_LEVELS, type CustomDomain, type LogPage, type Superuser, type WorkerSecret, type Zone } from "@/lib/cloud";
+import { CloudClient, LOG_LEVELS, type Backup, type CustomDomain, type LogPage, type Metrics, type Superuser, type WorkerSecret, type Zone } from "@/lib/cloud";
 
 // ---- what /api/vbcloud/* hands back -----------------------------------------------------------------------------
 
@@ -279,6 +281,130 @@ function LogsPanel({ inst, client, session }: { inst: Instance; client: CloudCli
   );
 }
 
+/** the hour a stats bucket stands for, as "HH:00" UTC */
+const hourOf = (date: string) => `${date.slice(11, 13)}:00`;
+const sizeOf = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : bytes >= 1024 ? `${Math.round(bytes / 1024)} KB` : `${bytes} B`);
+
+/**
+ * Requests and errors over the last 24 hours, from the instance's own logs: one bar per hour with traffic,
+ * the errors drawn over the requests in the second colour, and the totals as text. Inline SVG; no library.
+ */
+function MetricsPanel({ inst, client, session }: { inst: Instance; client: CloudClient; session: string }) {
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  async function refresh() {
+    setLoading(true); setError("");
+    try { setMetrics(await client.metrics(inst, session)); }
+    catch (err) { setError(errorMessage(err)); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { refresh(); }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
+  const hours = metrics?.hours ?? [];
+  const max = Math.max(1, ...hours.map((h) => h.total));
+  const BAR = 10, GAP = 3, H = 48, TOP = 4, BASE = H - 12;
+  const width = Math.max(1, hours.length) * (BAR + GAP) - GAP;
+  return (
+    <>
+      {error && <p className="node-error">{error}</p>}
+      {metrics && (
+        <p className="txt-hint">
+          <strong>{metrics.totals.requests}</strong> {metrics.totals.requests === 1 ? "request" : "requests"} and <strong>{metrics.totals.errors}</strong> {metrics.totals.errors === 1 ? "error" : "errors"} in the last 24 hours{hours.length ? <>, over {hours.length} {hours.length === 1 ? "hour" : "hours"} with traffic (UTC)</> : null}.
+        </p>
+      )}
+      {hours.length > 0 && (
+        <svg className="tool-metrics" viewBox={`0 0 ${width} ${H}`} width={width} height={H} role="img" aria-label={`Requests per hour on ${inst.name}, errors marked`}>
+          {hours.map((h, i) => {
+            const x = i * (BAR + GAP);
+            const rh = Math.max(1, Math.round(((BASE - TOP) * h.total) / max));
+            const eh = h.errors ? Math.max(1, Math.round(((BASE - TOP) * h.errors) / max)) : 0;
+            return (
+              <g key={h.date}>
+                <title>{`${hourOf(h.date)} UTC: ${h.total} ${h.total === 1 ? "request" : "requests"}, ${h.errors} ${h.errors === 1 ? "error" : "errors"}`}</title>
+                <rect className="metrics-requests" x={x} y={BASE - rh} width={BAR} height={rh} rx={1} />
+                {eh > 0 && <rect className="metrics-errors" x={x} y={BASE - eh} width={BAR} height={eh} rx={1} />}
+                {(i === 0 || i === hours.length - 1) && <text className="metrics-hour" x={x + BAR / 2} y={H - 2} textAnchor={i === 0 ? "start" : "end"}>{hourOf(h.date)}</text>}
+              </g>
+            );
+          })}
+        </svg>
+      )}
+      {metrics && !hours.length && <p className="txt-hint">Nothing logged in the last 24 hours.</p>}
+      <div className="tool-row">
+        <button type="button" className="btn btn-xs btn-outline" disabled={loading} onClick={() => refresh()}>{loading ? "Reading…" : "Refresh"}</button>
+      </div>
+    </>
+  );
+}
+
+/**
+ * The instance's backups: the archives in its storage, one taken on demand, downloaded through a file token in a
+ * new tab, deleted, or restored, which replaces the instance's data and restarts it.
+ */
+function BackupsPanel({ inst, client, session }: { inst: Instance; client: CloudClient; session: string }) {
+  const [list, setList] = useState<Backup[] | null>(null);
+  const [name, setName] = useState("");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [working, setWorking] = useState("");
+  const api = client.backups(inst, session);
+  const refresh = () => api.list().then(setList).catch((err) => setError(errorMessage(err)));
+  useEffect(() => { refresh(); }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
+  async function act(step: string, fn: () => Promise<string | void>) {
+    setWorking(step); setError(""); setNotice("");
+    try { const said = await fn(); if (said) setNotice(said); await refresh(); } catch (err) { setError(errorMessage(err)); } finally { setWorking(""); }
+  }
+  async function download(key: string) {
+    // the tab opens on the click itself, so the browser allows it; the URL arrives once the instance mints the token
+    const tab = window.open("about:blank", "_blank");
+    if (tab) tab.opener = null;
+    try { const url = await api.downloadUrl(key); if (tab) tab.location.href = url; else window.open(url, "_blank", "noopener,noreferrer"); }
+    catch (err) { tab?.close(); setError(errorMessage(err)); }
+  }
+  return (
+    <>
+      {error && <p className="node-error">{error}</p>}
+      {notice && <p className="txt-hint">{notice}</p>}
+      <p className="txt-hint">Archives in the instance's own storage: its collections, rows and files. A restore replaces all of them with the archive's and restarts the instance.</p>
+      <ul>
+        {list?.map((b) => (
+          <li key={b.key}>
+            <code>{b.key}</code> <span className="txt-hint">{sizeOf(b.size)} · {b.modified.replace(/\.\d+Z?$/, "")}</span>{" "}
+            <button type="button" className="btn btn-xs btn-outline" disabled={!!working} onClick={() => download(b.key)}>Download</button>{" "}
+            <button type="button" className="btn btn-xs btn-outline" disabled={!!working} onClick={() => { if (confirm(`Restore ${b.key} on ${inst.name}?\n\nEverything on the instance is replaced by what the archive holds (collections, rows and files), and the instance restarts. What is on it now is lost unless it is in another backup.`)) act("restore:" + b.key, async () => { await api.restore(b.key); return `Restoring ${b.key}; the instance restarts with it.`; }); }}>{working === "restore:" + b.key ? "Restoring…" : "Restore"}</button>{" "}
+            <button type="button" className="btn btn-xs btn-secondary btn-danger" disabled={!!working} onClick={() => { if (confirm(`Delete the backup ${b.key}?`)) act("remove:" + b.key, () => api.remove(b.key)); }}>{working === "remove:" + b.key ? "Deleting…" : "Delete"}</button>
+          </li>
+        ))}
+        {list && !list.length && <li className="txt-hint">no backups yet</li>}
+      </ul>
+      <form className="tool-row" onSubmit={(e) => { e.preventDefault(); act("create", async () => { const r = await api.create(name); setName(""); return r.name ? `Backup ${r.name} taken.` : "Backup taken."; }); }}>
+        <input type="text" placeholder="name (optional): nightly.zip" value={name} onChange={(e) => setName(e.target.value)} pattern="[A-Za-z0-9_-]+(\.zip)?" />
+        <button type="submit" className="btn btn-xs btn-secondary" disabled={!!working}>{working === "create" ? "Taking…" : "Take a backup"}</button>
+      </form>
+    </>
+  );
+}
+
+/**
+ * The sign-in's own token as a CLI login: the same session this page uses, against this site. Nothing is minted
+ * and nothing is stored; when this sign-in expires, so does the command.
+ */
+function CliToken() {
+  const body = useRef<HTMLDivElement>(null);
+  const origin = typeof location !== "undefined" ? location.origin : "";
+  const command = `voidbase cloud login --token ${vb().authStore.token} --url ${origin}`;
+  return (
+    <section className="cli" aria-label="CLI">
+      <p className="eyebrow">CLI</p>
+      <figure className="code-block cli-command">
+        <div className="code-tools"><CopyButton text={command} from={body} /></div>
+        <div ref={body} className="code-body"><pre className="plain"><code>{command}</code></pre></div>
+      </figure>
+      <p className="txt-hint">The same session this page uses; it expires when this sign-in does.</p>
+    </section>
+  );
+}
+
 /** the instance's superusers: who can open its panel; the last one cannot be removed */
 function SuperusersPanel({ inst, client, session }: { inst: Instance; client: CloudClient; session: string }) {
   const [list, setList] = useState<Superuser[]>([]);
@@ -391,9 +517,9 @@ function SecretsPanel({ inst, client }: { inst: Instance; client: CloudClient })
 }
 
 /**
- * What the owner does to an instance after it exists: plugins, logs and superusers through the instance itself,
- * with one session minted on it and shared by those three panels; domains and secrets on its Worker through the
- * Cloudflare pass-through, with the user's own token. This site holds nothing of any of it.
+ * What the owner does to an instance after it exists: plugins, logs, metrics, backups and superusers through the
+ * instance itself, with one session minted on it and shared by those panels; domains and secrets on its Worker
+ * through the Cloudflare pass-through, with the user's own token. This site holds nothing of any of it.
  */
 function InstancePanels({ inst, client }: { inst: Instance; client: CloudClient }) {
   const [open, setOpen] = useState("");
@@ -403,6 +529,8 @@ function InstancePanels({ inst, client }: { inst: Instance; client: CloudClient 
     <div className="node-tools">
       <Collapsible id="plugins" label="Plugins" open={open} setOpen={setOpen}>{onInstance((s) => <PluginsPanel inst={inst} client={client} session={s} />)}</Collapsible>
       <Collapsible id="logs" label="Logs" open={open} setOpen={setOpen}>{onInstance((s) => <LogsPanel inst={inst} client={client} session={s} />)}</Collapsible>
+      <Collapsible id="metrics" label="Metrics" open={open} setOpen={setOpen}>{onInstance((s) => <MetricsPanel inst={inst} client={client} session={s} />)}</Collapsible>
+      <Collapsible id="backups" label="Backups" open={open} setOpen={setOpen}>{onInstance((s) => <BackupsPanel inst={inst} client={client} session={s} />)}</Collapsible>
       <Collapsible id="superusers" label="Superusers" open={open} setOpen={setOpen}>{onInstance((s) => <SuperusersPanel inst={inst} client={client} session={s} />)}</Collapsible>
       {!inst.system && (
         <>
@@ -762,6 +890,7 @@ export default function Cloud() {
               )}
             </div>
           )}
+          {me && <CliToken />}
 
           {me && !me.providerConfigured && (
             <div className="alert alert-warning">

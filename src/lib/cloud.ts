@@ -5,10 +5,10 @@
 // provisioned, upgraded and deleted with `@voidbase-cloud/voidbase/cloud` against the user's Cloudflare account
 // (through /api/vbcloud/cf, since Cloudflare's API sends no CORS headers; the token stays on the site), a repository
 // is created, linked and unlinked against GitHub (through /api/vbcloud/gh), the rows are written through the
-// collections' rules, and an instance's plugins, logs and superusers are read and changed on the instance itself,
-// with a session the user mints on it; its custom domains and its Worker's secrets go through the Cloudflare
-// pass-through like the provisioning. The one thing the browser asks the site to do for it is to put the GitHub
-// token on an instance's Worker (`wire`), because that token never comes here.
+// collections' rules, and an instance's plugins, logs, metrics, backups and superusers are read and changed on the
+// instance itself, with a session the user mints on it; its custom domains and its Worker's secrets go through the
+// Cloudflare pass-through like the provisioning. The one thing the browser asks the site to do for it is to put the
+// GitHub token on an instance's Worker (`wire`), because that token never comes here.
 import { attachCustomDomain, CfApi, destroyInstance, listCustomDomains, provisionInstance, workerExists, type CustomDomain, type ReleaseManifest, type ReleaseSource } from "@voidbase-cloud/voidbase/cloud";
 
 export interface Instance { id: string; name: string; url?: string; status: string; error?: string; release?: string; account: { id: string; name?: string }; owner?: string; system?: boolean; self?: boolean; superuserEmail?: string; plugins?: unknown[]; canDelete?: boolean; canLink?: boolean }
@@ -18,6 +18,11 @@ export interface Credentials { url: string; superuserEmail: string; superuserPas
 export interface LogEntry { id: string; created: string; level: number; message: string; data?: Record<string, unknown> }
 export interface LogPage { page: number; perPage: number; totalItems: number; totalPages: number; items: LogEntry[] }
 export interface Superuser { id: string; email: string; created?: string }
+/** one hour of the instance's logs: how many requests it answered, and how many of them it logged as errors */
+export interface MetricsHour { date: string; total: number; errors: number }
+export interface Metrics { hours: MetricsHour[]; totals: { requests: number; errors: number } }
+/** one archive in the instance's backups storage, as PocketBase's backups API lists it */
+export interface Backup { key: string; modified: string; size: number }
 export interface Zone { id: string; name: string }
 export interface WorkerSecret { name: string; managed: boolean }
 export type { CustomDomain };
@@ -27,6 +32,8 @@ const INHERITED = ["VOIDBASE_SUPERUSER_EMAIL", "VOIDBASE_SUPERUSER_PASSWORD"];
 const MANAGED = (name: string) => /^VOIDBASE_SUPERUSER_|^VOIDBASE_PROJECT_|^VOIDBASE_GH_TOKEN$/.test(name);
 /** PocketBase's log levels, as the logs API numbers them */
 export const LOG_LEVELS: Record<number, string> = { [-4]: "debug", 0: "info", 4: "warn", 8: "error" };
+/** what PocketBase accepts as a backup file name */
+const BACKUP_NAME = /^[a-z0-9_-]+\.zip$/;
 
 export class CloudError extends Error { constructor(message: string, public status = 400, public log: string[] = []) { super(message); } }
 const randomPassword = () => { const a = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"; return Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => a[b % a.length]).join(""); };
@@ -237,6 +244,47 @@ export class CloudClient {
         return call<LogPage>("GET", `/api/logs?${q}`);
       },
       stats: (filter?: string) => call<{ total: number; date: string }[]>("GET", `/api/logs/stats${filter?.trim() ? `?filter=${encodeURIComponent(filter.trim())}` : ""}`),
+    };
+  }
+  /**
+   * Requests and errors over the last 24 hours, from the instance's own logs: PocketBase's stats endpoint counts
+   * entries per hour, once for everything and once for the entries at the error level, joined here by hour.
+   */
+  async metrics(inst: Instance, session: string): Promise<Metrics> {
+    const api = this.logs(inst, session);
+    const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString().replace("T", " ");
+    const bound = `created >= "${since}"`;
+    const [requests, errors] = await Promise.all([api.stats(bound), api.stats(`${bound} && level >= 8`)]);
+    const byHour = new Map<string, MetricsHour>();
+    for (const b of requests) byHour.set(b.date, { date: b.date, total: b.total || 0, errors: 0 });
+    for (const b of errors) { const h = byHour.get(b.date) ?? { date: b.date, total: b.total || 0, errors: 0 }; h.errors = b.total || 0; byHour.set(b.date, h); }
+    const hours = [...byHour.values()].sort((a, b) => a.date.localeCompare(b.date));
+    return { hours, totals: { requests: hours.reduce((n, h) => n + h.total, 0), errors: hours.reduce((n, h) => n + h.errors, 0) } };
+  }
+  /**
+   * The instance's backups (PocketBase's backups API): archives in its own storage. A restore replaces the
+   * instance's collections, rows and files with the archive's and restarts it. A download is a file token minted
+   * on the instance, then the archive's URL with that token, for a new tab.
+   */
+  backups(inst: Instance, session: string) {
+    const call = this.onInstance(inst, session);
+    const base = (inst.url ?? "").replace(/\/+$/, "");
+    return {
+      list: async (): Promise<Backup[]> => { const r = await call<Backup[] | Record<string, unknown>>("GET", "/api/backups"); return Array.isArray(r) ? r : []; },
+      create: async (name?: string): Promise<{ name: string }> => {
+        let n = (name ?? "").trim().toLowerCase();
+        if (n && !n.endsWith(".zip")) n += ".zip";
+        if (n && !BACKUP_NAME.test(n)) throw new CloudError("A backup name is lowercase letters, digits, dashes and underscores, ending in .zip.");
+        await call("POST", "/api/backups", n ? { name: n } : {});
+        return { name: n };
+      },
+      remove: async (key: string) => { await call("DELETE", `/api/backups/${encodeURIComponent(key)}`); },
+      restore: async (key: string) => { await call("POST", `/api/backups/${encodeURIComponent(key)}/restore`); },
+      downloadUrl: async (key: string) => {
+        const { token } = await call<{ token?: string }>("POST", "/api/files/token");
+        if (!token) throw new CloudError("The instance did not give a file token.");
+        return `${base}/api/backups/${encodeURIComponent(key)}?token=${encodeURIComponent(token)}`;
+      },
     };
   }
   /** the instance's superusers (_superusers): who can open its panel; the last one stays */

@@ -1,7 +1,7 @@
 // End-to-end test of voidbase.cloud on the Bun runtime, against voidbase's mocks. The site keeps sign-in, sealed
 // tokens, rows and two pass-throughs; the work is done by the browser client (src/lib/cloud.ts), which this test
-// drives the way the page does (instances, repositories, then the life of one: plugins, logs, superusers, domains,
-// secrets), against:
+// drives the way the page does (instances, repositories, then the life of one: plugins, logs, metrics, backups,
+// superusers, domains, secrets), against:
 // test/mock-oidc.ts (a Cloudflare-shaped OAuth client: userinfo = {sub}, access token = the cf-mock bearer) and
 // test/cf-mock.ts (the Cloudflare REST API). Boots `bun main.ts` on a temporary data directory.
 //   bun test/cloud.ts
@@ -141,20 +141,37 @@ try {
 
   // ---- plugins: the instance's own installer, with a session minted on the instance itself
   const calls: { path: string; auth: string; body: unknown }[] = [];
-  // what the instance also serves: PocketBase's logs API and its _superusers collection
-  const logRows = [{ id: "l1", created: "2026-09-10 10:00:00.000Z", level: 0, message: "GET /api/health", data: { status: 200 } }, { id: "l2", created: "2026-09-10 10:01:00.000Z", level: 8, message: "POST /api/collections/x/records", data: { status: 500 } }, { id: "l3", created: "2026-09-10 10:02:00.000Z", level: 4, message: "slow query", data: {} }];
+  // what the instance also serves: PocketBase's logs API (entries and hourly stats), its backups API with the file
+  // token a download needs, and its _superusers collection
+  const logRows = [{ id: "l0", created: "2026-09-10 09:30:00.000Z", level: 0, message: "GET /", data: { status: 200 } }, { id: "l1", created: "2026-09-10 10:00:00.000Z", level: 0, message: "GET /api/health", data: { status: 200 } }, { id: "l2", created: "2026-09-10 10:01:00.000Z", level: 8, message: "POST /api/collections/x/records", data: { status: 500 } }, { id: "l3", created: "2026-09-10 10:02:00.000Z", level: 4, message: "slow query", data: {} }];
   const logCalls: string[] = [];
+  const backups: { key: string; modified: string; size: number }[] = [];
+  const backupCalls: string[] = [];
+  const restored: string[] = [];
   const superusers = [{ id: "su1", email: "owner@example.com", created: "2026-09-01 00:00:00.000Z" }];
   const instance = Bun.serve({ port: 0, hostname: "127.0.0.1", async fetch(req) {
     const url = new URL(req.url); const p = url.pathname; const auth = req.headers.get("authorization") ?? "";
     if (p === "/api/collections/_superusers/auth-with-password") { const b = (await req.json()) as { identity: string; password: string }; return b.password === created.credentials.superuserPassword ? Response.json({ token: "inst-session" }) : Response.json({ message: "Failed to authenticate." }, { status: 400 }); }
+    // a backup download carries a file token in the query, not the session
+    { const m = p.match(/^\/api\/backups\/([^/]+)$/); if (m && req.method === "GET") { backupCalls.push(`GET ${p}?${url.searchParams}`); if (url.searchParams.get("token") !== "file-token") return Response.json({ message: "Insufficient permissions to access the resource." }, { status: 403 }); const b = backups.find((x) => x.key === decodeURIComponent(m[1]!)); if (!b) return Response.json({ message: "The requested resource wasn't found." }, { status: 404 }); return new Response(new Uint8Array([0x50, 0x4b, 0x05, 0x06]), { headers: { "content-type": "application/zip", "content-disposition": `attachment; filename="${b.key}"` } }); } }
     if (auth !== "inst-session") return Response.json({ message: "The request requires valid record authorization token." }, { status: 401 });
     if (p === "/api/logs" || p === "/api/logs/stats") {
       logCalls.push(`${p}?${url.searchParams}`); const filter = url.searchParams.get("filter") ?? "";
-      const items = [...logRows].filter((l) => !filter || (/level\s*>=\s*4/.test(filter) ? l.level >= 4 : true)).sort((a, b) => (url.searchParams.get("sort") === "-created" ? b.created.localeCompare(a.created) : a.created.localeCompare(b.created)));
-      if (p === "/api/logs/stats") return Response.json([{ total: items.length, date: "2026-09-10 10:00:00.000Z" }]);
+      const level = filter.match(/level\s*>=\s*(-?\d+)/);
+      const items = [...logRows].filter((l) => !level || l.level >= Number(level[1])).sort((a, b) => (url.searchParams.get("sort") === "-created" ? b.created.localeCompare(a.created) : a.created.localeCompare(b.created)));
+      // stats: one bucket per hour, as PocketBase groups them
+      if (p === "/api/logs/stats") { const hours = new Map<string, number>(); for (const l of items) { const h = `${l.created.slice(0, 13)}:00:00.000Z`; hours.set(h, (hours.get(h) ?? 0) + 1); } return Response.json([...hours].map(([date, total]) => ({ total, date }))); }
       return Response.json({ page: 1, perPage: Number(url.searchParams.get("perPage") ?? 30), totalItems: items.length, totalPages: 1, items });
     }
+    if (p === "/api/files/token" && req.method === "POST") return Response.json({ token: "file-token" });
+    if (p === "/api/backups" && req.method === "GET") return Response.json(backups);
+    if (p === "/api/backups" && req.method === "POST") {
+      const b = (await req.json().catch(() => ({}))) as { name?: string }; backupCalls.push(`POST /api/backups ${JSON.stringify(b)}`);
+      const name = b.name || `pb_backup_test_${backups.length + 1}.zip`;
+      if (!/^[a-z0-9_-]+\.zip$/.test(name) || backups.some((x) => x.key === name)) return Response.json({ message: "An error occurred while validating the submitted data.", data: { name: { code: "validation_backup_name_exists", message: "The backup file name is invalid or already exists." } } }, { status: 400 });
+      backups.push({ key: name, modified: "2026-09-10 12:00:00.000Z", size: 2048 }); return new Response(null, { status: 204 });
+    }
+    { const m = p.match(/^\/api\/backups\/([^/]+)(\/restore)?$/); if (m && (req.method === "DELETE" || (req.method === "POST" && m[2]))) { backupCalls.push(`${req.method} ${p}`); const key = decodeURIComponent(m[1]!); const i = backups.findIndex((x) => x.key === key); if (i < 0) return Response.json({ message: "The requested resource wasn't found." }, { status: 404 }); if (m[2]) restored.push(key); else backups.splice(i, 1); return new Response(null, { status: 204 }); } }
     if (p === "/api/collections/_superusers/records" && req.method === "GET") return Response.json({ page: 1, perPage: 200, totalItems: superusers.length, totalPages: 1, items: superusers });
     if (p === "/api/collections/_superusers/records" && req.method === "POST") { const b = (await req.json()) as { email: string; password: string; passwordConfirm: string }; if (!b.email || b.password !== b.passwordConfirm || b.password.length < 8) return Response.json({ message: "Failed to create record.", data: { password: { message: "invalid" } } }, { status: 400 }); if (superusers.some((s) => s.email === b.email)) return Response.json({ message: "Failed to create record.", data: { email: { message: "Value must be unique." } } }, { status: 400 }); const row = { id: `su${superusers.length + 1}`, email: b.email, created: new Date().toISOString() }; superusers.push(row); return Response.json(row); }
     { const m = p.match(/^\/api\/collections\/_superusers\/records\/([^/]+)$/); if (m && req.method === "DELETE") { const i = superusers.findIndex((s) => s.id === m[1]); if (i < 0) return Response.json({ message: "The requested resource wasn't found." }, { status: 404 }); superusers.splice(i, 1); return new Response(null, { status: 204 }); } }
@@ -180,10 +197,42 @@ try {
   // ---- logs: the instance's own logs API, with the same session; the filter and the sort travel as given
   const logsApi = client.logs(reachable, session);
   const lastLogs = await logsApi.list(); const errorsOnly = await logsApi.list({ filter: "level >= 4" }); const stats = await logsApi.stats("level >= 4");
-  check("logs: the last entries newest first, a filter narrows them, stats come back", lastLogs.totalItems === 3 && lastLogs.items[0]!.id === "l3" && errorsOnly.items.length === 2 && errorsOnly.items.every((l) => l.level >= 4) && stats[0]!.total === 2, JSON.stringify({ last: lastLogs.items.map((l) => l.id), errors: errorsOnly.items.map((l) => l.id), stats }));
+  check("logs: the last entries newest first, a filter narrows them, stats come back", lastLogs.totalItems === 4 && lastLogs.items[0]!.id === "l3" && errorsOnly.items.length === 2 && errorsOnly.items.every((l) => l.level >= 4) && stats[0]!.total === 2, JSON.stringify({ last: lastLogs.items.map((l) => l.id), errors: errorsOnly.items.map((l) => l.id), stats }));
   check("logs: sort=-created and the filter reach the instance verbatim", logCalls[0]!.includes("sort=-created") && !logCalls[0]!.includes("filter") && new URLSearchParams(logCalls[1]!.split("?")[1]).get("filter") === "level >= 4" && logCalls[2]!.startsWith("/api/logs/stats?filter="), JSON.stringify(logCalls));
   const noSession = await client.logs(reachable, "stale").list().then(() => "listed", (e) => (e instanceof Error ? e.message : String(e)));
   check("logs: a stale session is the instance's refusal", /valid record authorization/.test(String(noSession)), String(noSession));
+
+  // ---- metrics: the hourly stats twice (everything, then the error level), joined by hour
+  const statsBefore = logCalls.length;
+  const metrics = await client.metrics(reachable, session);
+  const statsCalls = logCalls.slice(statsBefore).map((c) => new URLSearchParams(c.split("?")[1]).get("filter") ?? "");
+  check("metrics: requests and errors per hour, joined by the hour, with the totals", metrics.hours.length === 2 && metrics.hours[0]!.date.startsWith("2026-09-10 09:") && metrics.hours[0]!.total === 1 && metrics.hours[0]!.errors === 0 && metrics.hours[1]!.total === 3 && metrics.hours[1]!.errors === 1 && metrics.totals.requests === 4 && metrics.totals.errors === 1, JSON.stringify(metrics));
+  check("metrics: two stats calls on the instance, both bounded to the last 24 hours, the second at the error level", statsCalls.length === 2 && statsCalls.every((f) => /^created >= "\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d{3}Z"/.test(f)) && !/level/.test(statsCalls[0]!) && /level >= 8/.test(statsCalls[1]!), JSON.stringify(statsCalls));
+
+  // ---- backups: the instance's archives, taken, downloaded through a file token, restored, deleted
+  const bkApi = client.backups(reachable, session);
+  const bk0 = await bkApi.list();
+  const unnamed = await bkApi.create();
+  const named = await bkApi.create("Nightly");
+  const badBackupName = await bkApi.create("no spaces here").then(() => "taken", (e) => (e instanceof Error ? e.message : String(e)));
+  const dupBackup = await bkApi.create("nightly.zip").then(() => "taken", (e) => (e instanceof Error ? e.message : String(e)));
+  const bk1 = await bkApi.list();
+  check("backups: none at first; one taken with the instance's name and one with ours (.zip added); a bad name is refused here, a taken one by the instance", bk0.length === 0 && unnamed.name === "" && named.name === "nightly.zip" && bk1.length === 2 && bk1.some((b) => b.key === "nightly.zip" && b.size === 2048) && bk1.some((b) => /^pb_backup_.*\.zip$/.test(b.key)) && /ending in \.zip/.test(String(badBackupName)) && /validating the submitted data/.test(String(dupBackup)), JSON.stringify({ bk1, badBackupName, dupBackup }));
+  check("backups: the name travels as given, and none is sent when there is none", backupCalls[0] === "POST /api/backups {}" && backupCalls[1] === 'POST /api/backups {"name":"nightly.zip"}', JSON.stringify(backupCalls));
+  const dl = await bkApi.downloadUrl("nightly.zip");
+  const dlRes = await fetch(dl);
+  check("backups: a download is the archive's URL on the instance with a file token minted there; it answers with the zip", dl.startsWith(`${instUrl}/api/backups/nightly.zip?token=`) && dlRes.status === 200 && dlRes.headers.get("content-type") === "application/zip" && /attachment/.test(dlRes.headers.get("content-disposition") ?? ""), `${dl} ${dlRes.status}`);
+  const noToken = await fetch(`${instUrl}/api/backups/nightly.zip`);
+  check("backups: the archive is not served without the token", noToken.status === 403, String(noToken.status));
+  await bkApi.restore("nightly.zip");
+  const restoreUnknown = await bkApi.restore("gone.zip").then(() => "restored", (e) => (e instanceof Error ? e.message : String(e)));
+  check("backups: a restore reaches the instance for the key; an unknown key is the instance's refusal", restored.length === 1 && restored[0] === "nightly.zip" && backupCalls.includes("POST /api/backups/nightly.zip/restore") && /wasn't found/.test(String(restoreUnknown)), JSON.stringify({ restored, restoreUnknown }));
+  const removeUnknown = await bkApi.remove("gone.zip").then(() => "removed", (e) => (e instanceof Error ? e.message : String(e)));
+  await bkApi.remove("nightly.zip");
+  const bk2 = await bkApi.list();
+  check("backups: deleting an unknown key is the instance's refusal; a known one goes", /wasn't found/.test(String(removeUnknown)) && bk2.length === 1 && !bk2.some((b) => b.key === "nightly.zip"), JSON.stringify({ removeUnknown, bk2 }));
+  const bkStale = await client.backups(reachable, "stale").list().then(() => "listed", (e) => (e instanceof Error ? e.message : String(e)));
+  check("backups: a stale session is the instance's refusal", /valid record authorization/.test(String(bkStale)), String(bkStale));
 
   // ---- superusers: the instance's _superusers, with the same session; the last one stays
   const suApi = client.superusers(reachable, session);

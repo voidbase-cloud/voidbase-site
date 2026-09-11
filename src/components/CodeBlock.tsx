@@ -66,7 +66,7 @@ export interface CodeBlockProps extends Block {
   title?: string;
 }
 
-function CopyButton({ text, from }: { text?: string; from: React.RefObject<HTMLDivElement | null> }) {
+export function CopyButton({ text, from }: { text?: string; from: React.RefObject<HTMLDivElement | null> }) {
   const [done, setDone] = useState(false);
   return (
     <button
