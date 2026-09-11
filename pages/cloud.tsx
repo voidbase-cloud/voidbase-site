@@ -1,6 +1,6 @@
 // The cloud control plane: sign in with Cloudflare, list the visitor's instances, create and delete them, connect
 // GitHub, and create or link the repositories wired to an instance; then the life of one: its plugins, logs,
-// metrics, backups, superusers and payments through the instance itself, its domains through the domains plugin
+// metrics, backups, superusers, payments and translations through the instance itself, its domains through the domains plugin
 // (a commit on the project's repository, or the plugin's own vars and hostnames on a repositoryless instance) and
 // its secrets through the Cloudflare pass-through; and the sign-in's own token as a CLI login, for the same
 // session. Ported from the SvelteKit page at src/routes/(app)/cloud/+page.svelte.
@@ -8,7 +8,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import CloudflareSignIn from "@/components/CloudflareSignIn";
 import { CopyButton } from "@/components/CodeBlock";
 import { cloud, errorMessage, vb, VB_URL } from "@/lib/vb";
-import { CloudClient, hostnamesOf, LOG_LEVELS, rollbackTarget, ROLLBACK_WINDOW_DAYS, routeMissing, type BackupItem, type BackupKind, type CustomDomain, type DomainsReport, type LogEntry, type LogPage, type Metrics, type ObservabilityLogs, type ObservabilitySource, type ObservabilitySummary, type ObservabilityWindow, type PaymentsReport, type PaymentsSummary, type PluginsReport, type Superuser, type WorkerSecret, type Zone } from "@/lib/cloud";
+import { CloudClient, hostnamesOf, LOG_LEVELS, rollbackTarget, ROLLBACK_WINDOW_DAYS, routeMissing, type BackupItem, type BackupKind, type CustomDomain, type DomainsReport, type LogEntry, type LogPage, type Metrics, type ObservabilityLogs, type ObservabilitySource, type ObservabilitySummary, type ObservabilityWindow, type PaymentsReport, type PaymentsSummary, type PluginsReport, type Superuser, type TranslationsMissing, type TranslationsReport, type TranslationsStatus, type WorkerSecret, type Zone } from "@/lib/cloud";
 
 // ---- what /api/vbcloud/* hands back -----------------------------------------------------------------------------
 
@@ -915,6 +915,191 @@ function PaymentsPanel({ inst, client, session }: { inst: Instance; client: Clou
   );
 }
 
+/** one cell of the status table: the strings translated out of the ones there are, as a bar and as a count */
+function Share({ done, total }: { done: number; total: number }) {
+  const share = total ? Math.min(1, done / total) : 0;
+  return (
+    <span className="share" title={`${done} of ${total} ${total === 1 ? "string" : "strings"}`}>
+      <span className="share-bar" aria-hidden="true"><span className={`share-fill${total && done >= total ? " share-done" : ""}`} style={{ width: `${Math.round(share * 100)}%` }} /></span>
+      <span className="share-count">{done}/{total}</span>
+    </span>
+  );
+}
+
+/**
+ * The translations plugin, as the instance reports it and answers for it. The status is one row per declared
+ * collection and one column per locale, each cell what is translated of what there is, so what is untranslated is
+ * visible at a glance. Picking a collection and a locale lists the records missing a field in it, a page at a time
+ * and with the route's own pagination, and each field has a box: what is typed there is written as a row of the
+ * `translations` collection with the same session, and the record leaves the list once nothing of it is missing.
+ *
+ * It is for finishing a few strings, not for translating a site: there is no import, no export and no machine
+ * translation here, and a long text belongs in the instance's own panel.
+ *
+ * With no locales the plugin is idle and the panel says which two knobs would start it. An instance older than
+ * 0.9.0-beta.30, or one with the plugin disabled, has neither route and answers 404, which the panel says in a line.
+ */
+function TranslationsPanel({ inst, client, session }: { inst: Instance; client: CloudClient; session: string }) {
+  const [report, setReport] = useState<TranslationsReport | null>(null);
+  const [status, setStatus] = useState<TranslationsStatus | null>(null);
+  const [pick, setPick] = useState({ collection: "", locale: "" });
+  const [missing, setMissing] = useState<TranslationsMissing | null>(null);
+  /** what has been typed and not yet written, by `${record} ${field}` */
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  /** the instance has neither route: the plugin is older than 0.9.0-beta.30, or it is off */
+  const [older, setOlder] = useState(false);
+  const [error, setError] = useState("");
+  const [listError, setListError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [working, setWorking] = useState("");
+
+  async function refresh() {
+    setLoading(true); setError("");
+    try {
+      const r = (await client.plugins(inst, session).running()).translations ?? null;
+      setReport(r);
+      // both knobs unset is the idle plugin, which has nothing to report and nothing to list
+      if (r && !(r.locales?.length && Object.keys(r.collections ?? {}).length)) { setStatus(null); setMissing(null); return; }
+      const s = await client.translations(inst, session).status();
+      setStatus(s); setOlder(false);
+      const first = Object.keys(s.collections)[0] ?? "";
+      const locale = s.locales.find((l) => l !== s.source) ?? "";
+      setPick((p) => ({ collection: p.collection || first, locale: p.locale || locale }));
+    } catch (err) {
+      if (routeMissing(err)) { setOlder(true); setStatus(null); setMissing(null); return; }
+      setError(errorMessage(err));
+    } finally { setLoading(false); }
+  }
+  useEffect(() => { refresh(); }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function list(o: { collection?: string; locale?: string; page?: number } = {}) {
+    const next = { collection: o.collection ?? pick.collection, locale: o.locale ?? pick.locale };
+    setPick(next); setWorking("list"); setListError("");
+    try { setMissing(await client.translations(inst, session).missing({ ...next, page: o.page ?? 1 })); setDrafts({}); }
+    catch (err) { setMissing(null); setListError(errorMessage(err)); }
+    finally { setWorking(""); }
+  }
+
+  /** one field written, the record dropped from the list when it was the last one missing, the cell counted up */
+  async function fill(record: string, field: string) {
+    const key = `${record} ${field}`;
+    const value = (drafts[key] ?? "").trim();
+    if (!value) return;
+    setWorking(key); setListError("");
+    try {
+      await client.translations(inst, session).fill({ collection: pick.collection, record, field, locale: pick.locale, value });
+      setMissing((m) => m && { ...m, items: m.items.map((it) => (it.id === record ? { ...it, fields: it.fields.filter((f) => f !== field) } : it)).filter((it) => it.fields.length) });
+      setDrafts((d) => { const n = { ...d }; delete n[key]; return n; });
+      setStatus((s) => {
+        const line = s?.collections[pick.collection];
+        const cell = line?.locales[pick.locale];
+        if (!s || !line || !cell) return s;
+        return { ...s, collections: { ...s.collections, [pick.collection]: { ...line, locales: { ...line.locales, [pick.locale]: { ...cell, translated: cell.translated + 1 } } } } };
+      });
+    } catch (err) { setListError(errorMessage(err)); }
+    finally { setWorking(""); }
+  }
+
+  const targets = status ? status.locales.filter((l) => l !== status.source) : [];
+  const collections = Object.entries(status?.collections ?? {});
+  // the report itself says whether the knobs are set, so a status that failed is not mistaken for an idle plugin
+  const idle = !!report && !older && !(report.locales?.length && Object.keys(report.collections ?? {}).length);
+  return (
+    <>
+      {error && <p className="node-error">{error}</p>}
+      {older && (
+        <p className="txt-hint">
+          This instance has no <code>translations</code> plugin, which arrived in 0.9.0-beta.30, so there is nothing
+          to read here. Upgrade it, or turn the plugin back on, and the status comes with it.
+        </p>
+      )}
+      {idle && (
+        <>
+          <p className="txt-hint">The plugin is idle: it answers nothing until both of its knobs are set. Set them on the Worker (the Secrets panel here, or the app's own secrets on a project) and redeploy:</p>
+          <ul>
+            <li><code>VOIDBASE_LOCALES</code> <span className="txt-hint">the locales in fallback order, comma separated, the first the source the records are written in: <code>en,ar,fr</code></span></li>
+            <li><code>VOIDBASE_TRANSLATABLE</code> <span className="txt-hint">which fields of which collections have translations, entries separated by semicolons: <code>posts:title,body;pages:title</code></span></li>
+          </ul>
+          <p className="txt-hint">With both set the records API answers in the locale the request asks for, and what is untranslated shows here. <a href={DOCS.plugins}>docs</a></p>
+        </>
+      )}
+      {status && (
+        <>
+          <p className="txt-hint">
+            Source <code>{status.source}</code>, then {targets.join(", ") || "no other locale"}. Each cell is the
+            strings written of the strings there are: a collection's records times its declared fields.
+          </p>
+          <table className="tool-table">
+            <thead>
+              <tr><th>Collection</th>{targets.map((l) => <th key={l}>{l}</th>)}</tr>
+            </thead>
+            <tbody>
+              {collections.map(([name, line]) => (
+                <tr key={name}>
+                  <td><code>{name}</code> <span className="txt-hint">{line.fields.join(", ")}, {line.records} {line.records === 1 ? "record" : "records"}</span></td>
+                  {targets.map((l) => <td key={l}><Share done={line.locales[l]?.translated ?? 0} total={line.locales[l]?.total ?? 0} /></td>)}
+                </tr>
+              ))}
+              {!collections.length && <tr><td colSpan={targets.length + 1} className="txt-hint">no declared collection exists on this instance</td></tr>}
+            </tbody>
+          </table>
+          <div className="tool-row tool-filters">
+            <label className="tool-field">
+              <span>Collection</span>
+              <select value={pick.collection} disabled={!!working} onChange={(e) => list({ collection: e.target.value })}>
+                {collections.map(([name]) => <option key={name} value={name}>{name}</option>)}
+              </select>
+            </label>
+            <label className="tool-field">
+              <span>Locale</span>
+              <select value={pick.locale} disabled={!!working} onChange={(e) => list({ locale: e.target.value })}>
+                {targets.map((l) => <option key={l} value={l}>{l}</option>)}
+              </select>
+            </label>
+            <button type="button" className="btn btn-xs btn-secondary" disabled={!!working || !pick.collection || !pick.locale} onClick={() => list()}>{working === "list" ? "Reading…" : "Show what is missing"}</button>
+          </div>
+          {listError && <p className="node-error">{listError}</p>}
+          {missing && (
+            <>
+              <p className="txt-hint">
+                {missing.items.length ? <>{missing.items.length} {missing.items.length === 1 ? "record" : "records"} on this page {missing.items.length === 1 ? "is" : "are"} missing something in <code>{missing.locale}</code>.</> : <>Nothing on this page is missing anything in <code>{missing.locale}</code>.</>}{" "}
+                Page {missing.page} of {missing.totalPages || 1}, {missing.perPage} records at a time, over {missing.totalItems} {missing.totalItems === 1 ? "record" : "records"} in <code>{missing.collection}</code>.
+              </p>
+              <ul className="tool-missing">
+                {missing.items.map((it) => (
+                  <li key={it.id}>
+                    <code>{it.id}</code>
+                    {it.fields.map((f) => (
+                      <form key={f} className="missing-field" onSubmit={(e) => { e.preventDefault(); fill(it.id, f); }}>
+                        <input type="text" placeholder={f} aria-label={`${f} of ${it.id} in ${missing.locale}`} value={drafts[`${it.id} ${f}`] ?? ""} disabled={!!working} onChange={(e) => setDrafts({ ...drafts, [`${it.id} ${f}`]: e.target.value })} />
+                        <button type="submit" className="btn btn-xs btn-secondary" disabled={!!working || !(drafts[`${it.id} ${f}`] ?? "").trim()}>{working === `${it.id} ${f}` ? "Saving…" : "Save"}</button>
+                      </form>
+                    ))}
+                  </li>
+                ))}
+              </ul>
+              {missing.totalPages > 1 && (
+                <div className="tool-row">
+                  <button type="button" className="btn btn-xs btn-outline" disabled={!!working || missing.page <= 1} onClick={() => list({ page: missing.page - 1 })}>Previous page</button>
+                  <button type="button" className="btn btn-xs btn-outline" disabled={!!working || missing.page >= missing.totalPages} onClick={() => list({ page: missing.page + 1 })}>Next page</button>
+                </div>
+              )}
+              <p className="txt-hint">
+                A box writes one row of the <code>translations</code> collection, and the record goes once nothing of
+                it is missing. This is for finishing a few strings; a long text belongs in the instance's own panel,
+                and there is no import or export here. <a href={DOCS.plugins}>docs</a>
+              </p>
+            </>
+          )}
+        </>
+      )}
+      <div className="tool-row">
+        <button type="button" className="btn btn-xs btn-outline" disabled={loading} onClick={() => refresh()}>{loading ? "Reading…" : "Refresh"}</button>
+      </div>
+    </>
+  );
+}
+
 /** the three roles in the order they reach, for the invite form and for the line under the list */
 const ROLES = ["owner", "admin", "viewer"] as const;
 
@@ -1009,8 +1194,8 @@ function MembersPanel({ inst }: { inst: Instance }) {
 const cardNumbers = new Map<string, ObservabilitySummary | null>();
 
 /**
- * What the owner does to an instance after it exists: plugins, logs, metrics, backups, superusers and payments
- * through the instance itself, with one session minted on it and shared by those panels; domains through the
+ * What the owner does to an instance after it exists: plugins, logs, metrics, backups, superusers, payments and
+ * translations through the instance itself, with one session minted on it and shared by those panels; domains through the
  * domains plugin, which on a project is a commit to its repository; secrets on its Worker through the Cloudflare
  * pass-through, with the user's own token. This site holds nothing of any of it.
  *
@@ -1044,6 +1229,7 @@ function InstancePanels({ inst, client, repo }: { inst: Instance; client: CloudC
       <Collapsible id="backups" label="Backups" open={open} setOpen={setOpen}>{onInstance((s) => <BackupsPanel inst={inst} client={client} session={s} />)}</Collapsible>
       <Collapsible id="superusers" label="Superusers" open={open} setOpen={setOpen}>{onInstance((s) => <SuperusersPanel inst={inst} client={client} session={s} />)}</Collapsible>
       <Collapsible id="payments" label="Payments" open={open} setOpen={setOpen}>{onInstance((s) => <PaymentsPanel inst={inst} client={client} session={s} />)}</Collapsible>
+      <Collapsible id="translations" label="Translations" open={open} setOpen={setOpen}>{onInstance((s) => <TranslationsPanel inst={inst} client={client} session={s} />)}</Collapsible>
       {!inst.system && <Collapsible id="members" label="Members" open={open} setOpen={setOpen}><MembersPanel inst={inst} /></Collapsible>}
       {!inst.system && (
         <>

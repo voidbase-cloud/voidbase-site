@@ -14,6 +14,8 @@
 // `backups().restore(key, { createMissing })`; `payments(inst, session)` over the three collections;
 // `observability(inst, session)` over the observability plugin's three routes (`summary(window)`, `errors(since)`,
 // `logs(o)`), with the 404 an instance older than 0.9.0-beta.37 answers left for the caller to fall back on;
+// `translations(inst, session)` over the translations plugin's two reports (`status()`, `missing(o)`) and the row
+// one string is written to (`fill(o)`, created or updated), with the same 404 left for the caller;
 // `upgradeInstance(inst, { release })`, the release to put the instance on rather than always the active one, with
 // the release it left recorded on the row, which is what makes an upgrade reversible; and `setDomains(inst,
 // hostnames, repo)`, the domains plugin's knob written where that instance's deploy reads it.
@@ -173,6 +175,34 @@ export interface BackupItem extends Backup { kind?: BackupKind | "legacy"; verif
 /** what `POST /api/backups/:key/verify` answers */
 export interface BackupVerify { key: string; kind: BackupKind | "legacy"; verified: boolean; voidbase: string | null; checksum: string | null; entries: number; corrupted: string[]; missing: string[]; error?: string; offsite?: boolean }
 
+// ---- the translations plugin: what is translated, what is not, and one string filled in --------------------------
+
+/** the collection the translations plugin owns: one row per collection, record, field and locale */
+export const TRANSLATIONS_COLLECTION = "translations";
+/** one collection's line of the status: its declared fields, how many records it has, and the count per locale */
+export interface TranslationsCollectionStatus {
+  fields: string[];
+  records: number;
+  /** the locales other than the source, each with the pairs translated out of records × fields */
+  locales: Record<string, { translated: number; total: number }>;
+}
+/** `GET /api/translations/status`: the source locale, the locales in fallback order, a line per declared collection */
+export interface TranslationsStatus { source: string; locales: string[]; collections: Record<string, TranslationsCollectionStatus> }
+/** one record of the missing report: its id, and the declared fields with no text in that locale */
+export interface MissingRecord { id: string; fields: string[] }
+/**
+ * `GET /api/translations/missing`: a page of the collection's records, the ones lacking a field in that locale.
+ * The pagination is the route's own and is over every record of the collection, so a page can hold fewer items
+ * than its size, and `totalItems` counts the records rather than the ones that are missing something.
+ */
+export interface TranslationsMissing { collection: string; locale: string; page: number; perPage: number; totalItems: number; totalPages: number; items: MissingRecord[] }
+/** one row of the `translations` collection: the text of one field of one record in one locale */
+export interface TranslationRow { id: string; collection: string; record: string; field: string; locale: string; value: string }
+/** what a fill names: the field of the record, the locale, and the text to put there */
+export interface TranslationFill { collection: string; record: string; field: string; locale: string; value: string }
+/** a value in a PocketBase filter, quoted the way its parser reads a string literal */
+const filterText = (value: string) => JSON.stringify(value);
+
 // ---- the payments collections ----------------------------------------------------------------------------------
 
 /** one row of the `payments` collection, the fields the panel shows */
@@ -320,6 +350,33 @@ export class CloudClient extends SharedClient {
       summary: (window: ObservabilityWindow = "hour") => call<ObservabilitySummary>("GET", `/api/observability/summary${query({ window })}`),
       errors: (since?: string, window: ObservabilityWindow = "hour") => call<ObservabilityLogs>("GET", `/api/observability/errors${query({ since, window })}`),
       logs: (o: { since?: string; window?: ObservabilityWindow; level?: number } = {}) => call<ObservabilityLogs>("GET", `/api/observability/logs${query({ since: o.since, window: o.window ?? "hour", level: o.level })}`),
+    };
+  }
+
+  /**
+   * The translations plugin's two reports, read with the superuser's session, and the rows behind them. `status`
+   * is what is translated per collection and locale; `missing` is one page of the records that lack a declared
+   * field in a locale, paginated the way the route paginates, over every record of the collection; `fill` writes
+   * one field's text as a row of the `translations` collection, updating the row when there is one, which is what
+   * its unique key on collection, record, field and locale asks for.
+   *
+   * An instance older than 0.9.0-beta.30, or one with the plugin disabled, has neither route and answers 404,
+   * which is left as it is: `routeMissing` is how a panel tells that apart from a call that failed.
+   */
+  translations(inst: Instance, session: string) {
+    const call = this.onInstanceHere(inst, session);
+    return {
+      status: () => call<TranslationsStatus>("GET", "/api/translations/status"),
+      missing: (o: { collection: string; locale: string; page?: number; perPage?: number }) =>
+        call<TranslationsMissing>("GET", `/api/translations/missing?${new URLSearchParams({ collection: o.collection, locale: o.locale, page: String(o.page ?? 1), perPage: String(o.perPage ?? 30) })}`),
+      fill: async (o: TranslationFill): Promise<TranslationRow> => {
+        const filter = ["collection", "record", "field", "locale"].map((k) => `${k}=${filterText(o[k as keyof TranslationFill])}`).join(" && ");
+        const page = await call<{ items?: TranslationRow[] }>("GET", `/api/collections/${TRANSLATIONS_COLLECTION}/records?perPage=1&filter=${encodeURIComponent(filter)}`);
+        const row = page.items?.[0];
+        return row
+          ? call<TranslationRow>("PATCH", `/api/collections/${TRANSLATIONS_COLLECTION}/records/${row.id}`, { value: o.value })
+          : call<TranslationRow>("POST", `/api/collections/${TRANSLATIONS_COLLECTION}/records`, { collection: o.collection, record: o.record, field: o.field, locale: o.locale, value: o.value });
+      },
     };
   }
 

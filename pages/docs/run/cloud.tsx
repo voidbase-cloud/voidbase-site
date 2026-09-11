@@ -136,6 +136,17 @@ export default function DocsCloud() {
             </td>
           </tr>
           <tr>
+            <td>Translations</td>
+            <td>
+              What the <code>translations</code> plugin has and has not, one row per declared collection and one
+              column per locale, each cell the strings written of the strings there are. Pick a collection and a
+              locale and the records missing a field in it are listed, a page at a time, each field with a box that
+              writes it; the record goes once nothing of it is missing. It is for finishing a few strings, not for
+              translating a site: no import, no export, no machine translation. With neither knob set, the two that
+              would start the plugin; on an instance without it, a line saying so.
+            </td>
+          </tr>
+          <tr>
             <td>Domains</td>
             <td>
               The hostnames the <code>domains</code> plugin reports from the instance and which is canonical, and

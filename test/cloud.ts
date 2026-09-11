@@ -173,6 +173,20 @@ try {
     payments: [{ id: "p1", customer: "c1", amount: 500, currency: "usd", status: "succeeded", created: "2026-09-04 10:00:00.000Z" }, { id: "p2", customer: "c2", amount: 1200, currency: "eur", status: "failed", created: "2026-09-05 10:00:00.000Z" }, { id: "p3", customer: "c1", subscription: "s1", amount: 1999, currency: "usd", status: "succeeded", created: "2026-09-06 10:00:00.000Z" }],
   } as Record<string, Record<string, unknown>[]>;
   const paymentCalls: string[] = [];
+  // the translations plugin (voidbase 0.9.0-beta.30): its two reports over the rows of the collection it owns, the
+  // rows themselves through the records API, and the two switches: the knobs unset, and the routes gone altogether,
+  // which is what an instance older than the plugin answers
+  let trOn = true, trIdle = false;
+  const TR_SOURCE = "en", TR_LOCALES = ["en", "ar"];
+  const trFields: Record<string, string[]> = { posts: ["title", "body"], pages: ["title"] };
+  const trRecords: Record<string, string[]> = { posts: ["r1", "r2", "r3", "r4", "r5"], pages: ["g1"] };
+  // r3's title is a row with no text, which the plugin counts as missing and as untranslated alike
+  const trRows = [
+    { id: "t1", collection: "posts", record: "r1", field: "title", locale: "ar", value: "عنوان" },
+    { id: "t2", collection: "posts", record: "r2", field: "body", locale: "ar", value: "نص" },
+    { id: "t3", collection: "posts", record: "r3", field: "title", locale: "ar", value: "" },
+  ];
+  const trCalls: string[] = [];
   const superusers = [{ id: "su1", email: "owner@example.com", created: "2026-09-01 00:00:00.000Z" }];
   const instance = Bun.serve({ port: 0, hostname: "127.0.0.1", async fetch(req) {
     const url = new URL(req.url); const p = url.pathname; const auth = req.headers.get("authorization") ?? "";
@@ -208,6 +222,54 @@ try {
       const items = [...kept].sort((a, b) => b.created.localeCompare(a.created));
       return Response.json({ source: "request-log", since, ...(p === "/api/observability/logs" ? { level } : {}), items, totalItems: items.length });
     }
+    if (p.startsWith("/api/translations/")) {
+      // an instance older than the plugin, or one with it disabled, has no such route
+      if (!trOn) return Response.json({ message: "The requested resource wasn't found." }, { status: 404 });
+      trCalls.push(`${p}?${url.searchParams}`);
+      const declared = trIdle ? {} : trFields;
+      const targets = (trIdle ? [] : TR_LOCALES).filter((l) => l !== TR_SOURCE);
+      if (p === "/api/translations/status") {
+        const collections: Record<string, unknown> = {};
+        for (const [name, fields] of Object.entries(declared)) {
+          const records = trRecords[name]!.length, total = records * fields.length;
+          collections[name] = { fields, records, locales: Object.fromEntries(targets.map((l) => [l, { translated: trRows.filter((t) => t.collection === name && fields.includes(t.field) && t.locale === l && t.value).length, total }])) };
+        }
+        return Response.json({ source: trIdle ? "" : TR_SOURCE, locales: trIdle ? [] : TR_LOCALES, collections });
+      }
+      const name = (url.searchParams.get("collection") ?? "").trim();
+      const locale = (url.searchParams.get("locale") ?? "").trim().toLowerCase();
+      const fields = declared[name];
+      if (!fields) return Response.json({ message: `${JSON.stringify(name)} is not declared translatable (VOIDBASE_TRANSLATABLE).` }, { status: 400 });
+      if (!(trIdle ? [] : TR_LOCALES).includes(locale)) return Response.json({ message: `${JSON.stringify(locale)} is not one of the locales (VOIDBASE_LOCALES).` }, { status: 400 });
+      if (locale === TR_SOURCE) return Response.json({ message: `${JSON.stringify(locale)} is the source locale; the records themselves hold it.` }, { status: 400 });
+      const page = Math.max(1, Number(url.searchParams.get("page") ?? 1) || 1);
+      const perPage = Math.max(1, Number(url.searchParams.get("perPage") ?? 30) || 30);
+      const every = trRecords[name] ?? [];
+      const ids = every.slice((page - 1) * perPage, page * perPage);
+      const have = new Set(trRows.filter((t) => t.collection === name && t.locale === locale && t.value).map((t) => `${t.record} ${t.field}`));
+      const items = ids.map((id) => ({ id, fields: fields.filter((f) => !have.has(`${id} ${f}`)) })).filter((it) => it.fields.length);
+      return Response.json({ collection: name, locale, page, perPage, totalItems: every.length, totalPages: Math.ceil(every.length / perPage), items });
+    }
+    // the rows behind those reports, written like any record: the unique key is collection, record, field and locale
+    { const m = p.match(/^\/api\/collections\/translations\/records(?:\/([^/]+))?$/); if (m) {
+      trCalls.push(`${req.method} ${p}?${url.searchParams}`);
+      if (req.method === "GET") {
+        const want = Object.fromEntries([...(url.searchParams.get("filter") ?? "").matchAll(/(\w+)="((?:[^"\\]|\\.)*)"/g)].map((x) => [x[1]!, JSON.parse(`"${x[2]}"`) as string]));
+        const rows = trRows.filter((t) => Object.entries(want).every(([k, v]) => String((t as unknown as Record<string, unknown>)[k] ?? "") === v));
+        const perPage = Number(url.searchParams.get("perPage") ?? 30);
+        return Response.json({ page: 1, perPage, totalItems: rows.length, totalPages: 1, items: rows.slice(0, perPage) });
+      }
+      if (req.method === "POST") {
+        const b = (await req.json()) as { collection: string; record: string; field: string; locale: string; value: string };
+        if (trRows.some((t) => t.collection === b.collection && t.record === b.record && t.field === b.field && t.locale === b.locale)) return Response.json({ message: "Failed to create record.", data: { collection: { code: "validation_not_unique", message: "Value must be unique." } } }, { status: 400 });
+        const row = { id: `t${trRows.length + 1}`, ...b }; trRows.push(row); return Response.json(row);
+      }
+      if (req.method === "PATCH" && m[1]) {
+        const row = trRows.find((t) => t.id === m[1]);
+        if (!row) return Response.json({ message: "The requested resource wasn't found." }, { status: 404 });
+        row.value = String(((await req.json()) as { value?: string }).value ?? ""); return Response.json(row);
+      }
+    } }
     if (p === "/api/files/token" && req.method === "POST") return Response.json({ token: "file-token" });
     if (p === "/api/backups" && req.method === "GET") return Response.json(backups);
     if (p === "/api/backups" && req.method === "POST") {
@@ -225,7 +287,7 @@ try {
     { const m = p.match(/^\/api\/collections\/_superusers\/records\/([^/]+)$/); if (m && req.method === "DELETE") { const i = superusers.findIndex((s) => s.id === m[1]); if (i < 0) return Response.json({ message: "The requested resource wasn't found." }, { status: 404 }); superusers.splice(i, 1); return new Response(null, { status: 204 }); } }
     // the inventory, with what the shipped plugins report about themselves on 0.9.0-beta.31
     if (p === "/api/plugins") return Response.json({ names: ["auth", "realtime", "hardening", "backups", "installer", "echo"], origins: { auth: "shipped", realtime: "shipped", hardening: "shipped", backups: "shipped", installer: "shipped", echo: "http://market.test 0.1.0" }, disabled: [], installer: { mode: "repository", repository: "octo-tester/existing", branch: "master" },
-      mail: { via: "plugin", carrier: "Cloudflare Email Service, from example.com", sender: "hello@example.com" }, ai: { via: "workers-ai", model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast" }, translations: { source: "en", locales: ["en", "ar"], collections: { posts: ["title", "body"] } }, domains: { hostnames: ["shop.example.com", "www.shop.example.com"], canonical: "shop.example.com" },
+      mail: { via: "plugin", carrier: "Cloudflare Email Service, from example.com", sender: "hello@example.com" }, ai: { via: "workers-ai", model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast" }, translations: trIdle ? { source: "", locales: [], collections: {} } : { source: TR_SOURCE, locales: TR_LOCALES, collections: trFields }, domains: { hostnames: ["shop.example.com", "www.shop.example.com"], canonical: "shop.example.com" },
       payments: { via: "stripe", webhook: "/api/payments/stripe/webhook", livemode: false, also: ["polar"], reason: "POLAR_ACCESS_TOKEN is set too; stripe answers because it comes first in the shipped order" },
       observability: { via: "analytics-engine", sampling: 0.5, logs: true } });
     if (p === "/api/plugins/available") return Response.json({ installer: { mode: "repository" }, available: [{ marketplace: "https://marketplace.voidbase.cloud", plugins: [{ name: "echo", title: "Echo", summary: "x", latest: "0.2.0" }] }] });
@@ -353,6 +415,57 @@ try {
   check("payments: ten at most, sorted -created, the fields the panel shows; the counts cost one row each", payQuery.length === 1 && payQuery[0]!.get("perPage") === "10" && payQuery[0]!.get("sort") === "-created" && (payQuery[0]!.get("fields") ?? "").includes("amount") && paymentCalls.filter((c) => c.startsWith("/api/collections/customers/")).every((c) => new URLSearchParams(c.split("?")[1]).get("perPage") === "1"), JSON.stringify(paymentCalls));
   const payStale = await client.payments(reachable, "stale").summary().then(() => "listed", (e) => (e instanceof Error ? e.message : String(e)));
   check("payments: a stale session is the instance's refusal", /valid record authorization/.test(String(payStale)), String(payStale));
+
+  // ---- translations (0.9.0-beta.30): the status as the panel's table reads it, what is missing with the route's
+  // own pagination, one string filled in through the collection the plugin owns, the refusals, the idle plugin and
+  // the 404 an instance without the plugin answers
+  const tr = client.translations(reachable, session);
+  const trStatus = await tr.status();
+  const posts = trStatus.collections.posts!, pages = trStatus.collections.pages!;
+  check("translations: the status is a line per declared collection with its fields and records, and a cell per locale holding the strings written of the records times the fields; the source locale is not one of them",
+    trStatus.source === "en" && trStatus.locales.join(",") === "en,ar" && Object.keys(trStatus.collections).length === 2
+    && posts.fields.join(",") === "title,body" && posts.records === 5 && posts.locales.ar!.translated === 2 && posts.locales.ar!.total === 10 && !("en" in posts.locales)
+    && pages.records === 1 && pages.locales.ar!.translated === 0 && pages.locales.ar!.total === 1, JSON.stringify(trStatus));
+  const page1 = await tr.missing({ collection: "posts", locale: "ar", perPage: 2 });
+  const page2 = await tr.missing({ collection: "posts", locale: "ar", page: 2, perPage: 2 });
+  const page3 = await tr.missing({ collection: "posts", locale: "ar", page: 3, perPage: 2 });
+  check("translations: what is missing is a page of the collection's own records, each item the fields with no text in that locale; a row whose text is empty is missing too, and the pagination is the route's, over every record rather than over the ones missing something",
+    page1.collection === "posts" && page1.locale === "ar" && page1.page === 1 && page1.perPage === 2 && page1.totalItems === 5 && page1.totalPages === 3
+    && page1.items.length === 2 && page1.items[0]!.id === "r1" && page1.items[0]!.fields.join(",") === "body" && page1.items[1]!.fields.join(",") === "title"
+    && page2.items.map((i) => i.id).join(",") === "r3,r4" && page2.items[0]!.fields.join(",") === "title,body" && page3.items.length === 1 && page3.items[0]!.id === "r5",
+    JSON.stringify({ page1, page2: page2.items, page3: page3.items }));
+  check("translations: the collection, the locale and the page travel to the instance as given", trCalls[1] === "/api/translations/missing?collection=posts&locale=ar&page=1&perPage=2" && trCalls[3] === "/api/translations/missing?collection=posts&locale=ar&page=3&perPage=2", JSON.stringify(trCalls.slice(0, 4)));
+  const rowsBefore = trRows.length;
+  const madeRow = await tr.fill({ collection: "posts", record: "r1", field: "body", locale: "ar", value: "نص المقالة" });
+  const usedRow = await tr.fill({ collection: "posts", record: "r3", field: "title", locale: "ar", value: "عنوان ثالث" });
+  const afterFill1 = await tr.missing({ collection: "posts", locale: "ar", perPage: 2 });
+  const afterFill2 = await tr.missing({ collection: "posts", locale: "ar", page: 2, perPage: 2 });
+  check("translations: filling a field writes the row of that collection, record, field and locale; an empty row is updated rather than doubled, and the record leaves the list once nothing of it is missing",
+    madeRow.record === "r1" && madeRow.field === "body" && madeRow.value === "نص المقالة" && usedRow.id === "t3" && usedRow.value === "عنوان ثالث" && trRows.length === rowsBefore + 1
+    && afterFill1.items.length === 1 && afterFill1.items[0]!.id === "r2" && afterFill2.items[0]!.id === "r3" && afterFill2.items[0]!.fields.join(",") === "body",
+    JSON.stringify({ made: madeRow, used: usedRow, rows: trRows.length, after: afterFill1.items }));
+  const filledStatus = await tr.status();
+  check("translations: the status counts what was written", filledStatus.collections.posts!.locales.ar!.translated === 4, JSON.stringify(filledStatus.collections.posts!.locales));
+  const undeclared = await tr.missing({ collection: "widgets", locale: "ar" }).then(() => "listed", (e) => (e instanceof Error ? e.message : String(e)));
+  const unknownLocale = await tr.missing({ collection: "posts", locale: "de" }).then(() => "listed", (e) => (e instanceof Error ? e.message : String(e)));
+  const sourceLocale = await tr.missing({ collection: "posts", locale: "en" }).then(() => "listed", (e) => (e instanceof Error ? e.message : String(e)));
+  check("translations: an undeclared collection, a locale that is not one of them and the source locale are each the instance's refusal, with its reason to show",
+    /not declared translatable/.test(String(undeclared)) && /not one of the locales/.test(String(unknownLocale)) && /is the source locale/.test(String(sourceLocale)),
+    JSON.stringify({ undeclared: String(undeclared), unknownLocale: String(unknownLocale), sourceLocale: String(sourceLocale) }));
+  const trStale = await client.translations(reachable, "stale").status().then(() => "read", (e) => (e instanceof Error ? e.message : String(e)));
+  check("translations: a stale session is the instance's refusal", /valid record authorization/.test(String(trStale)), String(trStale));
+  // both knobs unset: the plugin runs and reports nothing, which is what the panel shows the knobs for
+  trIdle = true;
+  const idleReport = (await client.plugins(reachable, session).running()).translations;
+  const idleStatus = await tr.status();
+  check("translations: with neither knob set the plugin reports no source, no locale and no collection, and the status is empty too", idleReport?.source === "" && idleReport.locales?.length === 0 && Object.keys(idleReport.collections ?? {}).length === 0 && idleStatus.locales.length === 0 && Object.keys(idleStatus.collections).length === 0, JSON.stringify({ report: idleReport, status: idleStatus }));
+  trIdle = false;
+  // an instance older than the plugin, or one with it disabled: both routes 404, which is the panel's quiet line
+  trOn = false;
+  const noStatus = await tr.status().then(() => null, (e: unknown) => e);
+  const noMissing = await tr.missing({ collection: "posts", locale: "ar" }).then(() => null, (e: unknown) => e);
+  check("translations: an instance without the plugin answers 404 to both routes, and routeMissing tells that apart from a call that failed", routeMissing(noStatus) && routeMissing(noMissing) && (noStatus as CloudError).status === 404 && !routeMissing(new CloudError("refused", 400)), JSON.stringify({ status: String(noStatus), missing: String(noMissing) }));
+  trOn = true;
   instance.stop(true);
   await api("PATCH", `/api/collections/vb_instances/records/${inst.id}`, { url: inst.url }, U);
 

@@ -155,7 +155,7 @@
     .txt-hint { margin: 0; font-size: var(--smFontSize); }
 }
 
-// the panels of a cloud instance (pages/cloud.tsx, InstancePanels): plugins, logs, metrics, backups, superusers, payments, domains, secrets
+// the panels of a cloud instance (pages/cloud.tsx, InstancePanels): plugins, logs, metrics, backups, superusers, payments, translations, domains, secrets
 .node-tools { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;
   .label.build-queued, .label.build-building { opacity: 0.85; }
   .label.build-failed { color: var(--dangerColor, #c0392b); }
@@ -204,6 +204,19 @@
     th, td { padding: 0.2rem 0.6rem 0.2rem 0; border-bottom: 1px solid var(--baseAlt1Color); }
     td:not(:first-child), th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
     code { overflow-wrap: anywhere; }
+  }
+  // the translations status: one cell per collection and locale, the written strings over the strings there are
+  .share { display: inline-flex; align-items: center; gap: 0.4rem; justify-content: flex-end; }
+  .share-bar { flex: none; width: 3.5rem; height: 6px; border-radius: 3px; background: var(--baseAlt2Color); overflow: hidden; }
+  .share-fill { display: block; height: 100%; background: var(--pending); &.share-done { background: var(--live); } }
+  .share-count { font-variant-numeric: tabular-nums; color: var(--txtHintColor); }
+  // what is missing in a locale: one record per row, a box per field with no text yet
+  .tool-missing li { align-items: baseline; gap: 0.5rem; padding: 0.3rem 0; border-top: 1px solid var(--baseAlt1Color);
+    &:first-child { border-top: 0; }
+    > code { flex: none; min-width: 9rem; }
+  }
+  .missing-field { display: flex; gap: 0.35rem; flex: 1 1 16rem; min-width: 12rem;
+    input { flex: 1; min-width: 0; }
   }
   .tool-filters { align-items: flex-end; }
   .tool-field { display: grid; gap: 0.2rem; flex: 0 1 auto;
