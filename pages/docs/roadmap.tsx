@@ -121,10 +121,11 @@ export default function DocsRoadmap() {
 
       <h3 className="why-group">Operations</h3>
       <Item
+        left="Reading Workers Logs from inside the instance, which needs an account-scoped query API rather than the Worker's own credentials."
         title="Cloudflare's observability, as a core plugin"
-        status="open"
+        status="shipped"
         from="Every hosted competitor shows you what your backend is doing. Ours makes you go and look."
-        now="Errors reach Workers Logs if your code logs them, and the platform's own request data is there for anyone who opens the dashboard. Neither is set up for you or surfaced anywhere."
+        now="Shipped in 0.9.0-beta.37 as the observability plugin, the second core plugin. It writes one Analytics Engine data point per request (route, method, status class, collection, duration, size), turns Workers Observability on at deploy, and answers GET /api/observability/summary, /errors and /logs for a superuser: requests, errors, the error rate, p50, p95, p99, the status split and the slowest routes. The numbers come from the Analytics Engine dataset when the account id and a token with Analytics Read are set, and from the instance's own request log otherwise, and the answer says which. The cloud dashboard's metrics and logs panels read it, falling back to the older path for an instance that does not have it. Hook CPU is not measured: a Worker's clock is frozen between I/O, so any number would be waiting rather than cost."
         plan="Turn on Workers Observability at deploy so logs and traces are retained without being asked for, sample the request path into an Analytics Engine dataset the deploy already knows how to create, and put the instance's own numbers behind the admin panel: requests, errors, slow endpoints, and which hooks are costing the CPU. All of it as a core plugin, installed and on by default, which is the second of those after auth. Core because an instance you cannot see into is one you cannot operate, and a plugin because somebody who would rather send all of this somewhere else should be able to remove ours and install theirs against the same interface rather than fork the server."
         size="Small for the wiring, medium for the panel screens, and it lands after the loader like everything else that is a plugin."
       />
@@ -191,10 +192,9 @@ export default function DocsRoadmap() {
       <h3 className="why-group">The three tiers, and what "core" means</h3>
       <Item
         title="Core plugins, installed and on by default"
-        status="partly"
-        left="Observability as the second core plugin, which is the item below."
+        status="shipped"
         from="Auth leaving the core creates a problem the loader alone does not solve: an instance with no auth plugin is not a lean instance, it is a broken one. Some plugins are not optional in any useful sense."
-        now="The tiers exist in the manifest (core, official, community), auth is the first core plugin and the core list names auth@1: an instance without a provider loads, runs with nobody signed in and reports the gap on /api/plugins and in its log rather than refusing to start. Removing one is now a deliberate act: the CLI refuses without --yes and says what stops working, the installer route answers 409 unless the call carries force, and the same guard covers a plugin another installed plugin depends on. /api/plugins names each plugin's tier and whether it is core."
+        now="The tiers exist in the manifest (core, official, community), and there are two core plugins: auth and observability. An instance without a provider of a core interface loads, runs, and reports the gap on /api/plugins and in its log rather than refusing to start. Removing one is a deliberate act: the CLI refuses without --yes and says what stops working, the installer route answers 409 unless the call carries force, and the same guard covers a plugin another installed plugin depends on. /api/plugins names each plugin's tier and whether it is core."
         plan="Three tiers, and they differ in what happens if you do nothing. A core plugin is installed and enabled by default and comes with voidbase, because the instance is not usable without it: auth and observability are the two, one because nothing works without it and the other because an instance you cannot see into is one you cannot operate, and the list should stay about that short. An official plugin is ours and supported and versioned with voidbase, but it arrives because you asked for it. A community plugin is somebody else's, from our marketplace or a registry of your own. Removing a core plugin has to be possible, because replacing auth is the entire point of moving it out, but it has to be a thing you did on purpose rather than a thing that happened while you were installing something else, and the instance should say plainly what it is now missing."
         size="Small as code and worth settling early, because every later decision about defaults, upgrades and what a bare instance does hangs off it."
       />

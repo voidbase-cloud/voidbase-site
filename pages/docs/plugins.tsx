@@ -136,7 +136,7 @@ export default function DocsPlugins() {
       <CodeBlock {...PLUGIN} />
       <p>
         <strong>Three tiers</strong>, differing in what happens if you do nothing. A <code>core</code> plugin is one
-        the instance is not usable without: <code>auth</code> is the one there is, and an instance running without a
+        the instance is not usable without: <code>auth</code> and <code>observability</code> are the two, and an instance running without a
         provider of <code>auth@1</code> loads, runs with nobody signed in, and says what it is missing at boot and on{" "}
         <code>/api/plugins</code>. Taking one out is deliberate: the CLI refuses without <code>--yes</code> and says
         what stops working, and the installer route answers 409 unless the call carries <code>force</code>. The same
@@ -181,6 +181,9 @@ export default function DocsPlugins() {
           <tbody>
             <Row name="auth" on={<>On by default, tier core. <code>voidbase plugins remove auth</code> refuses without <code>--yes</code>, because it is an instance with nobody signed in.</>}>
               Provides <code>auth@1</code>: who is making a request, the fields an auth record answers to in a rule, which collections hold accounts. Owns the five auth collections and mounts every auth route (password, OAuth2, refresh, the flows, passkeys).
+            </Row>
+            <Row name="observability" on={<>On by default, tier core. <code>VOIDBASE_OBSERVABILITY_SAMPLE</code> lowers the sampling; <code>--analytics</code> adds the dataset.</>}>
+              Provides <code>observability@1</code>: one data point per request, and <code>GET /api/observability/summary</code>, <code>/errors</code> and <code>/logs</code> for a superuser. The summary answers from the Analytics Engine dataset when the account id and a token with Analytics Read are set, and from the instance&apos;s own request log otherwise, saying which.
             </Row>
             <Row name="realtime" on="On by default.">
               Provides <code>realtime@1</code>: the subscriptions, built per request over the hub binding on Workers, so the write path knows whether a change has anywhere to go.

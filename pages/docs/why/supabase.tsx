@@ -33,7 +33,7 @@ export default function VsSupabase() {
           { q: "Where it runs", vb: ["yes", "Every Cloudflare region."], them: ["depends", "The region you picked for the project."] },
           { q: "Cost when idle", vb: ["yes", "Nothing."], them: ["no", "A hosted project bills for its instance whether or not anyone visits."] },
           { q: "Realtime", vb: ["yes", "One connection per client, fanned out by a durable object. No charge per message or per connection."], them: ["depends", "Postgres changes broadcast over websockets, which is more capable. Billed by peak concurrent connections and by message."] },
-          { q: "Seeing what it is doing", vb: ["planned", "Cloudflare's logs and request data in their dashboard, an Analytics Engine data point per request when you turn it on, and the cloud page's logs, requests and errors panels for an instance it made. Nothing in the admin panel."], them: ["yes", "Logs, query performance and reports in the dashboard."] },
+          { q: "Seeing what it is doing", vb: ["depends", "The observability plugin is core, so every instance answers its own numbers: requests, errors, the error rate, p50, p95, p99, the status split and the slowest routes, from its request log or from an Analytics Engine dataset when you turn that on. The cloud page reads them per instance, and Cloudflare's own logs and request data are in their dashboard. Not in the admin panel, which is PocketBase's own build."], them: ["yes", "Logs, query performance and reports in the dashboard."] },
           { q: "Ecosystem", vb: ["no", "Young, and small. You may be the first to hit a given bug."], them: ["yes", "A company, support, and a large body of people who hit it before you."] },
         ]}
       />
