@@ -32,7 +32,7 @@ const codePreviews: Record<PreviewKey, Partial<Record<SdkLanguage, Block>>> = {
   database: {
     javascript: hl.javascript`
                 // JavaScript SDK
-                import PocketBase from 'pocketbase';
+                import PocketBase from '@voidbase-cloud/sdk';
 
                 const pb = new PocketBase('http://127.0.0.1:8090');
 
@@ -100,7 +100,7 @@ const codePreviews: Record<PreviewKey, Partial<Record<SdkLanguage, Block>>> = {
   authentication: {
     javascript: hl.javascript`
                 // JavaScript SDK
-                import PocketBase from 'pocketbase';
+                import PocketBase from '@voidbase-cloud/sdk';
 
                 const pb = new PocketBase('http://127.0.0.1:8090');
 
@@ -168,7 +168,7 @@ const codePreviews: Record<PreviewKey, Partial<Record<SdkLanguage, Block>>> = {
   storage: {
     javascript: hl.javascript`
                 // JavaScript SDK
-                import PocketBase from 'pocketbase';
+                import PocketBase from '@voidbase-cloud/sdk';
 
                 const pb = new PocketBase('http://127.0.0.1:8090');
 

@@ -1,7 +1,7 @@
 // The site's voidbase backend: the PocketBase JS SDK against the origin this site is served from (the backend
 // serves the built site from pb_public, so "/" is right in production and behind the dev proxy); PB_VB_URL points
 // somewhere else when it is set.
-import PocketBase from "pocketbase";
+import PocketBase from "@voidbase-cloud/sdk";
 
 export const VB_URL = ((import.meta.env as unknown as Record<string, string>).PB_VB_URL ?? "").replace(/\/$/, "");
 
