@@ -147,6 +147,13 @@ export default function DocsCloud() {
             <td>Secrets</td>
             <td>The Worker's secrets by name. A value is written and never read back; the managed ones are listed only.</td>
           </tr>
+          <tr>
+            <td>Members</td>
+            <td>
+              Who is on the instance, what each of them may do, and which invitations nobody has accepted yet. An
+              owner invites by email, changes a role and takes somebody off; everybody else sees the list.
+            </td>
+          </tr>
         </tbody>
       </table>
       <p>
@@ -154,6 +161,63 @@ export default function DocsCloud() {
         superuser kept; roll that upgrade back, for a week; wire another repository to it, from a template or one you
         have; delete it, which takes the Worker and everything it owns after you type the name back.
       </p>
+
+      <h2>Teams</h2>
+      <p>
+        An instance belongs to a team, not to whoever clicked first. Whoever creates one is its first owner, and
+        from the card's Members panel an owner adds anybody else by email address. Each person has one of three
+        roles, and the role is on the card so you can see at a glance what an instance is to you.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>What it reaches</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Owner</td>
+            <td>
+              Everything, including deleting the instance and changing who is on it. An instance always has at
+              least one: the last owner cannot be removed or demoted, so there is never one with nobody who may
+              hand it on.
+            </td>
+          </tr>
+          <tr>
+            <td>Admin</td>
+            <td>
+              Everything to the instance: upgrade, roll back, domains, secrets, plugins, backups, and wiring a
+              repository to it. Not deleting it, and not who is on it.
+            </td>
+          </tr>
+          <tr>
+            <td>Viewer</td>
+            <td>
+              Reads what the instance reports: logs, metrics, plugins, the backups list, the team. Changes nothing,
+              and the card offers them no button that would.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        An invitation is an email with a link. Open it signed in with the address it was sent to and you are on the
+        instance; open it as somebody else and it says which address it was for. A link works once: accepting it
+        clears it, and an invitation nobody has accepted shows on the panel as pending until they do or the owner
+        takes it back. If the site it was sent from has no mail set up, the invitation still exists and the panel
+        hands the inviter the link to send however they like.
+      </p>
+      <div className="alert alert-info">
+        <div className="content">
+          <p className="m-0">
+            What a role does not do is hand over a Cloudflare account. The instance stays where it was made, and
+            everybody on it works in that account with their own Cloudflare sign-in: this site holds each person's
+            token for them and never lends one to another. So somebody you make an admin needs their own access to
+            the account the instance lives in before an upgrade or a secret goes through; Cloudflare answers that
+            question, and the roles here answer what we let them ask.
+          </p>
+        </div>
+      </div>
 
       <h2>Setting a domain</h2>
       <p>

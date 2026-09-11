@@ -25,12 +25,14 @@ writes the whole voidbase app into `.voidbase/` in PocketBase's layout — `main
 ## What the site does, and what the browser does
 
 voidbase.cloud wraps voidbase and the user's own accounts. The site keeps four things: the sign-in (Cloudflare
-OAuth), the user's Cloudflare and GitHub tokens sealed at rest, the rows about their instances and repositories
-(`vb_instances`, `vb_repos`, written by the browser through the collections' rules), and two pass-throughs,
-`/api/vbcloud/cf/*` and `/api/vbcloud/gh/*`, which forward a call to Cloudflare's or GitHub's API with the user's
-token (Cloudflare's API sends no CORS headers, and neither token ever reaches the browser). Everything else is the
-page's own work, in `src/lib/cloud.ts`: an instance is created, upgraded and deleted with voidbase's REST code in
-the user's account; a repository is created from a template or linked, its variables set, and the instance's
+OAuth), the user's Cloudflare and GitHub tokens sealed at rest, the rows about their instances, repositories and
+teams (`vb_instances`, `vb_repos`, `vb_members`, written by the browser through the collections' rules), and two
+pass-throughs, `/api/vbcloud/cf/*` and `/api/vbcloud/gh/*`, which forward a call to Cloudflare's or GitHub's API
+with the user's token (Cloudflare's API sends no CORS headers, and neither token ever reaches the browser). An
+instance belongs to a team rather than to whoever clicked first: `vb_members` says who is on it and as what
+(owner, admin, viewer), and every place that used to ask "is this the owner" asks that. Everything else is the
+page's own work, in `src/lib/cloud.ts`: an instance is created, upgraded and deleted with voidbase's REST code
+in the user's account; a repository is created from a template or linked, its variables set, and the instance's
 Worker wired to it (the one server action left, `instances/:id/wire`, because it puts the user's GitHub token on
 their Worker); an instance's plugins are changed through the instance's own installer, with a session the owner
 mints on the instance from the page. Nothing is built for anyone's instance by anyone but its own pipeline.

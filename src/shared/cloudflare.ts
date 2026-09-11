@@ -6,6 +6,7 @@ import { authOf, pb, pbDate, type HookRecord } from "./pb";
 import { cfg } from "./config";
 import { open, seal } from "./secrets";
 import { isAdmin } from "./auth";
+import { atLeast, roleOf, type Role } from "./members";
 
 /** A usable Cloudflare API client for a signed-in user, refreshing the token when it is about to expire. */
 export async function connectionFor(uid: string): Promise<{ conn: HookRecord; cf: CfApi; accounts: CfAccount[] }> {
@@ -35,14 +36,25 @@ export async function ensureSelf(origin?: string) {
   if (changed) await pb.$app.save(row);
 }
 
-/** One instance as the /cloud page is shown it. */
-export const instanceJSON = (r: HookRecord, viewer: HookRecord | null) => ({ id: r.id, name: r.getString("name"), url: r.getString("url"), status: r.getString("status"), error: r.getString("error"), release: r.getString("release"), previousRelease: r.getString("previous_release"), upgradedAt: String(r.get("upgraded_at") ?? ""), plugins: pluginsOf(r), build: r.getString("build"), buildError: r.getString("build_error"), account: { id: r.getString("account_id"), name: r.getString("account_name") }, owner: r.getString("owner"), system: r.getBool("system"), superuserEmail: r.getString("superuser_email"), created: String(r.get("created") ?? ""), updated: String(r.get("updated") ?? ""), canDelete: !!viewer && (r.getString("owner") === viewer.id || (r.getBool("system") && isAdmin(viewer))), canLink: !!viewer && (r.getString("owner") === viewer.id || (r.getBool("system") && isAdmin(viewer))), self: !!cfg().worker && r.getString("name") === cfg().worker });
+/**
+ * One instance as the /cloud page is shown it, for one viewer. `role` is the member row that viewer holds on it
+ * (src/shared/members.ts), and it is what the card's three answers are made of: an owner deletes it and changes
+ * who is on it, an admin changes the instance, a viewer reads it. A row whose team has not been written yet falls
+ * back to its `owner` field, and a system row is still the admins' as it always was.
+ */
+export const instanceJSON = (r: HookRecord, viewer: HookRecord | null, role: Role | null = null) => {
+  const mine = !!viewer && (role ?? (r.getString("owner") === viewer.id ? "owner" : null));
+  const asAdmin = !!viewer && r.getBool("system") && isAdmin(viewer);
+  return { id: r.id, name: r.getString("name"), url: r.getString("url"), status: r.getString("status"), error: r.getString("error"), release: r.getString("release"), previousRelease: r.getString("previous_release"), upgradedAt: String(r.get("upgraded_at") ?? ""), plugins: pluginsOf(r), build: r.getString("build"), buildError: r.getString("build_error"), account: { id: r.getString("account_id"), name: r.getString("account_name") }, owner: r.getString("owner"), system: r.getBool("system"), superuserEmail: r.getString("superuser_email"), created: String(r.get("created") ?? ""), updated: String(r.get("updated") ?? ""), role: mine || null, canDelete: mine === "owner" || asAdmin, canLink: atLeast(mine || null, "admin") || asAdmin, canManageMembers: mine === "owner" && !r.getBool("system"), self: !!cfg().worker && r.getString("name") === cfg().worker };
+};
 
-/** The instance a repository may be wired to: the visitor's own, or this site's backend for admins (dogfooding). */
+/** The instance a repository may be wired to: one the visitor owns or administers, or this site's backend for
+ *  admins (dogfooding). Wiring changes what the instance deploys from, so a viewer is refused. */
 export async function linkableInstance(c: Context, uid: string, instId: string): Promise<HookRecord> {
   if (!instId) throw new pb.BadRequestError("Pick the voidbase instance the repository should use.");
   let inst: HookRecord; try { inst = (await pb.$app.findRecordById("vb_instances", instId)) as HookRecord; } catch { throw new pb.BadRequestError("Unknown instance."); }
-  if (!(inst.getString("owner") === uid || (inst.getBool("system") && isAdmin(authOf(c))))) throw new pb.ForbiddenError("That instance is not yours.");
+  const role = await roleOf(uid, inst);
+  if (!(atLeast(role, "admin") || (inst.getBool("system") && isAdmin(authOf(c))))) throw new pb.ForbiddenError(role ? "A viewer of this instance may read it, not wire a repository to it." : "That instance is not yours.");
   if (inst.getString("status") !== "live" || !inst.getString("url")) throw new pb.BadRequestError("The instance is not live yet.");
   return inst;
 }

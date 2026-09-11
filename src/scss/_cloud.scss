@@ -171,6 +171,11 @@
   .tool-row { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;
     input, select { flex: 1; min-width: 10rem; }
   }
+  // who is on the instance: the address, what they may do, and whether they have accepted yet
+  .tool-members li { align-items: baseline;
+    code { min-width: 14rem; }
+    select { max-width: 7rem; }
+  }
   // what an instance reports about its shipped plugins, and a backup's verification state
   .plugins-runs li, .tool-payments li { align-items: baseline; }
   .plugins-runs strong { min-width: 6.5rem; }

@@ -7,6 +7,13 @@
 // client runs with that session. Credentials come from this checkout (.voidbase/pb_data/.superuser-credentials,
 // vb_secrets/secrets.json) or the environment (VB_LIVE_SUPERUSER_EMAIL, VB_LIVE_SUPERUSER_PASSWORD,
 // VOIDBASE_DEPLOY_CF_API_KEY, VOIDBASE_ENCRYPTION_KEY).
+//
+// Teams are not proved here, on purpose. What is worth proving live about a team is the half this run cannot set
+// up: a second person, with their own Cloudflare access to the account the instance lives in, upgrading it or
+// setting a secret on it. There is one deploy key in this checkout and one account behind it, so a second user
+// minted here would be the same Cloudflare identity under another name, and a run that passed would have proved
+// nothing about the case it claims. The rest of the path -- inviting, accepting, each role over every route, the
+// last-owner rule -- is in test/cloud.ts, against the same backend code.
 import { sealSecret } from "@voidbase-cloud/voidbase/cloud";
 import { CloudClient, CloudError, ROLLBACK_WINDOW_DAYS, rollbackTarget } from "../src/lib/cloud";
 

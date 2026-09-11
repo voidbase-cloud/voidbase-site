@@ -43,6 +43,12 @@ export default defineSecrets({
   VOIDBASE_PROJECT_BRANCH: server(string().default("master"), "that repository's branch"),
   VOIDBASE_GH_TOKEN: secret(string().optional(), "a GitHub token with contents write on that repository, for the installer (the same value as VB_GH_TOKEN)"),
   VB_SYSTEM_PROJECTS: server(string().optional(), "repositories this site manages as system instances beside its own, `owner/name=worker@https://url` comma separated (the demo)"),
+  // what makes this site able to send mail at all: the sending domain the deploy names, which is what gives the
+  // Worker its SEND_EMAIL binding. Set it and put a sender address on that domain in the admin panel's settings,
+  // and a team invitation (routes/api/vbcloud/instances/[id]/members) goes out by mail; leave it unset and the
+  // invitation is still made and the panel hands the inviter the link to send themselves. SMTP in the settings, or
+  // VOIDBASE_MAIL_HTTP_URL, does the same job (src/shared/mail.ts).
+  VOIDBASE_MAIL_DOMAIN: server(string().optional(), "the domain this site sends mail from (team invitations); without it, and without SMTP, an invitation is a link to pass on by hand"),
   // the builds the control plane starts (src/shared/builder.ts, workflows/instance-build.ts): found by name, never kept as uuids
   // the landing page's live cursors (voidbase/docs/deploy.md): the newest three visitors hold a slot and may send
   // their cursor, everyone else watches over the connection they already have. Nothing is written to the database.

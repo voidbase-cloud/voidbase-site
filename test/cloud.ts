@@ -495,6 +495,118 @@ try {
   const ghs3 = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   check("disconnect removes the connection and revokes the grant on GitHub", disc.json.disconnected === true && ghs3.grantRevoked === 1 && (await api("GET", "/api/vbcloud/github", undefined, U)).json.connected === false, JSON.stringify(disc.json));
 
+
+  // ---- teams: an instance belongs to a team, not to whoever clicked first --------------------------------------
+  // Three more users, minted the way test/cloud-provision.ts mints one (a users row and an impersonated session):
+  // the Cloudflare sign-in is not the point here, the membership is.
+  const mkUser = async (email: string) => {
+    const password = "team-password-1";
+    const made = await api("POST", "/api/collections/users/records", { email, password, passwordConfirm: password, name: email.split("@")[0], verified: true }, SU);
+    const session = await api("POST", `/api/collections/users/impersonate/${made.json.id}`, { duration: 3600 }, SU);
+    return { id: String(made.json.id), token: String(session.json.token), email };
+  };
+  const partner = await mkUser("partner@example.com");   // becomes an admin of the instance
+  const reader = await mkUser("reader@example.com");     // becomes a viewer
+  const stranger = await mkUser("stranger@example.com"); // is never on it at all
+  const members = (token: string) => api("GET", `/api/vbcloud/instances/${inst.id}/members`, undefined, token);
+  const memberRow = async (email: string) => ((await members(U)).json.members ?? []).find((m: Record<string, unknown>) => m.email === email) as Record<string, any> | undefined; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const listedFor = async (token: string) => ((await api("GET", "/api/vbcloud/instances", undefined, token)).json.instances ?? []).find((i: Record<string, unknown>) => i.id === inst.id) as Record<string, any> | undefined; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+  const shape = (await api("GET", "/api/collections/vb_members", undefined, SU)).json;
+  const field = (name: string) => (shape.fields ?? []).find((f: Record<string, unknown>) => f.name === name) as Record<string, any> | undefined; // eslint-disable-line @typescript-eslint/no-explicit-any
+  check("the migration: vb_members holds the instance, the user it is bound to once accepted, the lowercased email, the role, who invited and the invitation's hidden token",
+    field("instance")?.type === "relation" && field("instance")?.required === true && field("instance")?.cascadeDelete === true
+    && field("user")?.type === "relation" && field("user")?.required === false && field("user")?.cascadeDelete === true
+    && field("email")?.type === "text" && field("email")?.required === true && String(field("email")?.pattern).includes("A-Z")
+    && field("role")?.type === "select" && JSON.stringify(field("role")?.values) === JSON.stringify(["owner", "admin", "viewer"])
+    && field("invited_by")?.type === "relation" && field("token")?.hidden === true && field("accepted_at")?.type === "date",
+    JSON.stringify(shape.fields));
+  check("the migration: a member lists and views the team, an owner changes a role, and creating and removing are the routes' alone",
+    /vb_members_via_instance\.user/.test(String(shape.listRule)) && /vb_members_via_instance\.user/.test(String(shape.viewRule))
+    && shape.createRule === null && shape.deleteRule === null
+    && /role \?= 'owner'/.test(String(shape.updateRule)) && /@request\.body\.token:isset = false/.test(String(shape.updateRule)) && /@request\.body\.user:isset = false/.test(String(shape.updateRule)),
+    JSON.stringify({ list: shape.listRule, create: shape.createRule, update: shape.updateRule, delete: shape.deleteRule }));
+
+  const team0 = await members(U);
+  check("the creator is the instance's owner member, written when the row was created", team0.status === 200 && team0.json.role === "owner" && team0.json.members.length === 1 && team0.json.members[0].email === "owner@example.com" && team0.json.members[0].role === "owner" && team0.json.members[0].pending === false && Object.keys(team0.json.reach ?? {}).length === 3, JSON.stringify(team0.json));
+  // an instance that predates the team: the migration backfills what existed, and the listing heals what it missed
+  await api("DELETE", `/api/collections/vb_members/records/${team0.json.members[0].id}`, undefined, SU);
+  const orphaned = (await members(U)).json.members ?? [];
+  const healedRow = await listedFor(U);
+  const healed = (await members(U)).json.members ?? [];
+  check("an instance with no team gains its owner member from its owner field, and the card says owner", orphaned.length === 0 && healed.length === 1 && healed[0].role === "owner" && healed[0].email === "owner@example.com" && healedRow?.role === "owner" && healedRow?.canDelete === true && healedRow?.canManageMembers === true, JSON.stringify({ orphaned, healed, card: { role: healedRow?.role, canDelete: healedRow?.canDelete } }));
+
+  const strangerTeam = await members(stranger.token);
+  const strangerRow = await api("GET", `/api/collections/vb_instances/records/${inst.id}`, undefined, stranger.token);
+  check("somebody who is not on the instance sees neither it nor its team", strangerTeam.status === 403 && /not on this instance/.test(strangerTeam.json.message ?? "") && strangerRow.status === 404 && !(await listedFor(stranger.token)), JSON.stringify({ team: strangerTeam.status, row: strangerRow.status }));
+
+  // ---- the invitation: a row with a token, a link, and mail when this site can send any
+  const invited = await api("POST", `/api/vbcloud/instances/${inst.id}/members`, { email: "Partner@Example.com", role: "admin" }, U);
+  const token = String(invited.json.invitation ?? "").split("invitation=")[1] ?? "";
+  check("an owner invites by email: the row is written lowercased and pending, and the answer carries the link", invited.status === 200 && invited.json.member.email === "partner@example.com" && invited.json.member.role === "admin" && invited.json.member.pending === true && String(invited.json.invitation).includes("/cloud?invitation=") && token.length > 20, JSON.stringify(invited.json));
+  check("with no mail configured on this site the row still stands and the answer says so, naming the link as the only way in", invited.json.mailed === false && invited.json.via === "none" && /Nothing on this site can send mail/.test(String(invited.json.note)) && /Send them the invitation link yourself/.test(String(invited.json.note)), JSON.stringify({ mailed: invited.json.mailed, via: invited.json.via, note: invited.json.note }));
+  const twice = await api("POST", `/api/vbcloud/instances/${inst.id}/members`, { email: "partner@example.com", role: "viewer" }, U);
+  const badRole = await api("POST", `/api/vbcloud/instances/${inst.id}/members`, { email: "nobody@example.com", role: "wizard" }, U);
+  const badAddress = await api("POST", `/api/vbcloud/instances/${inst.id}/members`, { email: "not an address", role: "viewer" }, U);
+  check("one address is one row, and a role is one of the three", twice.status === 400 && /already on/.test(twice.json.message ?? "") && badRole.status === 400 && /owner, admin, viewer/.test(badRole.json.message ?? "") && badAddress.status === 400, JSON.stringify([twice.json.message, badRole.json.message, badAddress.json.message]));
+
+  const mismatched = await api("POST", `/api/vbcloud/invitations/${token}/accept`, {}, stranger.token);
+  check("an invitation is to a person: signed in as somebody else it is refused, saying which address it was sent to", mismatched.status === 403 && /sent to partner@example.com/.test(mismatched.json.message ?? "") && /stranger@example.com/.test(mismatched.json.message ?? ""), JSON.stringify(mismatched.json));
+  const accepted = await api("POST", `/api/vbcloud/invitations/${token}/accept`, {}, partner.token);
+  const replay = await api("POST", `/api/vbcloud/invitations/${token}/accept`, {}, partner.token);
+  const pending = await memberRow("partner@example.com");
+  check("accepting binds the signed-in user to the row and clears the token, so the link works once and never again", accepted.status === 200 && accepted.json.accepted === true && accepted.json.member.pending === false && accepted.json.instance?.name === "vb-my-shop" && replay.status === 404 && /not open any more/.test(replay.json.message ?? "") && pending?.pending === false && pending?.user === partner.id, JSON.stringify({ accepted: accepted.json.member, replay: replay.json.message }));
+
+  const partnerCard = await listedFor(partner.token);
+  check("the instance list shows the ones a team put you on, with the role on the card", !!partnerCard && partnerCard.role === "admin" && partnerCard.canLink === true && partnerCard.canDelete === false && partnerCard.canManageMembers === false && partnerCard.name === "vb-my-shop", JSON.stringify(partnerCard));
+
+  // ---- the viewer, and what each role reaches over the routes
+  const readerInvite = await api("POST", `/api/vbcloud/instances/${inst.id}/members`, { email: reader.email, role: "viewer" }, U);
+  await api("POST", `/api/vbcloud/invitations/${String(readerInvite.json.invitation).split("invitation=")[1]}/accept`, {}, reader.token);
+  const readerCard = await listedFor(reader.token);
+  const readerTeam = await members(reader.token);
+  check("a viewer is on the instance: it is listed to them, they see the whole team, and the card offers them nothing", !!readerCard && readerCard.role === "viewer" && readerCard.canDelete === false && readerCard.canLink === false && readerCard.canManageMembers === false && readerTeam.status === 200 && readerTeam.json.members.length === 3 && readerTeam.json.role === "viewer", JSON.stringify({ card: readerCard?.role, team: readerTeam.json.members?.map((m: Record<string, unknown>) => `${m.email}:${m.role}`) }));
+
+  const writes: Record<string, number> = {};
+  const attempt = async (label: string, r: Promise<{ status: number }>) => { writes[label] = (await r).status; };
+  await attempt("patch the row", api("PATCH", `/api/collections/vb_instances/records/${inst.id}`, { error: "viewer was here" }, reader.token));
+  await attempt("delete the row", api("DELETE", `/api/collections/vb_instances/records/${inst.id}`, undefined, reader.token));
+  await attempt("invite somebody", api("POST", `/api/vbcloud/instances/${inst.id}/members`, { email: "someone@example.com", role: "viewer" }, reader.token));
+  await attempt("remove somebody", api("DELETE", `/api/vbcloud/instances/${inst.id}/members/${pending!.id}`, undefined, reader.token));
+  await attempt("wire a repository", api("POST", `/api/vbcloud/instances/${inst.id}/wire`, { repository: "octo-tester/existing" }, reader.token));
+  const readerCf = await api("POST", "/api/vbcloud/cf/accounts/acc123/workers/scripts/vb-my-shop/secrets", { name: "X", text: "y" }, reader.token);
+  const readerGh = await api("POST", "/api/vbcloud/gh/repos/octo-tester/existing/actions/variables", { name: "PB_VB_URL", value: "http://elsewhere.test" }, reader.token);
+  writes["change the Worker"] = readerCf.status; writes["repoint the repository"] = readerGh.status;
+  check("a viewer is refused every write: the row, the team, the wiring, the Worker through the Cloudflare pass-through and the repository through the GitHub one", Object.values(writes).every((s) => s === 400 || s === 403 || s === 404) && /viewer reads what the instance reports/.test(readerCf.json.message ?? "") && /you are a viewer of it/.test(readerGh.json.message ?? ""), JSON.stringify(writes));
+  const stillClean = (await api("GET", `/api/collections/vb_instances/records/${inst.id}`, undefined, U)).json;
+  check("and nothing of the viewer's writes landed", stillClean.error !== "viewer was here" && stillClean.id === inst.id, JSON.stringify({ error: stillClean.error }));
+
+  const adminPatch = await api("PATCH", `/api/collections/vb_instances/records/${inst.id}`, { error: "" }, partner.token);
+  const adminDelete = await api("DELETE", `/api/collections/vb_instances/records/${inst.id}`, undefined, partner.token);
+  const adminInvite = await api("POST", `/api/vbcloud/instances/${inst.id}/members`, { email: "someone@example.com", role: "viewer" }, partner.token);
+  const adminRemove = await api("DELETE", `/api/vbcloud/instances/${inst.id}/members/${pending!.id}`, undefined, partner.token);
+  const adminCf = await api("POST", "/api/vbcloud/cf/accounts/acc123/workers/scripts/vb-my-shop/secrets", { name: "X", text: "y" }, partner.token);
+  const adminGh = await api("POST", "/api/vbcloud/gh/repos/octo-tester/existing/actions/variables", { name: "PB_VB_URL", value: inst.url }, partner.token);
+  check("an admin changes the instance and nothing else: the row yes, deleting it no, the team no; the two pass-throughs let them through to their own Cloudflare and GitHub, which is where it stops",
+    adminPatch.status === 200 && (adminDelete.status === 403 || adminDelete.status === 404) && adminInvite.status === 403 && adminRemove.status === 403
+    && adminCf.status === 400 && /Connect your Cloudflare account first/.test(adminCf.json.message ?? "")
+    && adminGh.status === 400 && /Connect your GitHub account first/.test(adminGh.json.message ?? ""),
+    JSON.stringify({ patch: adminPatch.status, del: adminDelete.status, invite: adminInvite.json.message, remove: adminRemove.json.message, cf: adminCf.json.message, gh: adminGh.json.message }));
+
+  // ---- the last owner stays, on a removal and on a role change alike
+  const ownerMember = await memberRow("owner@example.com");
+  const dropLastOwner = await api("DELETE", `/api/vbcloud/instances/${inst.id}/members/${ownerMember!.id}`, undefined, U);
+  const demoteLastOwner = await api("PATCH", `/api/collections/vb_members/records/${ownerMember!.id}`, { role: "viewer" }, U);
+  check("the last owner stays: neither the route nor the role rule will leave an instance with nobody who may delete it or change who is on it", dropLastOwner.status === 400 && /last owner/.test(dropLastOwner.json.message ?? "") && demoteLastOwner.status === 400 && /last owner/.test(demoteLastOwner.json.message ?? ""), JSON.stringify([dropLastOwner.json.message, demoteLastOwner.json.message]));
+  const promote = await api("PATCH", `/api/collections/vb_members/records/${pending!.id}`, { role: "owner" }, U);
+  const forged = await api("PATCH", `/api/collections/vb_members/records/${pending!.id}`, { email: "someone@example.com" }, U);
+  const demoteAgain = await api("PATCH", `/api/collections/vb_members/records/${pending!.id}`, { role: "admin" }, U);
+  check("an owner changes a role through the collection, and only a role: the email, the user, the token and the acceptance are the routes'", promote.status === 200 && promote.json.role === "owner" && (forged.status === 400 || forged.status === 403) && demoteAgain.status === 200 && demoteAgain.json.role === "admin", JSON.stringify({ promote: promote.json.role, forged: forged.status, demoted: demoteAgain.json.role }));
+  const viewerPromotes = await api("PATCH", `/api/collections/vb_members/records/${pending!.id}`, { role: "owner" }, reader.token);
+  check("a viewer cannot make themselves anything", viewerPromotes.status === 400 || viewerPromotes.status === 403 || viewerPromotes.status === 404, String(viewerPromotes.status));
+  const removed = await api("DELETE", `/api/vbcloud/instances/${inst.id}/members/${(await memberRow(reader.email))!.id}`, undefined, U);
+  check("an owner takes somebody off, and the instance is gone from their list", removed.status === 200 && removed.json.email === reader.email && !(await listedFor(reader.token)) && (await members(U)).json.members.length === 2, JSON.stringify(removed.json));
+
   // ---- delete, from the browser: everything of the instance goes, then the row
   const del = await client.deleteInstance(inst);
   const st2 = await cfState();

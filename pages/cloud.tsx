@@ -51,8 +51,21 @@ interface Instance {
   upgradedAt?: string;
   error?: string;
   superuserEmail?: string;
+  /** the signed-in visitor's role on this instance: "owner" | "admin" | "viewer", null when it is a system row */
+  role?: string | null;
   canDelete?: boolean;
   canLink?: boolean;
+  canManageMembers?: boolean;
+}
+
+/** one person on an instance; `pending` is an invitation nobody has accepted yet */
+interface Member {
+  id: string;
+  email: string;
+  role: string;
+  pending: boolean;
+  user?: string;
+  acceptedAt?: string;
 }
 
 interface Github {
@@ -902,6 +915,92 @@ function PaymentsPanel({ inst, client, session }: { inst: Instance; client: Clou
   );
 }
 
+/** the three roles in the order they reach, for the invite form and for the line under the list */
+const ROLES = ["owner", "admin", "viewer"] as const;
+
+/**
+ * Who is on the instance. An instance belongs to a team, not to whoever clicked first: every member sees the whole
+ * list, pending invitations included, and an owner is the one who adds somebody, changes what they may do and takes
+ * them off again. An admin and a viewer see the list and no controls.
+ *
+ * This panel talks to the site, not to the instance, so it needs no superuser session: membership is the site's
+ * half of voidbase.cloud, like the rows it keeps about instances and repositories.
+ */
+function MembersPanel({ inst }: { inst: Instance }) {
+  const [list, setList] = useState<Member[] | null>(null);
+  const [reach, setReach] = useState<Record<string, string>>({});
+  const [role, setRole] = useState(inst.role ?? "");
+  const [form, setForm] = useState({ email: "", role: "viewer" });
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [link, setLink] = useState("");
+  const [working, setWorking] = useState("");
+  const refresh = () =>
+    cloud<{ members: Member[]; role: string; reach: Record<string, string> }>("GET", `/api/vbcloud/instances/${inst.id}/members`)
+      .then((r) => { setList(r.members); setReach(r.reach); setRole(r.role); })
+      .catch((err) => setError(errorMessage(err)));
+  useEffect(() => { refresh(); }, [inst.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  async function act(step: string, fn: () => Promise<string | void>) {
+    setWorking(step); setError(""); setNotice(""); setLink("");
+    try { const said = await fn(); if (said) setNotice(said); await refresh(); }
+    catch (err) { setError(errorMessage(err)); }
+    finally { setWorking(""); }
+  }
+  // the card already knows, so the controls are right on the first paint; the route's answer settles it
+  const owner = role ? role === "owner" : !!inst.canManageMembers;
+  const invite = () => act("invite", async () => {
+    const r = await cloud<{ member: Member; invitation: string; mailed: boolean; note: string }>("POST", `/api/vbcloud/instances/${inst.id}/members`, { email: form.email, role: form.role });
+    setForm({ email: "", role: "viewer" });
+    if (!r.mailed) setLink(r.invitation);
+    return r.note;
+  });
+  return (
+    <>
+      {error && <p className="node-error">{error}</p>}
+      {notice && <p className="txt-hint">{notice}</p>}
+      {link && <p className="txt-hint">The invitation link: <Copyable text={link} /></p>}
+      <ul className="tool-members">
+        {list?.map((m) => (
+          <li key={m.id}>
+            <code>{m.email}</code>
+            {owner ? (
+              <select value={m.role} disabled={!!working} aria-label={`What ${m.email} may do`} onChange={(e) => act("role:" + m.id, async () => { await cloud("PATCH", `/api/collections/vb_members/records/${m.id}`, { role: e.target.value }); return `${m.email} is ${e.target.value} now.`; })}>
+                {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+            ) : <span className="label label-sm">{m.role}</span>}
+            {m.pending && <span className="label label-sm" title="Invited; nothing until they open the link and accept">invitation pending</span>}
+            {owner && (
+              <button type="button" className="btn btn-xs btn-secondary btn-danger" disabled={!!working} onClick={() => { if (confirm(`Take ${m.email} off ${inst.name}?\n\nThe instance stays where it is; they stop seeing it here.`)) act("remove:" + m.id, async () => { await cloud("DELETE", `/api/vbcloud/instances/${inst.id}/members/${m.id}`); return `${m.email} is off ${inst.name}.`; }); }}>
+                {working === "remove:" + m.id ? "Removing…" : "Remove"}
+              </button>
+            )}
+          </li>
+        ))}
+        {list && !list.length && <li className="txt-hint">nobody yet</li>}
+      </ul>
+      {owner ? (
+        <form className="tool-row" onSubmit={(e) => { e.preventDefault(); invite(); }}>
+          <input type="email" placeholder="somebody@example.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+          <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} aria-label="What they may do">
+            {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+          <button type="submit" className="btn btn-xs btn-secondary" disabled={!!working}>{working === "invite" ? "Inviting…" : "Invite"}</button>
+        </form>
+      ) : (
+        <p className="txt-hint">You are {role || "not on this instance"}; an owner adds people and takes them off.</p>
+      )}
+      <ul className="plugins-runs">
+        {ROLES.map((r) => <li key={r}><strong>{r}</strong><span>{reach[r] ?? ""}</span></li>)}
+      </ul>
+      <p className="txt-hint">
+        An invitation goes out by mail from this site and is a link the person opens, signed in with the address it
+        was sent to. The instance itself does not change hands: it stays in the Cloudflare account it was made in,
+        and everybody works in that account with their own Cloudflare sign-in.
+      </p>
+    </>
+  );
+}
+
 /**
  * The summary each card shows, asked for once per instance and kept for the page's life: the panels below it
  * refresh on demand, the card's line does not. An instance whose call fails, 404 or otherwise, is remembered as
@@ -945,6 +1044,7 @@ function InstancePanels({ inst, client, repo }: { inst: Instance; client: CloudC
       <Collapsible id="backups" label="Backups" open={open} setOpen={setOpen}>{onInstance((s) => <BackupsPanel inst={inst} client={client} session={s} />)}</Collapsible>
       <Collapsible id="superusers" label="Superusers" open={open} setOpen={setOpen}>{onInstance((s) => <SuperusersPanel inst={inst} client={client} session={s} />)}</Collapsible>
       <Collapsible id="payments" label="Payments" open={open} setOpen={setOpen}>{onInstance((s) => <PaymentsPanel inst={inst} client={client} session={s} />)}</Collapsible>
+      {!inst.system && <Collapsible id="members" label="Members" open={open} setOpen={setOpen}><MembersPanel inst={inst} /></Collapsible>}
       {!inst.system && (
         <>
           <Collapsible id="domains" label="Domains" open={open} setOpen={setOpen}><DomainsPanel inst={inst} client={client} session={session} repo={repo} onSession={setSession} /></Collapsible>
@@ -957,6 +1057,13 @@ function InstancePanels({ inst, client, repo }: { inst: Instance; client: CloudC
 
 const client = new CloudClient(VB_URL || "", () => vb().authStore.token);
 const meId = () => String((vb().authStore.record as { id?: string } | null)?.id ?? "");
+
+// An invitation arrives as /cloud?invitation=<token>. Accepting it needs a signed-in user, and signing in with
+// Cloudflare leaves the page and comes back, so the token is kept for this tab across that round trip and nowhere
+// else. It is cleared the moment it is used, refused or replaced.
+const INVITATION = "vb-cloud-invitation";
+const stash = (token: string | null) => { try { if (token) sessionStorage.setItem(INVITATION, token); else sessionStorage.removeItem(INVITATION); } catch { /* a browser that keeps nothing */ } };
+const stashed = () => { try { return sessionStorage.getItem(INVITATION) ?? ""; } catch { return ""; } };
 
 export default function Cloud() {
   const [ready, setReady] = useState(false);
@@ -1176,11 +1283,27 @@ export default function Cloud() {
     setPanel(null);
   }
 
-  // the mount effect runs once, but the auth subscription it opens has to reach the current `me` and `load` the way
-  // Svelte's closures reached the live values; this ref, refreshed after every render, stands in for that
-  const latest = useRef({ me, load });
+  /** an invitation link opened here: bind this user to the row it names, then show what they are now on */
+  async function acceptInvitation(token: string) {
+    setError("");
+    setNotice("");
+    try {
+      const r = await cloud<{ instance?: { name?: string } }>("POST", `/api/vbcloud/invitations/${encodeURIComponent(token)}/accept`);
+      setNotice(`You are on ${r.instance?.name || "the instance"} now.`);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      stash(null);
+      await load();
+    }
+  }
+
+  // the mount effect runs once, but the auth subscription it opens has to reach the current `me`, `load` and
+  // `acceptInvitation` the way Svelte's closures reached the live values; this ref, refreshed after every render,
+  // stands in for that
+  const latest = useRef({ me, load, acceptInvitation });
   useEffect(() => {
-    latest.current = { me, load };
+    latest.current = { me, load, acceptInvitation };
   });
 
   useEffect(() => {
@@ -1191,11 +1314,25 @@ export default function Cloud() {
     if (q.get("github") === "connected") setNotice("GitHub connected.");
     else if (q.get("github") === "error") setError("GitHub: " + (q.get("message") || "sign-in failed"));
     if (q.has("github")) history.replaceState(null, "", location.pathname);
+    // an invitation link: kept for this tab, because signing in with Cloudflare leaves the page and comes back
+    if (q.has("invitation")) {
+      stash(q.get("invitation"));
+      history.replaceState(null, "", location.pathname);
+    }
     const unsub = pb.authStore.onChange(() => {
       setSignedIn(pb.authStore.isValid);
-      if (pb.authStore.isValid && !latest.current.me) latest.current.load();
+      if (!pb.authStore.isValid) return;
+      const token = stashed();
+      if (token) latest.current.acceptInvitation(token);
+      else if (!latest.current.me) latest.current.load();
     });
-    if (pb.authStore.isValid) latest.current.load();
+    if (pb.authStore.isValid) {
+      const token = stashed();
+      if (token) latest.current.acceptInvitation(token);
+      else latest.current.load();
+    } else if (stashed()) {
+      setNotice("Sign in with Cloudflare, with the address the invitation was sent to, and it is accepted from here.");
+    }
     setReady(true);
     return unsub;
   }, []);
@@ -1217,6 +1354,11 @@ export default function Cloud() {
               </p>
             </div>
           </header>
+          {notice && (
+            <div className="alert alert-info">
+              <div className="content">{notice}</div>
+            </div>
+          )}
           <div className="signin">
             <CloudflareSignIn className="btn btn-lg btn-primary" />
             <p className="txt-hint">
@@ -1465,6 +1607,11 @@ export default function Cloud() {
                       {inst.self && (
                         <span className="label label-sm" title="The backend serving this very page">
                           this site's backend
+                        </span>
+                      )}
+                      {inst.role && !inst.system && (
+                        <span className="label label-sm" title={`What you may do to ${inst.name}`}>
+                          {inst.role}
                         </span>
                       )}
                       <span className="label label-sm status">{inst.status}</span>
