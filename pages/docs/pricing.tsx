@@ -16,6 +16,16 @@ function Fact({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
+const CF = {
+  workers: "https://developers.cloudflare.com/workers/platform/pricing/",
+  d1: "https://developers.cloudflare.com/d1/platform/pricing/",
+  durable: "https://developers.cloudflare.com/durable-objects/platform/pricing/",
+  ai: "https://developers.cloudflare.com/workers-ai/platform/pricing/",
+  email: "https://developers.cloudflare.com/email-service/",
+  analytics: "https://developers.cloudflare.com/analytics/analytics-engine/pricing/",
+  builds: "https://developers.cloudflare.com/workers/ci-cd/builds/limits-and-pricing/",
+};
+
 export default function DocsPricing() {
   return (
     <article className="pricing">
@@ -23,8 +33,8 @@ export default function DocsPricing() {
         <span className="pricing-eyebrow">Pricing</span>
         <p className="pricing-word">Free</p>
         <p className="pricing-claim">
-          The server, the admin panel, the CLI and every official plugin we ship. There is no paid edition, no licence
-          key, and no plan above this one.
+          The server, the admin panel, the CLI, the SDK and every official plugin we ship. There is no paid edition,
+          no licence key, and no plan above this one.
         </p>
       </div>
 
@@ -52,6 +62,74 @@ export default function DocsPricing() {
 
       <CloudflareCost />
 
+      <h2 id="knobs">What a knob turns on</h2>
+      <p className="pricing-lead">
+        The calculator prices the instance as it deploys by default: a Worker, a D1 database, an R2 bucket and the
+        realtime hub. A few deploy knobs add a Cloudflare product that has a line of its own, off unless you set
+        them. The rates below are the ones written in voidbase's own documentation when each knob shipped; they change,
+        and the linked pages are the ones that count.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Knob</th>
+            <th>What it adds</th>
+            <th>What Cloudflare meters</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>VOIDBASE_DATABASE=durable</code></td>
+            <td>The instance's data in a SQLite-backed Durable Object instead of D1, so a batch is one transaction.</td>
+            <td>
+              Object requests past the first million, duration while the object is active, and its storage at the
+              same per-row rates as D1 plus a per-GB-month charge. Every query is a request to the object, so a chatty
+              request costs more here than on D1 and an idle instance costs its storage.{" "}
+              <a href={CF.durable} target="_blank" rel="noreferrer noopener">Durable Objects pricing</a>
+            </td>
+          </tr>
+          <tr>
+            <td><code>VOIDBASE_AI=1</code></td>
+            <td>The Workers AI binding and the <code>ai</code> plugin's chat over the instance.</td>
+            <td>
+              Neurons, with a daily free allowance. Nothing is created on the account; the bill follows the calls.{" "}
+              <a href={CF.ai} target="_blank" rel="noreferrer noopener">Workers AI pricing</a>
+            </td>
+          </tr>
+          <tr>
+            <td><code>VOIDBASE_MAIL_DOMAIN</code></td>
+            <td>Outbound mail through Cloudflare Email Sending, from the instance's own domain.</td>
+            <td>
+              In beta on the Workers Paid plan when this was written, so the plan's minimum applies before any mail
+              does. <a href={CF.email} target="_blank" rel="noreferrer noopener">Email Service</a>
+            </td>
+          </tr>
+          <tr>
+            <td><code>--analytics</code></td>
+            <td>One Analytics Engine data point per request, queryable in the dashboard and the SQL API.</td>
+            <td>
+              Per million data points. The account has to enable Analytics Engine once.{" "}
+              <a href={CF.analytics} target="_blank" rel="noreferrer noopener">Analytics Engine pricing</a>
+            </td>
+          </tr>
+          <tr>
+            <td><code>voidbase sync</code></td>
+            <td>A build on Cloudflare Workers Builds on every push.</td>
+            <td>
+              Build minutes: 3,000 a month on the free plan, 6,000 on the paid one and then per minute, with one
+              concurrent build on the free plan.{" "}
+              <a href={CF.builds} target="_blank" rel="noreferrer noopener">Workers Builds limits and pricing</a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p className="txt-hint txt-sm">
+        Preview instances count as instances: each has its own database, bucket and queue on the same account, and the
+        free plan allows 10 D1 databases. The rates the calculator uses are on{" "}
+        <a href={CF.workers} target="_blank" rel="noreferrer noopener">Workers pricing</a> and{" "}
+        <a href={CF.d1} target="_blank" rel="noreferrer noopener">D1 pricing</a>.
+      </p>
+
       <h2>Then how does this pay for itself?</h2>
       <p className="pricing-lead">
         Honestly, this is the part most open projects are vague about, so here is the plan in the order we expect it
@@ -65,8 +143,10 @@ export default function DocsPricing() {
           that looks like, including the part where it is not open yet.
         </li>
         <li>
-          <strong>Official plugins and themes, free.</strong> As many as we can write. An ecosystem does not start
-          behind a paywall, and a backend with nothing to install is a backend you have to finish yourself.
+          <strong>Official plugins, free.</strong> As many as we can write, and the ones that exist ship with
+          voidbase: backups, domains, previews, mail, the API description and the MCP server, SEO, translations,
+          three payment providers and the AI chat. An ecosystem does not start behind a paywall, and a backend with
+          nothing to install is a backend you have to finish yourself.
         </li>
         <li>
           <strong>A subscription, later, for the specialised ones.</strong> A growing basket of official plugins and
@@ -74,14 +154,15 @@ export default function DocsPricing() {
           yesterday.
         </li>
         <li>
-          <strong>A marketplace where other people earn.</strong> If you write a plugin or a theme worth paying for,
-          you should be able to charge for it. That is the point of building the marketplace rather than a plugin
+          <strong>A marketplace where other people earn.</strong> The marketplace lists templates and plugins today
+          and nobody is paid through it yet. If you write a plugin or a theme worth paying for, you should be able to
+          charge for it and keep what you earn. That is the point of building a marketplace rather than a plugin
           directory.
         </li>
       </ol>
 
       <p>
-        All of that is a plan and none of it is built. It is written down properly on{" "}
+        The first two are how it works now; the last two are plans. They are written down properly on{" "}
         <Link href="/docs/roadmap">the roadmap</Link>, with what each piece actually involves.
       </p>
 

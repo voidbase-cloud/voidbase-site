@@ -28,7 +28,7 @@ export default function VsFirebase() {
           { q: "Self-host", vb: ["yes", "It is the only mode. There is no hosted product to depend on."], them: ["no", "No. The emulator is for local development, not production."] },
           { q: "Database", vb: ["yes", "SQLite through D1. A schema, relations, and SQL underneath."], them: ["depends", "Documents, no joins, no SQL. Simpler until you need a join."] },
           { q: "Realtime", vb: ["yes", "Subscribe to a collection over one connection. Pushes are not billed per message."], them: ["depends", "Mature listeners, wired into the offline cache. Every document a listener receives is billed as a read, so fan-out multiplies the bill by subscriber count."] },
-          { q: "Offline on the device", vb: ["planned", "Nothing built in today. A service worker that queues writes is the next piece."], them: ["yes", "Writes queue on the device and reconcile. A decade of work behind it."] },
+          { q: "Offline on the device", vb: ["depends", "The SDK's offline queue: a write made without a network answers at once and replays on reconnect. Reads through a local store are not built, and are on the roadmap."], them: ["yes", "Writes queue on the device and reconcile. A decade of work behind it."] },
           { q: "Client platforms", vb: ["depends", "Good JavaScript and Dart clients. Others are community built."], them: ["yes", "iOS, Android, Unity, Flutter and C++, maintained by Google."] },
           { q: "The rest of the box", vb: ["no", "A backend. No crash reporting, push or analytics."], them: ["yes", "Crashlytics, messaging, analytics and remote config, wired together."] },
           { q: "Cost when idle", vb: ["yes", "Nothing. Workers bill per request and CPU time."], them: ["depends", "Free tier, then per read, write and delete."] },
@@ -40,8 +40,9 @@ export default function VsFirebase() {
       <h2>What Firebase does better</h2>
       <p>
         Offline. The Firebase SDKs cache writes on the device and reconcile them when the network comes back, and
-        that has been working for a decade. If your app has to keep functioning on a train, Firebase has already
-        solved a problem voidbase has not.
+        that has been working for a decade. voidbase's SDK has the write half, a queue that replays on reconnect,
+        and not the read half: a read that fails offline still fails. If your app has to keep showing data on a
+        train, Firebase has already solved a problem voidbase has not.
       </p>
       <p>
         The rest of the box, too. Crash reporting, push notifications, analytics and remote config are all there and
@@ -71,7 +72,7 @@ export default function VsFirebase() {
         <div className="why-pick is-them">
           <h3>Pick Firebase if</h3>
           <p>
-            Your app is mobile first and needs real offline behaviour, or you want analytics and messaging in the
+            Your app is mobile first and needs offline reads, or you want analytics and messaging in the
             same place as the data, or your team already knows the console and would rather spend the time on the
             product.
           </p>

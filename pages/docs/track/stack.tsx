@@ -7,16 +7,29 @@ import CodeBlock from "@/components/CodeBlock";
 import { hl } from "@/lib/hl";
 import TrackFrom from "@/components/TrackFrom";
 
-const SCAFFOLD = hl.bash`bunx void init my-app
-cd my-app
+const SCAFFOLD = hl.bash`bun add void
+bunx void init                       # asks which framework and starter
 bun add @voidbase-cloud/voidbase`;
+
+const CONFIG = hl.typescript`// vite.config.ts
+import { defineConfig } from "vite";
+import { voidPlugin } from "void";
+import { voidbaseAdapter } from "@voidbase-cloud/voidbase/adapter/plugin";
+
+export default defineConfig({ plugins: [voidPlugin(), voidbaseAdapter()] });`;
 
 const EXPORT = hl.bash`bunx @voidbase-cloud/voidbase export ./snapshot --url https://blog-api.example.workers.dev --admin you@example.com:your-password`;
 
-const MIGRATION = hl.bash`bunx @voidbase-cloud/voidbase import ./snapshot/collections.json --url http://127.0.0.1:5180`;
+const IMPORT = hl.bash`bunx @voidbase-cloud/voidbase import ./snapshot/collections.json --url http://127.0.0.1:5180 --admin you@example.com:your-password`;
 
-const BUILD = hl.bash`bun run build                        # vite build, which runs the adapter
-bunx @voidbase-cloud/voidbase sync --repo you/my-app`;
+const MIGRATION = hl.javascript`// vb_migrations/1757500000_collections.js
+migrate((app) => {
+  app.importCollections([
+    // the contents of snapshot/collections.json
+  ], false);
+});`;
+
+const BUILD = hl.bash`bunx @voidbase-cloud/voidbase sync --repo you/my-app    # builds, deploys from .voidbase/, connects the repository`;
 
 export default function DocsTrackStack() {
   return (
@@ -46,21 +59,28 @@ export default function DocsTrackStack() {
         covers the layout; this is the short version.
       </p>
       <CodeBlock {...SCAFFOLD} />
+      <CodeBlock {...CONFIG} />
 
       <h2>Bring the collections across</h2>
-      <p>Export from the instance you have, then import into the one the dev server is running.</p>
-      <CodeBlock {...EXPORT} />
-      <CodeBlock {...MIGRATION} />
       <p>
-        Write them into <Link href="/docs/run/stack/migrations">vb_migrations</Link> once they are what you want, so
-        a fresh checkout builds the same collections rather than needing the import again.
+        Export from the instance you have, then import into the one the dev server is running,{" "}
+        <code>voidbase dev</code> on 5180.
       </p>
+      <CodeBlock {...EXPORT} />
+      <CodeBlock {...IMPORT} />
+      <p>
+        The import changed the dev instance's database and nothing else. Write the list down in{" "}
+        <Link href="/docs/run/stack/migrations">vb_migrations</Link>, which the build copies into the generated
+        instance's <code>pb_migrations</code>, so a fresh checkout builds the same collections rather than needing the
+        import again.
+      </p>
+      <CodeBlock {...MIGRATION} />
 
       <h2>Build and connect</h2>
       <CodeBlock {...BUILD} />
       <p>
-        The build runs the adapter, which turns the Void app into an instance under <code>.voidbase/</code>, and sync
-        deploys it and wires the repository.{" "}
+        Sync runs the build, which turns the Void app into an instance under <code>.voidbase/</code>, deploys from
+        there and wires the repository to Cloudflare Workers Builds.{" "}
         <Link href="/docs/cicd/stack">The stack pipeline</Link> covers what shipping both halves at once changes
         about CI.
       </p>
@@ -69,7 +89,8 @@ export default function DocsTrackStack() {
       <p>
         <strong>Hooks become TypeScript.</strong> A project's hooks run in the server's JavaScript runtime; a
         stack's are <Link href="/docs/run/stack/hooks">vb_hooks</Link>, one per file, typed and bundled by the
-        build.
+        build, and <code>routes/</code>, <code>middleware/</code>, <code>crons/</code> and <code>queues/</code> are
+        the rest of them.
       </p>
       <p>
         <strong>Configuration is declared once.</strong>{" "}

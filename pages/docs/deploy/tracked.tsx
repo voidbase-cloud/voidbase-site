@@ -14,6 +14,17 @@ vb_secrets/secrets.json     the values of your configuration`;
 
 const PUSH = hl.bash`voidbase secrets push`;
 
+const STORE = hl.json`{
+  "VOIDBASE_SECRETS_STORE": "<store id>"
+}`;
+
+const FLAG = hl.typescript`// pb_secrets/main.ts
+import { defineSecrets, flag, boolean } from "@voidbase-cloud/voidbase/secrets";
+
+export default defineSecrets({
+  NEW_CHECKOUT: flag(boolean().default(false), "the redesigned checkout"),
+});`;
+
 const STATE = hl.bash`voidbase secrets`;
 
 const ROTATE = hl.bash`# change it where the value lives, then send it
@@ -26,8 +37,8 @@ export default function DocsTracked() {
       <h1>What git tracks</h1>
       <p className="docs-lead">
         Everything that decides how the instance behaves belongs in the repository: the endpoints, the schema, the
-        static files, the list of configuration keys, and the version of voidbase itself. One thing must never be
-        there, and that is the values of your secrets.
+        static files, the list of configuration keys, the installed plugins, and the version of voidbase itself. One
+        thing must never be there, and that is the values of your secrets.
       </p>
 
       <h2>In the repository</h2>
@@ -59,6 +70,13 @@ export default function DocsTracked() {
             </td>
           </tr>
           <tr>
+            <td><code>pb_plugins/</code>, <code>voidbase.lock</code></td>
+            <td>
+              The installed plugins, each verified against the hash the lockfile pins. On a project deployed from a
+              repository, installing or removing one is a commit the build deploys.
+            </td>
+          </tr>
+          <tr>
             <td><code>package.json</code>, lockfile</td>
             <td>
               The version of voidbase production runs. Without it, what ships is whatever npm served that morning.
@@ -70,8 +88,8 @@ export default function DocsTracked() {
       <h2>Not in the repository</h2>
       <CodeBlock {...IGNORE} />
       <p>
-        <code>voidbase init</code> writes those ignore lines for you. If your repository did not come from it, check
-        them before the first commit, and check them again before making the repository public.
+        <code>voidbase init</code> writes the project's three ignore lines for you. If your repository did not come
+        from it, check them before the first commit, and check them again before making the repository public.
       </p>
       <div className="alert alert-warning">
         <div className="content">
@@ -93,9 +111,22 @@ export default function DocsTracked() {
       </p>
       <CodeBlock {...PUSH} />
       <p>
-        A deploy stores a secret the Worker does not have yet, and deliberately will not overwrite one it does.{" "}
+        A deploy stores a secret the Worker does not have yet, and deliberately will not overwrite one it does: a
+        checkout whose <code>secrets.json</code> carries dev values must not overwrite production by deploying.{" "}
         <code>secrets push</code> is the command that replaces, which is what you want when rotating and never what
         you want by accident.
+      </p>
+      <p>
+        A Worker's own secrets are seen by nothing else. If you would rather keep them in the account's Secrets Store,
+        one place with role-based access, name the store and the deploy uses it instead:
+      </p>
+      <CodeBlock {...STORE} title="pb_secrets/secrets.json" />
+      <p>
+        Every declared <code>secret()</code> is then stored there as <code>blog-api__KEY</code>, bound to the Worker
+        by its key, and the Worker's own secret of that name is retired. <code>secrets push</code> stores into it the
+        same way and <code>voidbase secrets</code> says which names the store holds. Nothing in your code changes. The
+        deploy token needs <em>Secrets Store: Write</em> and the account's Secrets Store Deployer role; the free plan
+        holds 100 secrets per store.
       </p>
 
       <h3>Server and browser values travel with the deploy</h3>
@@ -103,6 +134,16 @@ export default function DocsTracked() {
         A <code>server()</code> or <code>browser()</code> key is not a secret; it is configuration. Its value comes
         from the default in the declaration, which is tracked, or from the build environment, and every deploy sets
         it again. Most of them should simply have a default, and then there is nothing to configure anywhere.
+      </p>
+      <p>A boolean that you want to flip without a deploy is a feature flag:</p>
+      <CodeBlock {...FLAG} />
+      <p>
+        The deploy creates a Cloudflare Flagship app named after the Worker, creates each declared flag in it with its
+        default, and binds it. A flag that already exists is left as the dashboard has it, so a change there wins
+        without a deploy. On every request the flags are evaluated for whoever is asking, the signed-in record or else
+        the client's address, so a percentage rollout is sticky per person, and every reader of the key sees the
+        answer as if it were a plain value. Where Flagship is not reachable, on Bun or with a token without{" "}
+        <em>Flagship: Write</em>, the defaults answer and the deploy says so. Booleans only.
       </p>
 
       <h3>Tokens are yours and stay yours</h3>
@@ -123,16 +164,17 @@ export default function DocsTracked() {
       <h2>Rotating one</h2>
       <CodeBlock {...ROTATE} />
       <p>
-        Nothing to commit, nothing to redeploy: the Worker picks up the new value on its next request. Removing a key
-        is the reverse, and is two changes rather than one: take it out of the declaration and commit that, so the
-        next person does not go looking for a value nothing reads.
+        Nothing to commit and no redeploy. Removing a key is the reverse, and is two changes rather than one: take it
+        out of the declaration and commit that, so the next person does not go looking for a value nothing reads.
       </p>
 
       <h2>What a build machine can see</h2>
       <p>
         Only what it needs: Bun's version, the deploy token as a build secret, and the declared server and browser
-        values. Not your <code>secrets.json</code>, which never leaves your machine, and not the encrypted secrets on
-        the Worker, which nothing can read back.
+        values your machine had when you ran sync. With previews on, the repository's name as well, the GitHub token
+        for the pull request comment as a build secret, and the superuser on the previews trigger so a preview can
+        seed itself from production. Not your <code>secrets.json</code>, which never leaves your machine, and not the
+        encrypted secrets on the Worker, which nothing can read back.
       </p>
     </>
   );

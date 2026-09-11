@@ -26,8 +26,8 @@ export default function VsConvex() {
           { q: "Day one", vb: ["yes", "A working CRUD API, auth, files and an admin panel before you write anything."], them: ["no", "Nothing until you write the functions."] },
           { q: "How the client reads data", vb: ["depends", "A generated REST API over your collections, with filters and relations."], them: ["depends", "TypeScript query functions you write, called by name."] },
           { q: "Realtime", vb: ["depends", "Subscribe to a collection. You decide what to do with a change."], them: ["yes", "Every query is reactive and recomputes when its inputs change."] },
-          { q: "Types", vb: ["planned", "The SDK is typed, but not from your collections. A generated client is planned."], them: ["yes", "End to end TypeScript. A rename breaks the build."] },
-          { q: "Transactions", vb: ["planned", "None today. Writes validate, then run as one atomic batch."], them: ["yes", "Real, and the mutation model is built on them."] },
+          { q: "Types", vb: ["depends", "voidbase types writes an interface per collection from the instance's own API description, and VoidBase<Collections> makes a renamed field a compile error. Run it again when the collections change."], them: ["yes", "End to end TypeScript. A rename breaks the build."] },
+          { q: "Transactions", vb: ["depends", "A batch is one transaction with VOIDBASE_DATABASE=durable; on D1 it is validation then an atomic batch. Not interactive either way."], them: ["yes", "Real, and the mutation model is built on them."] },
           { q: "Changing the schema", vb: ["yes", "In the panel, live, with no deploy."], them: ["no", "A code change and a deploy."] },
           { q: "Non-developers", vb: ["yes", "Can edit content in the admin panel."], them: ["no", "Everything is code."] },
           { q: "Where it runs", vb: ["yes", "Your Cloudflare account, every region."], them: ["depends", "Their cloud, or a backend you host yourself."] },
@@ -43,12 +43,13 @@ export default function VsConvex() {
       </p>
       <p>
         Types all the way through. Your schema, your functions and your components share one TypeScript definition,
-        and a rename breaks the build. voidbase's collections are data, edited at runtime, so a rename breaks at the
-        call instead.
+        and a rename breaks the build. voidbase's collections are data, edited at runtime, so the types are generated
+        from the instance with <code>voidbase types</code> and a rename breaks the build once you have run it again.
       </p>
       <p>
-        And transactions. Convex mutations are transactional by design, which removes a class of bug that voidbase's
-        batch model can only mostly remove.
+        And transactions. Convex mutations are transactional by design. In voidbase a batch is a real transaction
+        with the Durable Object database and an atomic batch after validation on D1, and neither is interactive: a
+        hook cannot read inside a transaction and decide.
       </p>
 
       <h2>What voidbase does better</h2>

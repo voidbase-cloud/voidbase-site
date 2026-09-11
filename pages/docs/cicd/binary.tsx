@@ -7,26 +7,19 @@ import { Link } from "@void/react";
 import CodeBlock from "@/components/CodeBlock";
 import { hl } from "@/lib/hl";
 
-const CHECK = hl.yaml`name: check
-on: [push, pull_request]
+const CHECK = hl.bash`# in the checkout, on any CI runner
+VERSION=0.9.0-beta.35
+curl -sLO https://github.com/voidbase-cloud/voidbase/releases/download/v\${VERSION}/voidbase_\${VERSION}_linux_amd64.zip
+unzip -q voidbase_\${VERSION}_linux_amd64.zip && chmod +x voidbase
 
-jobs:
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: get the executable
-        run: |
-          VERSION=0.9.0-beta.1
-          curl -sLO https://github.com/voidbase-cloud/voidbase/releases/download/v\${VERSION}/voidbase_\${VERSION}_linux_amd64.zip
-          unzip -q voidbase_\${VERSION}_linux_amd64.zip && chmod +x voidbase
-      - name: the migrations apply to an empty database
-        run: |
-          ./voidbase serve --dir /tmp/check &
-          sleep 3
-          curl -fsS http://127.0.0.1:8090/api/health`;
+# the migrations apply to an empty database
+./voidbase serve --dir /tmp/check &
+sleep 3
+curl -fsS http://127.0.0.1:8090/api/health`;
 
-const SECRETS = hl.bash`voidbase secrets                     # what is declared, and what has a value here`;
+const UPDATE = hl.bash`./voidbase update --check            # exits 1 when a newer release is out, 2 when it could not find out`;
+
+const SECRETS = hl.bash`./voidbase secrets                   # what is declared, and what has a value here`;
 
 const ARTIFACT = hl.gitignore`pb_data/
 pb_secrets/secrets.json
@@ -49,9 +42,16 @@ export default function DocsCicdBinary() {
       </p>
       <CodeBlock {...CHECK} />
       <p>
-        Pin the version rather than tracking the latest release, so a new voidbase does not change what a green
-        build means. <Link href="/docs/deploy/pipeline">The common pipeline page</Link> makes the same argument for
-        the other shapes.
+        The archive is named <code>voidbase_&lt;version&gt;_&lt;os&gt;_&lt;arch&gt;.zip</code>, with{" "}
+        <code>darwin</code> and <code>windows</code> beside <code>linux</code>, <code>arm64</code> beside{" "}
+        <code>amd64</code>, and a <code>_musl</code> suffix for Alpine. Pin the version rather than tracking the
+        latest release, so a new voidbase does not change what a green build means, and let a check tell you when it
+        is time to move it:
+      </p>
+      <CodeBlock {...UPDATE} />
+      <p>
+        <Link href="/docs/deploy/pipeline">The common pipeline page</Link> makes the same argument for the other
+        shapes. The runner is yours to pick; the executable needs nothing installed beside it.
       </p>
 
       <h2>What goes to the server</h2>
@@ -83,7 +83,12 @@ export default function DocsCicdBinary() {
       <h2>Backups are not the pipeline's job, but nothing else is doing them</h2>
       <p>
         The database is a file in <code>pb_data/</code> on that one machine. Nothing in this shape replicates it,
-        which is the cost of having no vendor in the loop. Copy the directory on a schedule, off the box.
+        which is the cost of having no vendor in the loop. The scheduled backup from Settings &gt; Backups writes an
+        archive that is verified after it is written, and with <code>VOIDBASE_BACKUP_S3_ENDPOINT</code>,{" "}
+        <code>VOIDBASE_BACKUP_S3_BUCKET</code>, <code>VOIDBASE_BACKUP_S3_ACCESS_KEY_ID</code> and{" "}
+        <code>VOIDBASE_BACKUP_S3_SECRET_ACCESS_KEY</code> set, every archive is also copied to that bucket, off the
+        box: another R2 account, Backblaze B2, AWS S3 or anything S3-compatible. A failed copy is reported and never
+        fails the backup.
       </p>
       <p>
         If that sentence is the one that changes your mind,{" "}

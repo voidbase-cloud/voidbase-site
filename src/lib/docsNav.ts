@@ -94,10 +94,10 @@ export const DOCS_NAV: DocsLink[] = [
         title: "Deploy on every push",
         summary: "A push is the deploy. The common setup, then the one for your shape.",
         children: [
-          { href: "/docs/deploy/pipeline", title: "How a push becomes a deploy", summary: "Connect the repository once, and pushing to it is the deploy." },
+          { href: "/docs/deploy/pipeline", title: "How a push becomes a deploy", summary: "Connect the repository once, and pushing to it is the deploy. What a deploy creates, a custom domain, taking it down." },
           { href: "/docs/deploy/tracked", title: "What git tracks", summary: "Everything except the values of your secrets, and how those get there instead." },
           { href: "/docs/cicd/binary", title: "For a tracked directory", summary: "No Cloudflare in the loop. Check the directory, then move it to your server." },
-          { href: "/docs/cicd/project", title: "For a voidbase project", summary: "Workers Builds, preview instances, and the secrets the build is allowed to read." },
+          { href: "/docs/cicd/project", title: "For a voidbase project", summary: "A dry run, a preview instance per branch, and the secrets the build is allowed to read." },
           { href: "/docs/cicd/stack", title: "For a voidbase stack", summary: "One artifact holding the site and the backend, and what that changes." },
         ],
       },
@@ -163,7 +163,7 @@ export const DOCS_NAV: DocsLink[] = [
     title: "Pricing",
     group: "project",
     icon: "ri-price-tag-3-line",
-    summary: "Free. What that means, and how a free backend pays for itself.",
+    summary: "Free. What that means, which knobs add a line to Cloudflare's bill, and how a free backend pays for itself.",
   },
   {
     href: "/docs/sponsor",

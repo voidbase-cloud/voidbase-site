@@ -23,7 +23,7 @@ export default function VsSupabase() {
         other="Supabase"
         logo={<ProductMark id="supabase" size={18} />}
         rows={[
-          { q: "Database", vb: ["depends", "SQLite through D1. No interactive transactions, 100 bound parameters per statement, 100 columns per table."], them: ["yes", "Postgres, with joins, extensions and thirty years of tooling."] },
+          { q: "Database", vb: ["depends", "SQLite through D1, or in a Durable Object where a batch is one transaction. No interactive transactions, 100 bound parameters per statement, 100 columns per table."], them: ["yes", "Postgres, with joins, extensions and thirty years of tooling."] },
           { q: "Source", vb: ["yes", "Open, MIT."], them: ["yes", "Open, Apache 2.0."] },
           { q: "Self-host", vb: ["yes", "One command into your Cloudflare account. It is the only mode."], them: ["depends", "Possible and documented. Postgres plus a handful of services, usually with Docker Compose."] },
           { q: "What you operate", vb: ["yes", "Nothing. There is no machine."], them: ["no", "A database and the services around it, or you pay them to."] },
@@ -33,7 +33,7 @@ export default function VsSupabase() {
           { q: "Where it runs", vb: ["yes", "Every Cloudflare region."], them: ["depends", "The region you picked for the project."] },
           { q: "Cost when idle", vb: ["yes", "Nothing."], them: ["no", "A hosted project bills for its instance whether or not anyone visits."] },
           { q: "Realtime", vb: ["yes", "One connection per client, fanned out by a durable object. No charge per message or per connection."], them: ["depends", "Postgres changes broadcast over websockets, which is more capable. Billed by peak concurrent connections and by message."] },
-          { q: "Seeing what it is doing", vb: ["planned", "Cloudflare's logs and request data are there. Nothing is set up for you or shown in the panel."], them: ["yes", "Logs, query performance and reports in the dashboard."] },
+          { q: "Seeing what it is doing", vb: ["planned", "Cloudflare's logs and request data in their dashboard, an Analytics Engine data point per request when you turn it on, and the cloud page's logs, requests and errors panels for an instance it made. Nothing in the admin panel."], them: ["yes", "Logs, query performance and reports in the dashboard."] },
           { q: "Ecosystem", vb: ["no", "Young, and small. You may be the first to hit a given bug."], them: ["yes", "A company, support, and a large body of people who hit it before you."] },
         ]}
       />
