@@ -17,19 +17,39 @@ voidbase init
 voidbase superuser upsert you@example.com your-password
 voidbase serve`;
 
+const INIT_OUT = hl.output`pb_hooks/, pb_migrations/ and pb_secrets/ ready (wrote pb_hooks/main.pb.js, .gitignore, .env, package.json, pb_secrets/main.ts)
+.gitignore covers pb_data/, pb_secrets/secrets.json and .cloud/
+
+next: voidbase serve   (the API on 8090, the admin panel at /_/), or bun install && bun run dev`;
+
 const TREE = hl.markdown`Inside \`blog-api/\`:
 
-- \`pb_hooks/\`: endpoints, event handlers, scheduled work
+- \`pb_hooks/\`: endpoints, event handlers, scheduled work; \`main.pb.js\` answers \`GET /api/hello\`
 - \`pb_migrations/\`: the schema, as code
-- \`pb_public/\`: static files served at \`/\`, if you want any
-- \`pb_secrets/\`: configuration, and who may read each key
+- \`pb_secrets/\`: configuration, and who may read each key; \`main.ts\` is a commented declaration to fill in
+- \`pb_public/\`: static files served at \`/\`, if you add any
 - \`pb_data/\`: the database and the uploaded files, git-ignored
-- \`.gitignore\`
+- \`package.json\`: the dependency, and \`dev\`, \`start\`, \`deploy\` scripts
+- \`.env\`, \`.gitignore\`
 `;
 
-const DEV = hl.bash`voidbase serve --dev`;
+const TEMPLATE = hl.bash`voidbase templates                                  # what the marketplace lists: name, title, summary, repository
+voidbase init blog-api --template voidbase-demo     # one of those, by name
+voidbase init blog-api --template owner/name        # or any public GitHub repository, at --ref if not the default branch`;
+
+const DEV = hl.bash`voidbase serve --dev              # restarts when a hook or a migration changes
+voidbase serve --dev --tunnel     # and on the internet meanwhile, at https://<words>.trycloudflare.com
+voidbase serve --workers          # the same project on Cloudflare's runtime, locally, with D1, R2, queue and hub in Miniflare`;
+
+const TYPES = hl.bash`voidbase types --url http://127.0.0.1:8090 --email you@example.com --password your-password
+# writes src/voidbase.ts: an interface per collection, a Collections map, a TypedPocketBase type`;
 
 const DEPLOY = hl.bash`voidbase deploy`;
+
+const DEPLOY_MORE = hl.bash`voidbase deploy --domain api.example.com          # the domains plugin attaches it and turns workers.dev off
+voidbase deploy --database durable                 # the data in a SQLite-backed Durable Object instead of D1
+voidbase deploy --preview feature/login            # a second Worker for the branch, seeded from production
+voidbase deploy --dry-run                          # the whole plan, nothing touched`;
 
 const SYNC = hl.bash`voidbase sync`;
 
@@ -50,9 +70,11 @@ export default function DocsProject() {
       <h2>Start one</h2>
       <CodeBlock {...START} />
       <p>
-        That is a working instance on <code>http://127.0.0.1:8090</code>, with the admin panel at <code>/_/</code> and
-        a sample endpoint answering <code>GET /api/hello</code>. <code>init</code> wrote this:
+        That is a working instance on <code>http://127.0.0.1:8090</code>, with the admin panel at <code>/_/</code>,
+        the API reference at <code>/api/docs</code> and a sample endpoint answering <code>GET /api/hello</code>.{" "}
+        <code>init</code> says what it wrote:
       </p>
+      <CodeBlock {...INIT_OUT} />
       <CodeBlock {...TREE} />
       <p>
         Only <code>pb_hooks/</code> and <code>pb_migrations/</code> matter on day one. Each directory has its own page:
@@ -65,6 +87,12 @@ export default function DocsProject() {
           </Link>
         ))}
       </div>
+      <p>
+        Or start from somebody's working project rather than empty directories. The files of the repository are
+        downloaded as a tarball and unpacked into the directory, which has to be empty or absent; nothing is cloned
+        and no <code>.git</code> is left behind, and the next steps are read from what the template contains.
+      </p>
+      <CodeBlock {...TEMPLATE} />
 
       <h2>The loop</h2>
       <ol className="docs-steps">
@@ -88,23 +116,36 @@ export default function DocsProject() {
         </li>
         <li>
           <p>
-            <strong>Run it while you work.</strong> <code>--dev</code> restarts when a hook or migration changes.
+            <strong>Run it while you work.</strong> On Bun, or on Cloudflare's own runtime without a token or an
+            account, which is the one to use before a first deploy.
           </p>
           <CodeBlock {...DEV} />
+        </li>
+        <li>
+          <p>
+            <strong>Type the client from it.</strong> The instance describes its own API at{" "}
+            <code>/api/openapi.json</code>, and <code>types</code> turns that into a file your app imports, so a
+            renamed field is a compile error rather than an empty value. <Link href="/docs/connect/sdk">The SDK
+            page</Link> shows the other end.
+          </p>
+          <CodeBlock {...TYPES} />
         </li>
       </ol>
 
       <h2>Put it on Cloudflare</h2>
       <p>
         One API token, which <code>voidbase token</code> prints the link for, declared as a <code>local()</code> key
-        in <Link href="/docs/run/project/secrets">pb_secrets</Link>. Then, from the project:
+        in <Link href="/docs/run/project/secrets">pb_secrets</Link> and valued in its <code>secrets.json</code>. Then,
+        from the project:
       </p>
       <CodeBlock {...DEPLOY} />
       <p>
         It creates the Worker, its database, its file storage, its queue and its realtime object on the first run,
         stores the declared secrets on it, applies any pending migrations on the first request, and prints the
-        address. Deploy again whenever anything changes; the data is untouched.
+        address. Deploy again whenever anything changes; the data is untouched, and a secret the Worker already holds
+        is left alone.
       </p>
+      <CodeBlock {...DEPLOY_MORE} />
 
       <h3>Or let a push do it</h3>
       <p>
@@ -123,7 +164,8 @@ export default function DocsProject() {
         <div className="content">
           <p className="m-0">
             Listing and deleting instances works the same from a project as without one:{" "}
-            <Link href="/docs/run/npm">voidbase instances and voidbase destroy</Link>.
+            <Link href="/docs/run/npm">voidbase instances and voidbase destroy</Link>, and{" "}
+            <code>voidbase migrate</code> moves the data between this instance and any other.
           </p>
         </div>
       </div>
@@ -133,7 +175,8 @@ export default function DocsProject() {
           Run it in the project. The dependency in <code>package.json</code> is bumped to the newest published
           version and installed, keeping the caret or the exact pin you already had, so a project that deliberately
           pins stays pinned. The change is a diff in <code>package.json</code> and your lockfile: review it and
-          commit it like any other dependency bump.
+          commit it like any other dependency bump. Before changing anything it names the installed plugins whose
+          declared range excludes the new version.
         </p>
       </Updating>
 

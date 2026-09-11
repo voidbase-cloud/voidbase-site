@@ -27,8 +27,14 @@ const LOCAL_LS_OUT = hl.output`3 local instance(s), from ~/.voidbase/instances.j
 const LOCAL_RM = hl.bash`voidbase local rm workshop            # forget it, keep the data
 voidbase local rm workshop --purge    # and delete the directory, after typing the name back`;
 
+const TUNNEL = hl.bash`voidbase local start blog --tunnel     # the same instance, on https://<words>.trycloudflare.com while it runs
+voidbase serve --tunnel --dev          # in a project: the watcher keeps one tunnel across hook restarts`;
+
+const WORKERS = hl.bash`voidbase serve --workers               # the project "voidbase deploy" would upload, on workerd, under .cloud/<name>
+voidbase serve --workers --database durable`;
+
 const TOKEN = hl.bash`voidbase token                        # prints the link that creates the token
-export VOIDBASE_DEPLOY_CF_API_KEY=...   # paste it here`;
+export VOIDBASE_DEPLOY_CF_API_KEY=...   # paste it here, or into pb_secrets/secrets.json as a local() key`;
 
 const CLOUD = hl.bash`voidbase deploy --name blog-api
 voidbase deploy --name blog-api --domain api.example.com`;
@@ -36,11 +42,15 @@ voidbase deploy --name blog-api --domain api.example.com`;
 const CLOUD_LS = hl.bash`voidbase instances`;
 
 const CLOUD_LS_OUT = hl.output`3 instance(s) on Example Ltd:
-  blog-api                         release 0.7.0  updated 2026-09-08
-  staging-api                      release 0.7.0  updated 2026-09-04
-  workshop-demo                    release 0.6.2  updated 2026-08-30`;
+  blog-api                         release 0.9.0-beta.35  updated 2026-09-11
+  staging-api                      release 0.9.0-beta.35  updated 2026-09-08
+  workshop-demo                    release 0.9.0-beta.31  updated 2026-08-30`;
 
 const DESTROY = hl.bash`voidbase destroy workshop-demo`;
+
+const MIGRATE = hl.bash`voidbase migrate http://127.0.0.1:8090 https://blog-api.example.workers.dev \\
+  --from-email admin@example.com --from-password k3f8s2m1qzA1 \\
+  --to-email you@example.com --to-password ...          # --dry-run first, if you like`;
 
 const UPDATE = hl.bash`voidbase update`;
 
@@ -70,9 +80,7 @@ export default function DocsNpm() {
       <CodeBlock {...LOCAL_NEW_OUT} />
       <p>
         The instance is a directory holding its own database, hooks and configuration, and a row in{" "}
-        <code>~/.voidbase/instances.json</code> recording its name and port. Nothing is sent anywhere. Set{" "}
-        <code>VOIDBASE_HOME</code> and both the registry and the default directory move with it, which is what an
-        image or an app bundle wants. Pass{" "}
+        <code>~/.voidbase/instances.json</code> recording its name and port. Nothing is sent anywhere. Pass{" "}
         <code>--dir</code> to put it where you want it, <code>--port</code> to pick the port, and{" "}
         <code>--email</code> with <code>--password</code> to choose the superuser rather than have one generated.
       </p>
@@ -100,6 +108,27 @@ export default function DocsNpm() {
         </div>
       </div>
 
+      <h3>On the internet while it runs</h3>
+      <p>
+        <code>--tunnel</code> puts the instance on a Cloudflare quick tunnel: the banner gains a{" "}
+        <code>Tunnel: https://&lt;words&gt;.trycloudflare.com</code> line, that address reaches the API and the panel
+        over HTTPS, and the tunnel closes with the server. Every start gets a fresh address, so it is for showing
+        work rather than hosting it. It runs <code>cloudflared</code> from <code>VOIDBASE_CLOUDFLARED</code>, from
+        your <code>PATH</code>, or downloaded once into <code>~/.cache/voidbase/cloudflared/</code>; without one the
+        server serves as usual and says so.
+      </p>
+      <CodeBlock {...TUNNEL} />
+
+      <h3>On Cloudflare's runtime, on this machine</h3>
+      <p>
+        <code>voidbase serve</code> runs the instance on Bun. <code>--workers</code> runs it on workerd, so what you
+        exercise is the Workers code with the bindings a deploy wires up: it generates the very project{" "}
+        <code>voidbase deploy</code> would upload and runs it with Void's dev server, with D1, R2, the jobs queue and
+        the realtime hub in Miniflare, persisted under <code>.cloud/&lt;name&gt;/.void/</code>. No token, no account,
+        nothing reaches Cloudflare. The first start takes half a minute or so; cron triggers do not tick locally.
+      </p>
+      <CodeBlock {...WORKERS} />
+
       <h2>On your Cloudflare account</h2>
       <p>
         The same idea, one command further. Everything below needs one API token, and one command prints the link
@@ -112,8 +141,10 @@ export default function DocsNpm() {
       <CodeBlock {...CLOUD} />
       <p>
         That creates the Worker, its database, its file storage, its job queue and its realtime object, deploys the
-        server into it, and prints the address. With a hostname you own on the same account, name it and the instance
-        answers there as well.
+        server into it, and prints the address. With a hostname you own on the same account, name it and the{" "}
+        <code>domains</code> plugin attaches it, waits for the certificate and turns workers.dev off.{" "}
+        <code>--database durable</code> keeps the data in a SQLite-backed Durable Object instead of D1. Re-running is
+        idempotent: what exists is reused.
       </p>
       <div className="alert alert-info">
         <div className="content">
@@ -140,10 +171,21 @@ export default function DocsNpm() {
         <div className="content">
           <p className="m-0">
             There is no undo and no backup is taken. Take one from the admin panel's Backups screen first if the data
-            matters.
+            matters. <code>voidbase deploy --remove</code> is the gentler command: it deletes the Worker and leaves
+            the database, the bucket and the queue for the next deploy to find.
           </p>
         </div>
       </div>
+
+      <h2>Moving data between them</h2>
+      <p>
+        A local instance, a tunnelled one and one on Cloudflare are the same server, and <code>migrate</code> moves
+        the data between any two that are running, in either direction: a backup taken on the source through the
+        backups API and restored on the target, so the target's collections, records, files, settings and superusers
+        become the source's. Every step is printed, <code>--dry-run</code> signs in on both sides and stops, and{" "}
+        <code>--keep</code> leaves the archive on both sides.
+      </p>
+      <CodeBlock {...MIGRATE} />
 
       <Updating command={UPDATE}>
         <p>
@@ -162,7 +204,8 @@ export default function DocsNpm() {
       <p>
         The moment you want an endpoint of your own, a handler that runs when a record changes, or a schema you keep
         in version control rather than clicking into the panel, you want{" "}
-        <a href="/docs/run/project">a voidbase project</a>. It is the same instance with a repository around it.
+        <a href="/docs/run/project">a voidbase project</a>. It is the same instance with a repository around it, and{" "}
+        <code>voidbase init --template &lt;name&gt;</code> starts one from somebody's working project.
       </p>
       <PluginsSoon shape="npm" />
     </>

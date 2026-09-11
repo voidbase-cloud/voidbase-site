@@ -23,6 +23,12 @@ migrate((app) => {
   app.delete(app.findCollectionByNameOrId("posts"));
 });`;
 
+const OUT = hl.markdown`After \`bun run build\`, inside \`.voidbase/pb_migrations/\`:
+
+- \`1725712800_posts.js\`: your file, copied
+- \`0001_initial.void.js\`: one per Drizzle migration in \`db/migrations/\`, applied and recorded like any other
+`;
+
 export default function DocsStackMigrations() {
   return (
     <>
@@ -60,8 +66,9 @@ export default function DocsStackMigrations() {
         </tbody>
       </table>
       <p>
-        Most apps want both, and the question to ask of any table is who else needs to touch it. If the answer is
-        only your code, it is a Drizzle table. If it is the panel, the SDK or another client, make it a collection.
+        Both live in the same database. Most apps want both, and the question to ask of any table is who else needs
+        to touch it. If the answer is only your code, it is a Drizzle table. If it is the panel, the SDK or another
+        client, make it a collection.
       </p>
 
       <h2>A migration</h2>
@@ -75,16 +82,7 @@ export default function DocsStackMigrations() {
         beside the ones generated from your Drizzle migrations, and applied in that order on the first request after
         a deploy, each recorded so it runs once.
       </p>
-
-      <div className="alert alert-info">
-        <div className="content">
-          <p className="m-0">
-            A migration cannot see a collection it created in the same run. Anything that needs a collection to
-            already exist, like seeding rows into it, belongs in an <code>onBootstrap</code>{" "}
-            <a href="/docs/run/stack/hooks">hook</a> instead.
-          </p>
-        </div>
-      </div>
+      <CodeBlock {...OUT} />
 
       <h2>Getting the first one written</h2>
       <p>

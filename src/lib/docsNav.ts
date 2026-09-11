@@ -55,7 +55,7 @@ export const DOCS_NAV: DocsLink[] = [
     title: "Where to start",
     group: "using",
     icon: "ri-signpost-line",
-    summary: "What an instance is, and which of the six ways of getting one you want.",
+    summary: "What an instance is, the three ways to run one, and which of the six starts you want.",
     children: [
       { href: "/docs/start", title: "Which one do I want?", summary: "Three questions, and the page that answers them for you." },
       { href: "/docs/instance", title: "What is an instance", summary: "What one is made of, the shapes it comes in, and what decides between them." },
@@ -65,8 +65,8 @@ export const DOCS_NAV: DocsLink[] = [
         summary: "A backend in about a minute, with nothing of yours in version control yet.",
         children: [
           { href: "/docs/run/standalone", title: "The standalone executable", summary: "One file on your own machine or server. No npm, no build." },
-          { href: "/docs/run/npm", title: "The npm CLI", summary: "Create, list and delete instances by name, locally or on Cloudflare." },
-          { href: "/docs/run/cloud", title: "voidbase cloud", summary: "Instances without an account of your own. Experimental." },
+          { href: "/docs/run/npm", title: "The npm CLI", summary: "Instances by name, on this machine, on a tunnel, on Cloudflare's local runtime or in your account." },
+          { href: "/docs/run/cloud", title: "voidbase cloud", summary: "Instances in your own Cloudflare account, from a page or from the CLI." },
         ],
       },
       {
@@ -74,7 +74,7 @@ export const DOCS_NAV: DocsLink[] = [
         title: "Start with version control",
         summary: "The repository first, and the instance built out of what is in it.",
         children: [
-          { href: "/docs/run/binary", title: "A tracked directory", summary: "Hooks, schema and configuration in git, served by the executable. No npm." },
+          { href: "/docs/run/binary", title: "A tracked directory", summary: "Hooks and schema in git, served by the executable. No npm." },
           { href: "/docs/run/project", title: "A voidbase project", summary: "The same directory with npm, which is what reaches Cloudflare." },
           { href: "/docs/run/stack", title: "A voidbase stack", summary: "Site and backend as one application, deployed as one Worker." },
         ],
@@ -112,8 +112,8 @@ export const DOCS_NAV: DocsLink[] = [
     children: [
       { href: "/docs/run/project/hooks", title: "pb_hooks", summary: "Endpoints, event handlers and scheduled work, in JavaScript." },
       { href: "/docs/run/project/migrations", title: "pb_migrations", summary: "Schema as code, applied once, in order." },
-      { href: "/docs/run/project/secrets", title: "pb_secrets", summary: "Configuration, and who is allowed to read each key." },
-      { href: "/docs/run/project/public", title: "pb_public", summary: "Static files served from the same address as the API." },
+      { href: "/docs/run/project/secrets", title: "pb_secrets", summary: "Configuration, who may read each key, and the knobs a deploy reads from it." },
+      { href: "/docs/run/project/public", title: "pb_public", summary: "Static files served from the same address as the API, and the files the seo plugin answers for." },
       { href: "/docs/run/project/data", title: "pb_data", summary: "The database, the uploaded files and the generated typings." },
       { href: "/docs/run/stack/hooks", title: "vb_hooks", summary: "Event handlers in TypeScript, one per file." },
       { href: "/docs/run/stack/migrations", title: "vb_migrations", summary: "Collections for the app, beside the app's own tables." },
@@ -127,8 +127,8 @@ export const DOCS_NAV: DocsLink[] = [
     icon: "ri-plug-line",
     summary: "You have an address. Here is how to read and write through it.",
     children: [
-      { href: "/docs/connect/sdk", title: "With the SDK", summary: "Read and write records, sign users in, subscribe to changes." },
-      { href: "/docs/connect/admin-panel", title: "With the admin panel", summary: "Design collections, write API rules, browse data in a browser." },
+      { href: "/docs/connect/sdk", title: "With the SDK", summary: "Read and write records, sign users in, subscribe to changes, and type it from your instance." },
+      { href: "/docs/connect/admin-panel", title: "With the admin panel", summary: "Design collections, write API rules, browse data, and read the API docs beside it." },
     ],
   },
   {

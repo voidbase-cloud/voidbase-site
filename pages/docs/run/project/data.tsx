@@ -16,6 +16,9 @@ const TREE = hl.markdown`Inside \`pb_data/\`:
 const BACKUP = hl.bash`# locally: stop the server, copy the directory
 cp -r pb_data pb_data.backup-$(date +%F)`;
 
+const MIGRATE = hl.bash`voidbase migrate https://blog-api.example.workers.dev http://127.0.0.1:8090 \\
+  --from-email you@example.com --from-password ... --to-email you@example.com --to-password ...`;
+
 const EXPORT = hl.bash`voidbase export ./snapshot --url https://blog-api.example.workers.dev --admin you@example.com:your-password`;
 
 export default function DocsProjectData() {
@@ -45,16 +48,29 @@ export default function DocsProjectData() {
       <CodeBlock {...BACKUP} />
       <p>
         The admin panel's Backups screen does the same thing properly, on demand or on a schedule, and can restore
-        one. That is the one to use for an instance anyone depends on.
+        one. That is the one to use for an instance anyone depends on. An archive is verified after it is written,
+        <code>VOIDBASE_BACKUP_KEEP</code> says how many scheduled ones to keep, and <code>VOIDBASE_BACKUP_S3_*</code>{" "}
+        copies each one to a bucket outside the account. <code>voidbase update --backup</code> zips the directory
+        before the executable replaces itself.
       </p>
-      <p>To take a copy of a deployed instance onto your machine, database, collections and files together:</p>
+      <p>
+        To bring a deployed instance's data onto your machine, or send yours up, <code>migrate</code> takes a backup
+        on one side and restores it on the other; the target becomes the source:
+      </p>
+      <CodeBlock {...MIGRATE} />
+      <p>
+        For a copy on disk rather than a running target, <code>export</code> writes the database, the collections
+        and the files into a directory, reading only through the API:
+      </p>
       <CodeBlock {...EXPORT} />
 
       <h2>On Cloudflare it is not used</h2>
       <p>
-        A deployed instance has no filesystem. The database is Cloudflare's own SQL database and the uploaded files
-        are in object storage, both created for the instance on its first deploy and both belonging to your account.
-        The same code reaches them the same way, which is why a hook that works locally works deployed.
+        A deployed instance has no filesystem. The database is a D1 database, or with <code>--database durable</code>{" "}
+        a SQLite-backed Durable Object of its own, the uploaded files are in an R2 bucket, and the backups are in
+        that bucket under <code>__backups__/</code>, all created for the instance on its first deploy and all
+        belonging to your account. The same code reaches them the same way, which is why a hook that works locally
+        works deployed.
       </p>
 
       <div className="alert alert-warning">

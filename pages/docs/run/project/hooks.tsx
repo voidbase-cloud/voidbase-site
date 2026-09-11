@@ -35,6 +35,8 @@ module.exports = { slugify: (s) => s.toLowerCase().trim().replaceAll(/[^a-z0-9]+
 // pb_hooks/posts.pb.js
 const { slugify } = require(\`\${__hooks}/lib/slug.js\`);`;
 
+const DEV = hl.bash`voidbase serve --dev`;
+
 export default function DocsProjectHooks() {
   return (
     <>
@@ -47,14 +49,20 @@ export default function DocsProjectHooks() {
 
       <h2>The shape of it</h2>
       <p>
-        Any file ending <code>.pb.js</code> in the directory is loaded, in filename order. There is no build step and
-        no imports to set up: the functions below are globals.
+        Any file ending <code>.pb.js</code> in the directory is loaded, in filename order. There is no build step of
+        yours and no imports to set up: the functions below are globals, and the code is written exactly as for
+        PocketBase.
       </p>
       <CodeBlock {...FILE} />
       <p>
         The reference comment on the first line is what makes an editor autocomplete all of it. The file it points at
         is generated into <a href="/docs/run/project/data">pb_data</a> on the first run, so run the server once
         before you start writing.
+      </p>
+      <CodeBlock {...DEV} />
+      <p>
+        <code>--dev</code> restarts the server when a hook or a migration changes, so editing a file is the whole
+        loop. <code>--hooksDir</code> points at another directory, as <code>VOIDBASE_HOOKS_DIR</code> does.
       </p>
 
       <h2>The three things you will write</h2>
@@ -64,7 +72,9 @@ export default function DocsProjectHooks() {
         <code>routerAdd(method, path, handler, ...middleware)</code>. The handler gets a request event:{" "}
         <code>e.auth</code> is the signed-in record or null, <code>e.pathParam("id")</code> reads a path segment,{" "}
         <code>e.bindBody(obj)</code> parses the body, and <code>e.json(status, data)</code> answers.{" "}
-        <code>$apis.requireAuth()</code> and <code>$apis.requireSuperuserAuth()</code> are the guards.
+        <code>$apis.requireAuth()</code>, <code>$apis.requireSuperuserAuth()</code>,{" "}
+        <code>$apis.requireGuestOnly()</code> and <code>$apis.requireSuperuserOrOwnerAuth()</code> are the guards,
+        and <code>routerUse</code> registers middleware on every request.
       </p>
 
       <h3>Event handlers</h3>
@@ -78,13 +88,17 @@ export default function DocsProjectHooks() {
       <p>
         The families are the ones PocketBase has: records both as models and as requests, collections, auth, files,
         realtime, settings, mail and batches, each with <code>Validate</code>, the action itself, and{" "}
-        <code>After...Success</code> / <code>After...Error</code> variants.
+        <code>After...Success</code> / <code>After...Error</code> variants. <code>onBootstrap</code> and{" "}
+        <code>onServe</code> run once per isolate on its first request. Three are registered and never fired:{" "}
+        <code>onTerminate</code>, <code>onBackupCreate</code> and <code>onBackupRestore</code>.
       </p>
 
       <h3>Scheduled work</h3>
       <p>
-        <code>cronAdd(name, expression, handler)</code>, with a standard five-field expression. On Cloudflare these
-        become the Worker's own scheduled triggers, so they run whether or not anyone is visiting.
+        <code>cronAdd(name, expression, handler)</code>, with a standard five-field expression. On Cloudflare every
+        expression the bundle contains becomes one of the Worker's own scheduled triggers (more than four falls back
+        to every minute), so they run whether or not anyone is visiting; a job may run on any isolate, so keep it
+        idempotent. <code>POST /api/crons/:id</code> runs one on demand.
       </p>
 
       <h2>What is available inside</h2>
@@ -101,25 +115,34 @@ export default function DocsProjectHooks() {
             <td>
               The database: <code>findRecordById</code>, <code>findFirstRecordByFilter</code>,{" "}
               <code>findRecordsByFilter</code>, <code>countRecords</code>, <code>expandRecord</code>,{" "}
-              <code>save</code>, <code>delete</code>, plus <code>settings()</code>, <code>logger()</code> and{" "}
-              <code>newMailClient()</code>.
+              <code>save</code>, <code>delete</code>, <code>importCollections</code>,{" "}
+              <code>truncateCollection</code>, plus <code>settings()</code>, <code>logger()</code>,{" "}
+              <code>newMailClient()</code> and <code>dao()</code> for raw SQL.
             </td>
           </tr>
           <tr>
             <td><code>$apis</code></td>
-            <td>Route guards: <code>requireAuth</code>, <code>requireSuperuserAuth</code>, <code>requireGuestOnly</code>.</td>
+            <td>Route guards: <code>requireAuth</code>, <code>requireSuperuserAuth</code>, <code>requireGuestOnly</code>, <code>requireSuperuserOrOwnerAuth</code>.</td>
           </tr>
           <tr>
             <td><code>$http</code></td>
-            <td><code>send({"{"}url, method, body, headers{"}"})</code>, for calling other services.</td>
+            <td><code>send({"{"}url, method, body, headers, timeout{"}"})</code>, for calling other services.</td>
+          </tr>
+          <tr>
+            <td><code>$filesystem</code></td>
+            <td><code>fileFromURL</code> and <code>fileFromBytes</code>. <code>fileFromPath</code> throws: there is no filesystem on Workers.</td>
           </tr>
           <tr>
             <td><code>$security</code></td>
-            <td><code>randomString</code>, <code>sha256</code>, and friends.</td>
+            <td><code>randomString</code>, <code>randomStringWithAlphabet</code>, <code>pseudorandomString</code>, <code>sha256</code>.</td>
           </tr>
           <tr>
-            <td><code>$os.getenv</code></td>
-            <td>Configuration, which is what <a href="/docs/run/project/secrets">pb_secrets</a> declares.</td>
+            <td><code>$os</code></td>
+            <td>
+              <code>getenv</code> reads configuration, which is what <a href="/docs/run/project/secrets">pb_secrets</a>{" "}
+              declares; <code>readFile</code> reads files bundled from the hooks directory. <code>cmd</code> and{" "}
+              <code>exec</code> throw.
+            </td>
           </tr>
           <tr>
             <td><code>$dbx</code></td>
@@ -127,6 +150,13 @@ export default function DocsProjectHooks() {
           </tr>
         </tbody>
       </table>
+      <p>
+        The classes are there too: <code>Record</code>, <code>Collection</code>, <code>MailerMessage</code>,{" "}
+        <code>DateTime</code>, the typed field classes, and the error classes <code>BadRequestError</code>,{" "}
+        <code>ForbiddenError</code>, <code>NotFoundError</code>, <code>UnauthorizedError</code> and{" "}
+        <code>ValidationError</code>. <code>$template</code> is a placeholder: build mail bodies as strings and send
+        them with <code>$app.newMailClient().send(new MailerMessage({"{"}...{"}"}))</code>.
+      </p>
 
       <h2>Sharing code between files</h2>
       <p>
@@ -138,9 +168,12 @@ export default function DocsProjectHooks() {
       <div className="alert alert-info">
         <div className="content">
           <p className="m-0">
-            One difference from PocketBase worth knowing: on Cloudflare the hooks are compiled into the Worker when
-            you deploy, so a change to a hook needs a deploy rather than a restart. Locally,{" "}
-            <code>voidbase serve --dev</code> restarts on save.
+            Two differences from PocketBase worth knowing. On Cloudflare the hooks are compiled into the Worker when
+            you deploy, so a change to a hook needs a deploy rather than a restart; locally,{" "}
+            <code>voidbase serve --dev</code> restarts on save. And <code>$app.*</code>, <code>$http.send</code>,{" "}
+            <code>$filesystem.*</code> and mail calls are asynchronous underneath: the bundler inserts the awaits, so
+            ordinary synchronous-looking PocketBase code works unchanged, and{" "}
+            <code>$app.runInTransaction(fn)</code> runs <code>fn</code> directly rather than opening a transaction.
           </p>
         </div>
       </div>
@@ -154,6 +187,10 @@ export default function DocsProjectHooks() {
         , with the full event list under{" "}
         <a href="https://pocketbase.io/docs/js-event-hooks/" target="_blank" rel="noreferrer noopener">
           Event hooks
+        </a>
+        . Exactly what voidbase implements, event by event and global by global, is{" "}
+        <a href="https://github.com/voidbase-cloud/voidbase/blob/master/docs/hooks.md" target="_blank" rel="noreferrer noopener">
+          docs/hooks.md
         </a>
         .
       </p>

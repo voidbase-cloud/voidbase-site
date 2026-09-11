@@ -11,7 +11,10 @@ const TASTE = hl.bash`# one file, nothing installed
 
 # or from npm, with instances you name
 bun i -g @voidbase-cloud/voidbase
-voidbase local new blog`;
+voidbase local new blog
+
+# or on Cloudflare, in your own account
+voidbase deploy`;
 
 export default function DocsIndex() {
   return (
@@ -36,6 +39,12 @@ export default function DocsIndex() {
         <a href="https://pocketbase.io" target="_blank" rel="noreferrer noopener">PocketBase</a>'s API, reimplemented
         so it can run somewhere PocketBase cannot.
       </p>
+      <p>
+        Around that core, plugins that ship with it: a description of your API at <code>/api/docs</code>, an MCP
+        server at <code>/api/mcp</code> so an agent can discover the instance rather than be told about it, verified
+        backups, payments through Stripe, Polar or Lemon Squeezy, translations, mail from your own domain, and the
+        files crawlers ask for. <Link href="/docs/instance">What is an instance</Link> lists them.
+      </p>
 
       <h2>Two things it is made of</h2>
       <p>
@@ -49,10 +58,12 @@ export default function DocsIndex() {
         rather than left for you to discover.
       </p>
       <p>
-        <strong>Cloudflare, in your own account.</strong> A deployed instance is a Worker with a D1 database, an R2
-        bucket and a Durable Object, created in the Cloudflare account you already have. There is no machine to size,
-        nothing to keep patched, and nothing sitting between you and the platform. It also runs as a single process
-        on your laptop, from one downloaded file, with the same API and the same panel.
+        <strong>Cloudflare, in your own account.</strong> A deployed instance is one Worker with a D1 database, an R2
+        bucket, a jobs queue and the Durable Object that fans out realtime, created in the Cloudflare account you
+        already have. There is no machine to size, nothing to keep patched, and nothing sitting between you and the
+        platform. The same server also runs as a single process on your laptop, from one downloaded file or from
+        npm, with the same API and the same panel, and <code>voidbase migrate</code> moves the data between any two
+        of them.
       </p>
 
       <CodeBlock {...TASTE} />
@@ -71,10 +82,11 @@ export default function DocsIndex() {
 
       <h2>Where this is going</h2>
       <p>
-        voidbase is in public beta. It runs, people are running it, and the API is not going to move. The version is
-        0.x for everything around that, and both what is coming and what is deliberately not are on{" "}
-        <Link href="/docs/roadmap">the roadmap</Link>. It is <Link href="/docs/pricing">free</Link>, and that page
-        explains what we mean by the word and how a free backend pays for itself.
+        voidbase is in public beta, at 0.9.0-beta.35 as this page is written. It runs, people are running it, and the
+        API is not going to move. The version is 0.x for everything around that, and both what is coming and what is
+        deliberately not are on <Link href="/docs/roadmap">the roadmap</Link>. It is{" "}
+        <Link href="/docs/pricing">free</Link>, and that page explains what we mean by the word and how a free
+        backend pays for itself.
       </p>
 
       <div className="docs-cards">

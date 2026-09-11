@@ -37,7 +37,8 @@ const FIELD = hl.javascript`migrate((app) => {
   app.save(posts);
 });`;
 
-const IMPORT = hl.bash`voidbase import collections.json --url https://blog-api.example.workers.dev --admin you@example.com:your-password`;
+const IMPORT = hl.bash`voidbase import collections.json --url https://blog-api.example.workers.dev --admin you@example.com:your-password
+voidbase import collections.json --delete-missing --url ...    # and drop the collections the file does not name`;
 
 export default function DocsProjectMigrations() {
   return (
@@ -53,7 +54,7 @@ export default function DocsProjectMigrations() {
       <p>
         A file exports nothing; it calls <code>migrate</code> with the change and the way back. Name files so they
         sort in the order they should run, which is why the convention is a timestamp prefix:{" "}
-        <code>1725712800_posts.js</code>.
+        <code>1725712800_posts.js</code>. The files PocketBase's own automigrate writes run unchanged.
       </p>
       <CodeBlock {...FILE} />
 
@@ -63,8 +64,9 @@ export default function DocsProjectMigrations() {
       <h2>When they run</h2>
       <p>
         Locally, on the next start. On Cloudflare, on the first request after a deploy, in file order, each recorded
-        in the instance's own migrations table. A deploy therefore carries its schema with it, and there is nothing
-        to remember to run.
+        in the instance's own <code>_pbMigrations</code> table. A deploy therefore carries its schema with it, and
+        there is nothing to remember to run. <code>--migrationsDir</code> on <code>serve</code>, or{" "}
+        <code>VOIDBASE_MIGRATIONS_DIR</code>, points at another directory.
       </p>
       <div className="alert alert-info">
         <div className="content">
@@ -83,9 +85,10 @@ export default function DocsProjectMigrations() {
       </p>
       <CodeBlock {...IMPORT} />
       <p>
-        That is the right tool for copying a schema between instances you already have. For a schema that travels
-        with the repository and applies itself on deploy, write the migration file: it is the version-controlled
-        answer, and it is the one that works for someone cloning the project tomorrow.
+        That is the right tool for copying a schema between instances you already have; a hook can do the same at
+        runtime with <code>$app.importCollections(list, deleteMissing)</code>. For a schema that travels with the
+        repository and applies itself on deploy, write the migration file: it is the version-controlled answer, and
+        it is the one that works for someone cloning the project tomorrow.
       </p>
 
       <h2>Where to read on</h2>
@@ -94,7 +97,10 @@ export default function DocsProjectMigrations() {
         <a href="https://pocketbase.io/docs/js-migrations/" target="_blank" rel="noreferrer noopener">
           JS migrations
         </a>{" "}
-        page documents every collection option, field type and helper, all of which apply here unchanged.
+        page documents every collection option, field type and helper, all of which apply here unchanged. One limit
+        of the platform is worth knowing when designing a collection: a table has at most 100 columns on Cloudflare,
+        so a collection is at most 97 user fields beside <code>id</code>, <code>created</code> and{" "}
+        <code>updated</code>.
       </p>
     </>
   );
