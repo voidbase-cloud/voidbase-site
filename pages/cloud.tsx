@@ -8,7 +8,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import CloudflareSignIn from "@/components/CloudflareSignIn";
 import { CopyButton } from "@/components/CodeBlock";
 import { cloud, errorMessage, vb, VB_URL } from "@/lib/vb";
-import { CloudClient, hostnamesOf, LOG_LEVELS, rollbackTarget, ROLLBACK_WINDOW_DAYS, routeMissing, type BackupItem, type BackupKind, type CustomDomain, type DomainsReport, type LogEntry, type LogPage, type Metrics, type ObservabilityLogs, type ObservabilitySource, type ObservabilitySummary, type ObservabilityWindow, type PaymentsReport, type PaymentsSummary, type PluginsReport, type Superuser, type TranslationsMissing, type TranslationsReport, type TranslationsStatus, type WorkerSecret, type Zone } from "@/lib/cloud";
+import { CloudClient, hostnamesOf, LOG_LEVELS, reported, rollbackTarget, ROLLBACK_WINDOW_DAYS, routeMissing, type BackupItem, type BackupKind, type CustomDomain, type DomainsReport, type LogEntry, type LogPage, type Metrics, type ObservabilityLogs, type ObservabilitySource, type ObservabilitySummary, type ObservabilityWindow, type PaymentsReport, type PaymentsSummary, type PluginsReport, type Superuser, type TranslationsMissing, type TranslationsReport, type TranslationsStatus, type WorkerSecret, type Zone } from "@/lib/cloud";
 
 // ---- what /api/vbcloud/* hands back -----------------------------------------------------------------------------
 
@@ -217,67 +217,83 @@ function Knob({ children, href = DOCS.plugins }: { children: React.ReactNode; hr
  * the observability plugin's numbers come from. Each line ends with the knob that sets it; seo's knobs are not
  * reported, so they are not here.
  */
+/** a plugin that could not describe itself: the instance still answered, and this field says why it is empty */
+function Failed({ what, error }: { what: string; error: string }) {
+  return <span className="muted">the {what} plugin could not describe itself: {error}</span>;
+}
+
 function RunsBlock({ inst, report }: { inst: Instance; report: PluginsReport }) {
-  const { mail, ai, translations, payments, domains, observability } = report;
-  const tr = translations && translations.source && translations.locales?.length ? translations : null;
+  // Each field is what the plugin said or why it could not say it: a plugin that throws or times out has its field
+  // replaced by `{ error }` (voidbase 0.9.0-beta.49). Reading one as the report it used to be throws on the first
+  // property, which would take this whole panel down over one plugin, so every field comes through `reported()`.
+  const mail = reported(report.mail), ai = reported(report.ai), translations = reported(report.translations);
+  const payments = reported(report.payments), domains = reported(report.domains), observability = reported(report.observability);
+  const fields = [mail, ai, translations, payments, domains, observability];
+  const tr = translations.value && translations.value.source && translations.value.locales?.length ? translations.value : null;
   const declared = Object.entries(tr?.collections ?? {}).map(([c, f]) => `${c}: ${f.join(", ")}`).join("; ");
-  if (!mail && !ai && !translations && !payments && !domains && !observability) return null;
+  if (!fields.some((f) => f.value || f.error)) return null;
   return (
     <>
       <h4>What this instance runs</h4>
       <ul className="plugins-runs">
-        {mail && (
+        {(mail.value || mail.error) && (
           <li>
             <strong>Mail</strong>
-            {mail.via === "plugin" ? <span>{mail.carrier}{mail.sender && <>, sender <code>{mail.sender}</code></>}</span>
-              : mail.via === "log" ? <span>logged, not sent{mail.refused && <>: {mail.refused}</>}</span>
-              : <span>{mail.via === "http" ? "an HTTP mail API" : mail.via === "smtp" ? "SMTP" : mail.via} at <code>{mail.host}</code>{mail.sender && <>, sender <code>{mail.sender}</code></>}</span>}
+            {mail.error ? <Failed what="mail" error={mail.error} />
+              : mail.value!.via === "plugin" ? <span>{mail.value!.carrier}{mail.value!.sender && <>, sender <code>{mail.value!.sender}</code></>}</span>
+              : mail.value!.via === "log" ? <span>logged, not sent{mail.value!.refused && <>: {mail.value!.refused}</>}</span>
+              : <span>{mail.value!.via === "http" ? "an HTTP mail API" : mail.value!.via === "smtp" ? "SMTP" : mail.value!.via} at <code>{mail.value!.host}</code>{mail.value!.sender && <>, sender <code>{mail.value!.sender}</code></>}</span>}
             <Knob>Set <code>VOIDBASE_MAIL_DOMAIN</code> to a domain of the account and redeploy; the sender in the settings has to be on it.</Knob>
           </li>
         )}
-        {ai && (
+        {(ai.value || ai.error) && (
           <li>
             <strong>AI</strong>
-            {ai.via === "workers-ai" ? <span>Workers AI, model <code>{ai.model}</code>{ai.conversations !== undefined && <>, conversations {ai.conversations ? "on" : "off"}</>}</span> : <span>not bound</span>}
+            {ai.error ? <Failed what="ai" error={ai.error} />
+              : ai.value!.via === "workers-ai" ? <span>Workers AI, model <code>{ai.value!.model}</code>{ai.value!.conversations !== undefined && <>, conversations {ai.value!.conversations ? "on" : "off"}</>}</span> : <span>not bound</span>}
             <Knob>Set <code>VOIDBASE_AI=1</code>, or a model name, and redeploy.</Knob>
           </li>
         )}
-        {translations && (
+        {(translations.value || translations.error) && (
           <li>
             <strong>Translations</strong>
-            {tr ? <span>source <code>{tr.source}</code>, locales {tr.locales!.join(", ")}; {declared || "no collection declared"}</span> : <span>idle: no locales or no fields declared</span>}
+            {translations.error ? <Failed what="translations" error={translations.error} />
+              : tr ? <span>source <code>{tr.source}</code>, locales {tr.locales!.join(", ")}; {declared || "no collection declared"}</span> : <span>idle: no locales or no fields declared</span>}
             <Knob>Set <code>VOIDBASE_LOCALES</code> (the first is the source) and <code>VOIDBASE_TRANSLATABLE</code> (<code>posts:title,body</code>).</Knob>
           </li>
         )}
-        {payments && (
+        {(payments.value || payments.error) && (
           <li>
             <strong>Payments</strong>
-            {payments.via === "none" ? <span>no provider key set</span> : (
+            {payments.error ? <Failed what="payments" error={payments.error} />
+              : payments.value!.via === "none" ? <span>no provider key set</span> : (
               <span>
-                {payments.via}, {payments.livemode ? "live" : "test"} mode; webhook <Copyable text={`${inst.url}${payments.webhook}`} />
-                {payments.also?.length ? <> Also set: {payments.also.join(", ")}{payments.reason && <> ({payments.reason})</>}.</> : null}
+                {payments.value!.via}, {payments.value!.livemode ? "live" : "test"} mode; webhook <Copyable text={`${inst.url}${payments.value!.webhook}`} />
+                {payments.value!.also?.length ? <> Also set: {payments.value!.also.join(", ")}{payments.value!.reason && <> ({payments.value!.reason})</>}.</> : null}
               </span>
             )}
             <Knob href={DOCS.secrets}>One key as a secret: <code>STRIPE_SECRET_KEY</code>, <code>POLAR_ACCESS_TOKEN</code> or <code>LEMONSQUEEZY_API_KEY</code>, with its webhook secret.</Knob>
           </li>
         )}
-        {domains && (
+        {(domains.value || domains.error) && (
           <li>
             <strong>Domains</strong>
-            {domains.hostnames.length ? (
-              <span>{domains.hostnames.map((h) => <Fragment key={h}><code>{h}</code>{h === domains.canonical && <> <span className="label label-sm">canonical</span></>}{" "}</Fragment>)}</span>
+            {domains.error ? <Failed what="domains" error={domains.error} />
+              : domains.value!.hostnames.length ? (
+              <span>{domains.value!.hostnames.map((h) => <Fragment key={h}><code>{h}</code>{h === domains.value!.canonical && <> <span className="label label-sm">canonical</span></>}{" "}</Fragment>)}</span>
             ) : <span>none attached by the deploy; the Worker answers on {host(inst.url)}</span>}
             <Knob>Set <code>VOIDBASE_DOMAINS</code>, comma separated, the first canonical, and redeploy.</Knob>
           </li>
         )}
-        {observability && (
+        {(observability.value || observability.error) && (
           <li>
             <strong>Observability</strong>
+            {observability.error ? <Failed what="observability" error={observability.error} /> : (
             <span>
-              {observability.via === "analytics-engine" ? "the Analytics Engine dataset" : "the instance's own request log"};{" "}
-              {observability.sampling >= 1 ? "every request sampled" : observability.sampling > 0 ? `${percent(observability.sampling)} of requests sampled` : "nothing sampled"}; request log{" "}
-              {observability.logs ? "kept" : "off, so the fallback has nothing to read"}
-            </span>
+              {observability.value!.via === "analytics-engine" ? "the Analytics Engine dataset" : "the instance's own request log"};{" "}
+              {observability.value!.sampling >= 1 ? "every request sampled" : observability.value!.sampling > 0 ? `${percent(observability.value!.sampling)} of requests sampled` : "nothing sampled"}; request log{" "}
+              {observability.value!.logs ? "kept" : "off, so the fallback has nothing to read"}
+            </span>)}
             <Knob>Deploy with <code>--analytics</code> and set <code>VOIDBASE_OBSERVABILITY_TOKEN</code> to read the dataset; <code>VOIDBASE_OBSERVABILITY_SAMPLE</code> lowers how much of the path is sampled, <code>VOIDBASE_OBSERVABILITY=0</code> turns it off.</Knob>
           </li>
         )}
@@ -738,7 +754,14 @@ function DomainsPanel({ inst, client, session, repo, onSession }: { inst: Instan
   const [working, setWorking] = useState("");
   const api = useMemo(() => client.domains(inst), [client, inst]);
   const refresh = () => Promise.all([api.list(), api.zones()]).then(([d, z]) => { setList(d); setZones(z); }).catch((err) => setError(errorMessage(err)));
-  const readReport = () => client.plugins(inst, session).running().then((r) => { const d = r.domains ?? { hostnames: [], canonical: null }; setReport(d); setField(d.hostnames.join(", ")); }).catch((err) => setReportError(errorMessage(err)));
+  const readReport = () => client.plugins(inst, session).running().then((r) => {
+    // `r.domains` is the plugin's answer or `{ error }` when it could not give one, and reading the latter as a
+    // report throws on `.hostnames`: an instance whose domains plugin failed used to take this panel down with it.
+    const { value, error } = reported(r.domains);
+    if (error) { setReportError(`the domains plugin could not describe itself: ${error}`); return; }
+    const d = value ?? { hostnames: [], canonical: null };
+    setReport(d); setField(d.hostnames.join(", "));
+  }).catch((err) => setReportError(errorMessage(err)));
   useEffect(() => { refresh(); }, [inst.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     setReport(null); setReportError("");
@@ -864,7 +887,11 @@ function PaymentsPanel({ inst, client, session }: { inst: Instance; client: Clou
   async function refresh() {
     setLoading(true); setError("");
     try {
-      const r = (await client.plugins(inst, session).running()).payments ?? { via: "none" };
+      // the payments field is the plugin's answer or `{ error }`: a plugin that could not describe itself says so
+      // here rather than throwing on `.via`
+      const { value, error: failed } = reported((await client.plugins(inst, session).running()).payments);
+      if (failed) { setError(`the payments plugin could not describe itself: ${failed}`); setReport(null); setSummary(null); return; }
+      const r = value ?? { via: "none" };
       setReport(r);
       setSummary(r.via === "none" ? null : await client.payments(inst, session).summary());
     } catch (err) { setError(errorMessage(err)); }
@@ -956,7 +983,8 @@ function TranslationsPanel({ inst, client, session }: { inst: Instance; client: 
   async function refresh() {
     setLoading(true); setError("");
     try {
-      const r = (await client.plugins(inst, session).running()).translations ?? null;
+      const { value: r, error: failed } = reported((await client.plugins(inst, session).running()).translations);
+      if (failed) { setError(`the translations plugin could not describe itself: ${failed}`); setReport(null); setStatus(null); setMissing(null); return; }
       setReport(r);
       // both knobs unset is the idle plugin, which has nothing to report and nothing to list
       if (r && !(r.locales?.length && Object.keys(r.collections ?? {}).length)) { setStatus(null); setMissing(null); return; }

@@ -113,19 +113,35 @@ export interface DomainsReport { hostnames: string[]; canonical: string | null }
 export interface PaymentsReport { via: "none" | string; webhook?: string; livemode?: boolean; also?: string[]; reason?: string }
 /** the observability plugin: which source its numbers come from, how much of the path it samples, whether the log is kept */
 export interface ObservabilityReport { via: ObservabilitySource; sampling: number; logs: boolean }
+/**
+ * What one plugin said about itself, or why it could not say anything. Since 0.9.0-beta.49 `/api/plugins` is
+ * assembled from the plugins that actually loaded, and a plugin that throws, times out or answers something that is
+ * not an object has its field replaced by `{ error }` rather than taking the whole answer down. A caller that reads
+ * such a field as the report it expected throws on the first property it touches, so read it through `reported()`.
+ */
+export type Reported<T> = T | { error: string };
+
+/** the value a field carries, or null with the reason the plugin gave for having none */
+export function reported<T>(field: Reported<T> | null | undefined): { value: T | null; error: string } {
+  if (field && typeof field === "object" && "error" in field && typeof (field as { error: unknown }).error === "string") {
+    return { value: null, error: (field as { error: string }).error };
+  }
+  return { value: (field ?? null) as T | null, error: "" };
+}
+
 /** `GET /api/plugins`: what runs, where it lives, and what each shipped plugin reports about itself */
 export interface PluginsReport {
   names: string[];
   origins: Record<string, string>;
   disabled: string[];
   installer: { mode: string; repository?: string; branch?: string; hint?: string };
-  mail?: MailReport;
-  ai?: AiReport;
-  translations?: TranslationsReport;
-  domains?: DomainsReport;
-  payments?: PaymentsReport;
+  mail?: Reported<MailReport>;
+  ai?: Reported<AiReport>;
+  translations?: Reported<TranslationsReport>;
+  domains?: Reported<DomainsReport>;
+  payments?: Reported<PaymentsReport>;
   /** null on an instance that runs the plugin with nothing to report; absent before 0.9.0-beta.37 */
-  observability?: ObservabilityReport | null;
+  observability?: Reported<ObservabilityReport> | null;
 }
 
 // ---- the observability plugin: the numbers, the errors and the log -----------------------------------------------

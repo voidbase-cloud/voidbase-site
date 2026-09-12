@@ -15,7 +15,7 @@
 // nothing about the case it claims. The rest of the path -- inviting, accepting, each role over every route, the
 // last-owner rule -- is in test/cloud.ts, against the same backend code.
 import { sealSecret } from "@voidbase-cloud/voidbase/cloud";
-import { CloudClient, CloudError, ROLLBACK_WINDOW_DAYS, rollbackTarget } from "../src/lib/cloud";
+import { CloudClient, CloudError, reported, ROLLBACK_WINDOW_DAYS, rollbackTarget } from "../src/lib/cloud";
 
 const args = process.argv.slice(2);
 const flag = (n: string) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined; };
@@ -101,8 +101,9 @@ try {
   if (typeof set === "string") check("setting a domain without a repository puts the plugin's knob on the Worker", false, set);
   else {
     check("setting a domain without a repository puts the plugin's knob on the Worker and attaches the hostname", set.via === "worker" && set.canonical === host && set.attached?.includes(host) === true, JSON.stringify(set));
-    let reported: string[] = []; for (let i = 0; i < 10 && !reported.includes(host); i++) { await Bun.sleep(3000); reported = (await client.plugins(inst, session).running().catch(() => ({}) as Record<string, never>))?.domains?.hostnames ?? []; }
-    check("the instance itself reports the hostname, which is what the panel reads", reported.includes(host), reported.join(", "));
+    // read the way the panel reads it: the domains field is the plugin's answer or `{ error }` if it could not give one
+    let seen: string[] = []; for (let i = 0; i < 10 && !seen.includes(host); i++) { await Bun.sleep(3000); const r = await client.plugins(inst, session).running().catch(() => null); seen = reported(r?.domains).value?.hostnames ?? []; }
+    check("the instance itself reports the hostname, which is what the panel reads", seen.includes(host), seen.join(", "));
     const cleared = await client.setDomains(inst, [], null);
     const left = await client.domains(inst).list().catch(() => []);
     check("clearing it takes the hostname off the account again", cleared.hostnames.length === 0 && !left.some((d: { hostname: string }) => d.hostname === host), JSON.stringify(left.map((d: { hostname: string }) => d.hostname)));

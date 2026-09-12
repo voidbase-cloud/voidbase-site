@@ -9,11 +9,20 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readdirSync, statSync, e
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { assetHash, contentTypeFor, type ReleaseManifest } from "@voidbase-cloud/voidbase/cloud";
-import { CloudClient, CloudError, rollbackTarget, ROLLBACK_WINDOW_DAYS, routeMissing, type Instance } from "../src/lib/cloud";
+import { CloudClient, CloudError, rollbackTarget, ROLLBACK_WINDOW_DAYS, routeMissing, type Instance, reported} from "../src/lib/cloud";
 const VOIDBASE = resolve(import.meta.dir, "../node_modules/@voidbase-cloud/voidbase");
 // The npm package ships no test/; the mocks come from a sibling voidbase checkout when the package lacks them
 // (a sibling of the site, or of the site a worktree under .claude/worktrees/ belongs to).
-const MOCKS = [`${VOIDBASE}/test`, resolve(import.meta.dir, "../../voidbase/test"), resolve(import.meta.dir, "../../../../../voidbase/test")].find((d) => existsSync(`${d}/cf-mock.ts`)) ?? `${VOIDBASE}/test`;
+// The mocks are voidbase's own and are not shipped in its tarball, so they come from a checkout beside this one.
+// Since voidbase became a workspace (0.9.0-beta.51) they live under packages/voidbase/, and the old sibling paths
+// are kept for a checkout from before that.
+const MOCKS = [
+  `${VOIDBASE}/test`,
+  resolve(import.meta.dir, "../../voidbase/packages/voidbase/test"),
+  resolve(import.meta.dir, "../../../../../voidbase/packages/voidbase/test"),
+  resolve(import.meta.dir, "../../voidbase/test"),
+  resolve(import.meta.dir, "../../../../../voidbase/test"),
+].find((d) => existsSync(`${d}/cf-mock.ts`)) ?? `${VOIDBASE}/test`;
 const freePort = () => { const s = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch: () => new Response() }); const p = s.port; s.stop(true); return p; };
 const OIDC_PORT = freePort(), CF_PORT = freePort(), VB_PORT = freePort(), GH_PORT = freePort();
 const OIDC = `http://127.0.0.1:${OIDC_PORT}`, CF = `http://127.0.0.1:${CF_PORT}`, VB = `http://127.0.0.1:${VB_PORT}`, GH = `http://127.0.0.1:${GH_PORT}`;
@@ -305,7 +314,10 @@ try {
   const plugins = client.plugins(reachable, session);
   const running = await plugins.running(); const available = await plugins.available();
   check("the instance says what runs and where its plugins live; the marketplace's list comes through the instance", running.installer.mode === "repository" && running.origins.echo.startsWith("http://market.test") && available.available[0]?.plugins[0]?.name === "echo", JSON.stringify(running).slice(0, 200));
-  check("the instance reports what it runs: where its mail goes, the ai binding, the translations, the hostnames with the canonical one, and the payments provider with the second key's reason", running.mail?.via === "plugin" && String(running.mail.carrier).startsWith("Cloudflare Email Service") && running.mail.sender === "hello@example.com" && running.ai?.via === "workers-ai" && running.ai.model === "@cf/meta/llama-3.3-70b-instruct-fp8-fast" && running.translations?.source === "en" && running.translations.locales?.length === 2 && running.translations.collections?.posts?.length === 2 && running.domains?.canonical === "shop.example.com" && running.domains.hostnames.length === 2 && running.payments?.via === "stripe" && running.payments.webhook === "/api/payments/stripe/webhook" && running.payments.livemode === false && running.payments.also?.[0] === "polar" && /POLAR_ACCESS_TOKEN/.test(running.payments.reason ?? ""), JSON.stringify(running));
+  // every field is read the way the panels read it: the plugin's answer, or `{ error }` when it could not give one
+  const rMail = reported(running.mail).value, rAi = reported(running.ai).value, rTr = reported(running.translations).value;
+  const rDomains = reported(running.domains).value, rPay = reported(running.payments).value, rObs = reported(running.observability).value;
+  check("the instance reports what it runs: where its mail goes, the ai binding, the translations, the hostnames with the canonical one, and the payments provider with the second key's reason", rMail?.via === "plugin" && String(rMail.carrier).startsWith("Cloudflare Email Service") && rMail.sender === "hello@example.com" && rAi?.via === "workers-ai" && rAi.model === "@cf/meta/llama-3.3-70b-instruct-fp8-fast" && rTr?.source === "en" && rTr.locales?.length === 2 && rTr.collections?.posts?.length === 2 && rDomains?.canonical === "shop.example.com" && rDomains.hostnames.length === 2 && rPay?.via === "stripe" && rPay.webhook === "/api/payments/stripe/webhook" && rPay.livemode === false && rPay.also?.[0] === "polar" && /POLAR_ACCESS_TOKEN/.test(rPay.reason ?? ""), JSON.stringify(running));
   const installed = await plugins.install("echo", { marketplace: "https://marketplace.voidbase.cloud" }); await plugins.remove("echo"); await plugins.update();
   check("install, remove and update reach the instance with the instance's own session, and the instance answers with its commit", calls.length === 3 && calls.every((c) => c.auth === "inst-session") && (calls[0]!.body as { name: string }).name === "echo" && (installed.committed as { sha: string }).sha === "abc", JSON.stringify(calls));
 
@@ -326,7 +338,7 @@ try {
 
   // ---- observability (0.9.0-beta.37): the summary over a window, the errors, the log with a level, what the
   // plugin reports on /api/plugins, and the 404 an older instance answers, which is what the panels fall back on
-  check("observability: /api/plugins carries the plugin's line: where the numbers come from, how much of the path is sampled, and whether the request log is kept", running.observability?.via === "analytics-engine" && running.observability.sampling === 0.5 && running.observability.logs === true, JSON.stringify(running.observability));
+  check("observability: /api/plugins carries the plugin's line: where the numbers come from, how much of the path is sampled, and whether the request log is kept", rObs?.via === "analytics-engine" && rObs.sampling === 0.5 && rObs.logs === true, JSON.stringify(rObs));
   const obs = client.observability(reachable, session);
   const hour = await obs.summary();
   const day = await obs.summary("day");
@@ -456,7 +468,7 @@ try {
   check("translations: a stale session is the instance's refusal", /valid record authorization/.test(String(trStale)), String(trStale));
   // both knobs unset: the plugin runs and reports nothing, which is what the panel shows the knobs for
   trIdle = true;
-  const idleReport = (await client.plugins(reachable, session).running()).translations;
+  const idleReport = reported((await client.plugins(reachable, session).running()).translations).value;
   const idleStatus = await tr.status();
   check("translations: with neither knob set the plugin reports no source, no locale and no collection, and the status is empty too", idleReport?.source === "" && idleReport.locales?.length === 0 && Object.keys(idleReport.collections ?? {}).length === 0 && idleStatus.locales.length === 0 && Object.keys(idleStatus.collections).length === 0, JSON.stringify({ report: idleReport, status: idleStatus }));
   trIdle = false;
