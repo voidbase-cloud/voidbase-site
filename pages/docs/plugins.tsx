@@ -198,7 +198,7 @@ export default function DocsPlugins() {
             <Row name="backups" on={<>On by default. <code>VOIDBASE_BACKUP_KIND</code>, <code>VOIDBASE_BACKUP_KEEP</code> and <code>VOIDBASE_BACKUP_S3_*</code> shape the schedule and the off-site copy.</>}>
               PocketBase's backups routes plus <code>verify</code>: full, data and schema archives with a manifest, each read back and verified after it is written, restore per kind read as one stream so an archive larger than memory loads, retention, and a copy to any S3-compatible bucket outside the account.
             </Row>
-            <Row name="installer" on={<>On by default. <code>VOIDBASE_PROJECT_REPO</code> and <code>VOIDBASE_GH_TOKEN</code> on the Worker make a change a commit.</>}>
+            <Row name="installer" on={<>On by default. <code>VOIDBASE_PROJECT_REPO</code> and <code>VOIDBASE_GH_TOKEN</code> on the Worker, with <code>VOIDBASE_AUTO_MERGE=on</code>, make a change a commit.</>}>
               How an instance changes its own plugins: <code>POST /api/plugins/install</code>, <code>remove</code>, <code>update</code> and <code>GET /api/plugins/available</code>, for superusers. Below, "Installing one".
             </Row>
             <Row name="openapi" on="On by default.">
@@ -301,7 +301,7 @@ export default function DocsPlugins() {
             </tr>
             <tr>
               <td><code>repository</code></td>
-              <td>A project deployed from a repository: <code>VOIDBASE_PROJECT_REPO</code> and <code>VOIDBASE_GH_TOKEN</code> on the Worker</td>
+              <td>A project deployed from a repository: <code>VOIDBASE_PROJECT_REPO</code> and <code>VOIDBASE_GH_TOKEN</code> on the Worker, and <code>VOIDBASE_AUTO_MERGE=on</code></td>
               <td>One commit to the repository, made by the instance through GitHub's API after downloading and verifying the bundle itself, which the repository's own build deploys.</td>
             </tr>
             <tr>

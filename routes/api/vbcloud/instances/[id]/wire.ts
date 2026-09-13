@@ -1,12 +1,14 @@
 // POST / DELETE /api/vbcloud/instances/:id/wire — the one thing the browser cannot do itself: put the user's GitHub
 // token on their instance's Worker, so the instance's installer commits to the repository the instance deploys
 // from. The token is the user's own OAuth token, kept sealed here; it goes to their Worker as a secret through their
-// Cloudflare connection, with the repository's name and branch beside it. DELETE takes the three keys away.
+// Cloudflare connection, with the repository's name and branch beside it, and VOIDBASE_AUTO_MERGE on: a connection
+// alone opens nothing on the instance (voidbase's auto-merge.ts), and wiring it here is the deliberate act that does.
+// DELETE takes the four keys away.
 import { defineHandler } from "void";
 import { pb } from "@voidbase-cloud/voidbase/adapter";
 import { connectionFor, ghConnectionFor, instanceFor, readBody, requireAuth } from "@/shared";
 
-const KEYS = ["VOIDBASE_PROJECT_REPO", "VOIDBASE_PROJECT_BRANCH", "VOIDBASE_GH_TOKEN"] as const;
+const KEYS = ["VOIDBASE_PROJECT_REPO", "VOIDBASE_PROJECT_BRANCH", "VOIDBASE_GH_TOKEN", "VOIDBASE_AUTO_MERGE"] as const;
 // Wiring changes what the instance deploys from, so it is an owner's or an admin's; a viewer is refused. The
 // tokens are the caller's own, as everywhere else: an admin who is not the owner wires the instance with their own
 // Cloudflare and GitHub connections, and this site lends neither of the owner's to them.
@@ -22,7 +24,7 @@ export const POST = defineHandler(requireAuth("users"), async (c) => {
   if (!/^[a-z0-9-]+\/[a-z0-9._-]+$/.test(fullName)) throw new pb.BadRequestError("Say which repository, as owner/name.");
   const { cf } = await connectionFor(uid); const { token } = await ghConnectionFor(uid);
   const account = row.getString("account_id"); const name = row.getString("name");
-  const values: Record<string, string> = { VOIDBASE_PROJECT_REPO: fullName, VOIDBASE_PROJECT_BRANCH: branch, VOIDBASE_GH_TOKEN: token };
+  const values: Record<string, string> = { VOIDBASE_PROJECT_REPO: fullName, VOIDBASE_PROJECT_BRANCH: branch, VOIDBASE_GH_TOKEN: token, VOIDBASE_AUTO_MERGE: "on" };
   for (const [k, text] of Object.entries(values)) await cf.json("PUT", `/accounts/${account}/workers/scripts/${name}/secrets`, { name: k, text, type: "secret_text" });
   return { wired: Object.keys(values), repository: fullName, branch };
 });

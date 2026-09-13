@@ -524,7 +524,7 @@ try {
   check("repository generated from the template in the user's account, private, from the right template", mk.repo.fullName === "octo-tester/my-site" && mk.repo.status === "ready" && ghs.repos["octo-tester/my-site"]?.private === true && ghs.repos["octo-tester/my-site"]?.template === "voidbase-cloud/voidbase-site", JSON.stringify(mk.repo));
   check("the instance url and the domain were written as repository variables", ghs.variables["octo-tester/my-site"]?.PB_VB_URL === inst.url && ghs.variables["octo-tester/my-site"]?.PAGES_CNAME === "site.example.com", JSON.stringify(ghs.variables));
   const wiredScript = (await cfState()).scripts["vb-my-shop"];
-  check("the instance's Worker was wired: repository, branch and the user's GitHub token as its secrets", ["VOIDBASE_PROJECT_REPO", "VOIDBASE_PROJECT_BRANCH", "VOIDBASE_GH_TOKEN"].every((k) => (wiredScript?.secrets ?? []).includes(k)) && mk.wired.length === 3, JSON.stringify(wiredScript?.secrets));
+  check("the instance's Worker was wired: repository, branch, the user's GitHub token and auto-merge on as its secrets", ["VOIDBASE_PROJECT_REPO", "VOIDBASE_PROJECT_BRANCH", "VOIDBASE_GH_TOKEN", "VOIDBASE_AUTO_MERGE"].every((k) => (wiredScript?.secrets ?? []).includes(k)) && mk.wired.length === 4, JSON.stringify(wiredScript?.secrets));
 
   // ---- custom domains: the account's zones, a hostname put on the Worker, taken off again
   const domApi = client.domains(inst);
@@ -587,7 +587,7 @@ try {
   check("linking a repository GitHub does not know is refused", /not found on GitHub/.test(String(missing)), String(missing));
   const linked = await client.linkRepo({ fullName: "https://github.com/Octo-Tester/existing.git", instance: inst, user: uid });
   const ghsL = (await fetch(`${GH}/__state`).then((r) => r.json())) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-  check("an existing repository (given as a URL) is linked: PB_VB_URL written, private flag read from GitHub, wired", linked.repo.fullName === "octo-tester/existing" && linked.repo.private === true && ghsL.variables["octo-tester/existing"]?.PB_VB_URL === inst.url && linked.wired.length === 3, JSON.stringify(linked));
+  check("an existing repository (given as a URL) is linked: PB_VB_URL written, private flag read from GitHub, wired", linked.repo.fullName === "octo-tester/existing" && linked.repo.private === true && ghsL.variables["octo-tester/existing"]?.PB_VB_URL === inst.url && linked.wired.length === 4, JSON.stringify(linked));
   const relink = await client.linkRepo({ fullName: "octo-tester/existing", instance: inst, user: uid }).then(() => "linked", (e) => (e instanceof Error ? e.message : String(e)));
   check("a linked repository cannot be linked twice (the unique name)", /already|unique|failed/i.test(String(relink)), String(relink));
 
