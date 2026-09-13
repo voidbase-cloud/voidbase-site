@@ -738,6 +738,20 @@ try {
   check("one click delete: worker, D1, bucket and queue gone, row removed", del.deleted.length >= 3 && !st2.scripts["vb-my-shop"] && (await api("GET", `/api/collections/vb_instances/records/${inst.id}`, undefined, U)).status === 404, JSON.stringify(del));
   const delAgain = await client.deleteInstance(inst).then(() => "deleted", (e) => (e instanceof Error ? e.message : String(e)));
   check("deleting a removed instance is refused", /404|not found|wasn't found/i.test(String(delAgain)), String(delAgain));
+
+  // ---- revoking the site's access to the Cloudflare account (journey F): the sealed token goes, nothing in the account does
+  const before = await cfState();
+  const revoke = await api("DELETE", "/api/vbcloud/cloudflare", undefined, U);
+  const meAfter = await api("GET", "/api/vbcloud/me", undefined, U);
+  const actAfter = await api("POST", "/api/vbcloud/cf/accounts/acc123/workers/scripts/vb-my-shop/secrets", { name: "X", text: "y" }, U);
+  const after = await cfState();
+  check("revoking the site's access forgets the Cloudflare token: the site can no longer act in the account, and nothing in the account changed",
+    revoke.status === 200 && revoke.json.revoked === true && meAfter.json.connected === false
+    && actAfter.status === 400 && /Connect your Cloudflare account first/.test(actAfter.json.message ?? "")
+    && JSON.stringify(Object.keys(before.scripts ?? {}).sort()) === JSON.stringify(Object.keys(after.scripts ?? {}).sort()),
+    JSON.stringify({ revoke: revoke.json, connected: meAfter.json.connected, act: actAfter.json.message }));
+  const revokeAgain = await api("DELETE", "/api/vbcloud/cloudflare", undefined, U);
+  check("revoking again has nothing left to revoke", revokeAgain.status === 200 && revokeAgain.json.revoked === false, JSON.stringify(revokeAgain.json));
 } catch (e) { fail++; console.log("FAIL  unexpected error", e); console.log(serverLog.join("").slice(-3000)); }
 finally { for (const p of procs) p.kill(); rmSync(data, { recursive: true, force: true }); rmSync(fake, { recursive: true, force: true }); }
 if (fail) console.log("--- server log tail ---\n" + serverLog.join("").slice(-4000));

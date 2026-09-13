@@ -1391,6 +1391,14 @@ export default function Cloud() {
       location.href = r.url; // GitHub, then back here through the backend's callback
     });
 
+  async function revokeCloudflare() {
+    if (!confirm("Revoke this site's access to your Cloudflare account? Your instances keep running; the site forgets its token and can no longer act in the account until you sign in with Cloudflare again.")) return;
+    await run("cloudflare", async () => {
+      await cloud("DELETE", "/api/vbcloud/cloudflare");
+      await load();
+    });
+  }
+
   async function disconnectGithub() {
     if (!confirm("Disconnect GitHub? Wired repositories stay in your account; this site only forgets the token.")) return;
     await run("github", async () => {
@@ -1629,6 +1637,11 @@ export default function Cloud() {
                 <button type="button" className="btn btn-xs btn-secondary" onClick={load}>
                   Refresh
                 </button>
+                {me.connected && !me.user.superuser && (
+                  <button type="button" className="btn btn-xs btn-secondary" disabled={busy === "cloudflare"} onClick={revokeCloudflare}>
+                    Revoke access
+                  </button>
+                )}
                 <button type="button" className="btn btn-xs btn-secondary" onClick={signOut}>
                   Sign out
                 </button>
