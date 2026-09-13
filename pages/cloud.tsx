@@ -1583,9 +1583,10 @@ export default function Cloud() {
           )}
           <div className="signin">
             <CloudflareSignIn className="btn btn-lg btn-primary" />
+            <Permissions />
             <p className="txt-hint">
-              Cloudflare shows which accounts and permissions this site asks for. Nothing is created until you click
-              create. Backend: <code>{VB_URL ? host(VB_URL) : "this site"}</code>
+              You choose the accounts on Cloudflare's consent screen, which lists the same permissions. Nothing is
+              created until you click create. Backend: <code>{VB_URL ? host(VB_URL) : "this site"}</code>
             </p>
           </div>
         </>
@@ -2200,6 +2201,30 @@ export default function Cloud() {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+/** What signing in lets the site do, before anyone signs in: GET /api/vbcloud/permissions, one line per scope. */
+function Permissions() {
+  const [scopes, setScopes] = useState<{ id: string; does: string }[]>([]);
+  useEffect(() => {
+    fetch(`${VB_URL}/api/vbcloud/permissions`)
+      .then(async (r) => (r.ok ? ((await r.json()) as { scopes?: { id: string; does: string }[] }) : {}))
+      .then((b) => setScopes(b.scopes ?? []))
+      .catch(() => setScopes([]));
+  }, []);
+  if (!scopes.length) return null;
+  return (
+    <div className="permissions">
+      <p className="txt-hint">Signing in lets this site, in the Cloudflare accounts you grant:</p>
+      <ul>
+        {scopes.map((s) => (
+          <li key={s.id}>
+            {s.does} <code>{s.id}</code>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

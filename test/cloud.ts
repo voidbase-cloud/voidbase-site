@@ -95,6 +95,11 @@ try {
   const me = await api("GET", "/api/vbcloud/me", undefined, U);
   check("me: connected, granted accounts stored, admin by email, self worker known", me.json.connected === true && me.json.connection?.accounts?.[0]?.id === "acc123" && me.json.admin === true && me.json.self?.worker === "voidbase-site" && me.json.providerConfigured === true, JSON.stringify(me.json));
   const meAnon = await api("GET", "/api/vbcloud/me");
+  const permissions = await api("GET", "/api/vbcloud/permissions");
+  check("anyone can see what signing in lets the site do, one line per scope it asks for",
+    permissions.status === 200 && Array.isArray(permissions.json.scopes) && permissions.json.scopes.length > 0
+    && permissions.json.scopes.every((s: { id: string; does: string }) => s.id && s.does && s.does !== s.id),
+    JSON.stringify(permissions.json).slice(0, 300));
   check("me needs auth", meAnon.status === 401);
 
   // ---- the browser client, as the page holds it: the site's URL and the user's session
