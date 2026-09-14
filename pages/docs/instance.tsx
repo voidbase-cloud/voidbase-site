@@ -21,7 +21,7 @@ const SURFACE = hl.markdown`What every instance answers, whichever way it runs:
 
 - \`/api/\`: PocketBase's REST API, records, auth, files, realtime, batch
 - \`/_/\`: the admin panel, PocketBase's own build, unmodified
-- \`/api/docs\`: the instance's own API reference, over \`/api/openapi.json\`, scoped to the token it is opened with
+- \`/api/docs\`: the instance's own API reference, over \`/api/openapi.json\`, scoped to the token it is opened with and to what its rules let that token reach
 - \`/api/mcp\`: a stateless MCP server whose tools are the routes your token may call
 - \`/robots.txt\`, \`/sitemap.xml\`, \`/llms.txt\`: generated from the public collections, unless a real file wins
 - \`/api/plugins\`: what this instance loaded and where each plugin came from, for a superuser
