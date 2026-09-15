@@ -143,7 +143,7 @@ export const DOCS_NAV: DocsLink[] = [
     title: "Plugins",
     group: "extending",
     icon: "ri-puzzle-line",
-    summary: "What a plugin is, the sixteen that ship and their knobs, and how one is installed.",
+    summary: "What a plugin is, the eight that ship, the official ones you add, and how one is installed.",
   },
   {
     href: "/docs/marketplace",
@@ -154,7 +154,7 @@ export const DOCS_NAV: DocsLink[] = [
     children: [
       { href: "/docs/marketplace", title: "What it is", summary: "What is listed, what you can install, and how a listing arrives and leaves." },
       { href: "/docs/marketplace/templates", title: "Publish a template", summary: "What makes one, what the audit checks, and how to submit it." },
-      { href: "/docs/marketplace/plugins", title: "Publish a plugin", summary: "A repository with a plugin.json: what the marketplace builds, audits and serves." },
+      { href: "/docs/marketplace/plugins", title: "Publish a plugin", summary: "A repository with a manifest.json: what the marketplace audits and records." },
       { href: "/docs/marketplace/getting-paid", title: "Getting paid", summary: "Nothing is sold through the marketplace; what an instance can charge for, and what is promised." },
     ],
   },
@@ -178,13 +178,6 @@ export const DOCS_NAV: DocsLink[] = [
     group: "project",
     icon: "ri-heart-3-line",
     summary: "The projects voidbase is built out of, and the people who wrote them.",
-  },
-  {
-    href: "/docs/roadmap",
-    title: "Roadmap",
-    group: "project",
-    icon: "ri-road-map-line",
-    summary: "What is coming, and what is deliberately not.",
   },
   {
     href: "/docs/contribute",

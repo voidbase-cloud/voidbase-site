@@ -51,7 +51,6 @@ export default function PageFooter() {
             <Link href="/docs/start" className="footer-link">Docs</Link>
             <Link href="/docs/why" className="footer-link">Why voidbase</Link>
             <Link href="/docs/pricing" className="footer-link">Pricing</Link>
-            <Link href="/docs/roadmap" className="footer-link">Roadmap</Link>
           </nav>
 
           <nav className="footer-group" aria-labelledby="footer-build">

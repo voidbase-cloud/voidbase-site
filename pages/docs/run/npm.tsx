@@ -42,9 +42,9 @@ voidbase deploy --name blog-api --domain api.example.com`;
 const CLOUD_LS = hl.bash`voidbase instances`;
 
 const CLOUD_LS_OUT = hl.output`3 instance(s) on Example Ltd:
-  blog-api                         release 0.9.0-beta.35  updated 2026-09-11
-  staging-api                      release 0.9.0-beta.35  updated 2026-09-08
-  workshop-demo                    release 0.9.0-beta.31  updated 2026-08-30`;
+  blog-api                         release 1.0.0          updated 2026-09-14
+  staging-api                      release 1.0.0          updated 2026-09-14
+  workshop-demo                    release 0.9.0-beta.69  updated 2026-09-13`;
 
 const DESTROY = hl.bash`voidbase destroy workshop-demo`;
 

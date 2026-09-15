@@ -247,7 +247,6 @@
 }
 
 .why-yes { color: var(--successColor); }
-.why-planned { color: var(--warningColor); }
 .why-no { color: var(--dangerColor); }
 .why-depends { color: var(--txtDisabledColor); }
 
@@ -303,42 +302,6 @@
         .why-year { position: static; display: block; margin-bottom: 4px; }
         .why-year:after { display: none; }
     }
-}
-
-// ---- the roadmap ------------------------------------------------------------------------------------------------
-.why-item {
-    border-left: 2px solid var(--warningColor);
-    padding: 2px 0 2px 18px;
-    margin: 0 0 28px;
-    max-width: var(--measure);
-
-    h3 { margin: 0 0 4px; }
-    .why-item-from {
-        color: var(--txtDisabledColor);
-        font-size: 15px;
-        margin: 0 0 12px;
-    }
-}
-
-.why-item-body {
-    margin: 0;
-    display: grid;
-    grid-template-columns: 68px 1fr;
-    gap: 6px 14px;
-    font-size: 15px;
-    line-height: 23px;
-
-    dt {
-        font-family: var(--monospaceFontFamily);
-        font-size: 13px;
-        color: var(--txtDisabledColor);
-        padding-top: 3px;
-    }
-    dd { margin: 0; color: #d6d6d6; }
-}
-
-@media only screen and (max-width: 700px) {
-    .why-item-body { grid-template-columns: 1fr; gap: 2px; dt { padding-top: 8px; } }
 }
 
 // a single-colour logo, tinted through a mask: the file is a black glyph, the colour comes from here
@@ -492,10 +455,3 @@
     .perf-scale > div { grid-template-columns: 1fr; gap: 2px; }
 }
 
-// a roadmap item's own heading, inside one of the two halves
-.why .why-group {
-    font-size: 17px;
-    color: var(--txtHintColor);
-    margin: 26px 0 10px;
-    font-weight: 600;
-}

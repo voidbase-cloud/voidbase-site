@@ -28,7 +28,7 @@ export default function Updating({ command, children, live, title = "Updating" }
       <p>
         <code>voidbase update --check</code> changes nothing. It prints the version you are on and the newest one, and
         exits <code>1</code> when you are behind and <code>2</code> when it could not find out, which is what a{" "}
-        <Link href="/docs/deploy/pipeline">pipeline</Link> reads. <code>--to 0.9.0</code> goes to a particular
+        <Link href="/docs/deploy/pipeline">pipeline</Link> reads. <code>--to 1.0.0</code> goes to a particular
         version rather than the newest, and <code>--dry-run</code> prints the command it would run without running
         it.
       </p>

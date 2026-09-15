@@ -131,13 +131,15 @@ export default function DocsWhy() {
       </p>
       <p>
         It also fails if the limits bite. They are real and we write them down rather than hide them: no interactive
-        transactions, 100 bound parameters per statement, a CPU ceiling per request. Those are on{" "}
+        transactions, 100 bound parameters per statement and 100 columns per table, a CPU ceiling per request. Those
+        are on{" "}
         <a href="https://github.com/voidbase-cloud/voidbase/blob/master/docs/differences.md" target="_blank" rel="noreferrer noopener">
           the differences page
         </a>
         , and if one of them is disqualifying for you, PocketBase on a server is a good answer and we will say so.
-        The first two have a plan on <Link href="/docs/roadmap">the roadmap</Link>. The CPU ceiling is the
-        platform's, and it is staying.
+        <code>VOIDBASE_DATABASE=durable</code> makes a batch, and a hook's <code>$app.runInTransaction</code>, one
+        real transaction, though still not an interactive one. The parameter and column ceilings are SQLite's on
+        Cloudflare and apply to a Durable Object too, and the CPU ceiling is the platform's; those are staying.
       </p>
 
       <h2>Against the others, one at a time</h2>

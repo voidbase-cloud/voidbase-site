@@ -13,8 +13,8 @@ export default function DocsMarketplace() {
         Templates and plugins for voidbase, written by the people who use it, at{" "}
         <a href={SITE.marketplaceUrl} target="_blank" rel="noreferrer noopener">marketplace.voidbase.cloud</a>. Your
         code stays in your repository; a listing points at it and records what our checks found on the day it was
-        added. For a plugin the marketplace also builds the bundle from your repository at that commit, audits it on
-        both sides of the build, hashes it and serves it, because that is the marketplace's job and not yours.
+        added. For a plugin that record names the commit it audited, and an instance fetches the plugin's files at
+        that commit and hashes them itself. Nobody builds anything: not you, not the marketplace.
       </p>
 
       <h2>What works, and what does not</h2>
@@ -26,9 +26,9 @@ export default function DocsMarketplace() {
         </li>
         <li>
           <strong>You can list a plugin, and you can install one.</strong> <code>voidbase plugins add &lt;name&gt;</code>{" "}
-          (voidbase 0.9.0-beta.7 or later) downloads the release this marketplace serves into{" "}
-          <code>pb_plugins/&lt;name&gt;</code>, verifies it against the hash recorded here, and pins it in{" "}
-          <code>voidbase.lock</code>; the instance verifies the bytes again every time it starts. A cloud instance
+          fetches the plugin's files at the commit this marketplace approved into{" "}
+          <code>pb_plugins/&lt;name&gt;</code> and pins that commit and a hash of the files in{" "}
+          <code>voidbase.lock</code>; the instance recomputes the hash before it loads anything. A cloud instance
           installs from its page on voidbase.cloud through the instance's own installer.{" "}
           <Link href="/docs/plugins">The plugins page</Link> is the whole of it.
         </li>
@@ -50,8 +50,8 @@ export default function DocsMarketplace() {
       <h2>The registry is a file</h2>
       <p>
         <code>registry/templates.json</code> and <code>registry/plugins.json</code> are the listings, and{" "}
-        <code>registry/v1/</code> is what is served: the index, one record per plugin version, and the bundle beside
-        it, all written by the pipeline and committed to a{" "}
+        <code>registry/v1/</code> is what is served: the index and one record per plugin version, naming the commit
+        it approved, all written by the pipeline and committed to a{" "}
         <a href="https://github.com/voidbase-cloud/voidbase-marketplace" target="_blank" rel="noreferrer noopener">
           public repository
         </a>
@@ -84,7 +84,7 @@ export default function DocsMarketplace() {
         </Link>
         <Link href="/docs/marketplace/plugins" className="docs-card">
           <strong>Publish a plugin</strong>
-          <span>A repository with a plugin.json: what the marketplace builds, audits and serves, and how a version lands.</span>
+          <span>A repository with a manifest.json: what the marketplace audits and records, and how a version lands.</span>
         </Link>
         <Link href="/docs/marketplace/getting-paid" className="docs-card">
           <strong>Getting paid</strong>

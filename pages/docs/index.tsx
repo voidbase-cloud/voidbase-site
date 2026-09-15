@@ -80,11 +80,11 @@ export default function DocsIndex() {
         and a link does not.
       </p>
 
-      <h2>Where this is going</h2>
+      <h2>Where it is</h2>
       <p>
-        voidbase is in public beta, at 0.9.0-beta.35 as this page is written. It runs, people are running it, and the
-        API is not going to move. The version is 0.x for everything around that, and both what is coming and what is
-        deliberately not are on <Link href="/docs/roadmap">the roadmap</Link>. It is{" "}
+        voidbase is at 1.0. It runs, people are running it, and the API is PocketBase's and is not going to move. From
+        1.0 on the version means what semver says: a change that breaks something around that API is a new major
+        version, and every release's changelog says what moved. It is{" "}
         <Link href="/docs/pricing">free</Link>, and that page explains what we mean by the word and how a free
         backend pays for itself.
       </p>

@@ -1,12 +1,18 @@
 // The public PB_* values the pages read, declared once so the pages do not each reach into import.meta.env.
 // They come from .env / .env.example through Vite's envPrefix: "PB" (see vite.config.mts).
+import site from "../../package.json";
+
 const env = import.meta.env as unknown as Record<string, string | undefined>;
 
+// the voidbase this site is built against, as package.json pins it: scripts/testbeds.ts in voidbase moves that pin with
+// every release, so the header and the footer follow it without a variable anyone has to remember to set
+const pinned = String((site as { dependencies?: Record<string, string> }).dependencies?.["@voidbase-cloud/voidbase"] ?? "").replace(/^[\^~]/, "");
+
 export const SITE = {
-  // PB_VB_VERSION is set by the deploy; the fallback is here so a dev server and a fork show something true rather
-  // than a number nobody updated. A version with a prerelease part ("0.9.0-beta") is what puts the beta mark in the
-  // header and the banner on every page, so going stable is a version bump and nothing else.
-  vbVersion: env.PB_VB_VERSION ?? "0.9.0-beta",
+  // PB_VB_VERSION overrides it; otherwise the version is the one package.json pins. Nothing set it before 1.0.0, so the
+  // site kept the old "0.9.0-beta" fallback and its beta mark and banner after the release. A version with a
+  // prerelease part is still what would bring both back.
+  vbVersion: env.PB_VB_VERSION ?? (pinned || "1.0.0"),
   pbVersion: env.PB_VERSION ?? "",
   repoUrl: env.PB_REPO_URL ?? "https://github.com/voidbase-cloud/voidbase",
   discussionsUrl: env.PB_DISCUSSIONS_URL ?? "https://github.com/voidbase-cloud/voidbase/discussions",

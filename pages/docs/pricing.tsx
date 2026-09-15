@@ -1,8 +1,8 @@
 // The pricing page for a product with one price.
 //
 // A table with one column would be a joke, so this page is an argument in three beats instead: the claim, the one
-// bill that is not ours, and how a free thing pays for itself. The mechanics of the last part live on the roadmap,
-// because someone asking what voidbase costs does not want to read about revenue share.
+// bill that is not ours, and how a free thing pays for itself. The mechanics of the last part live on the getting
+// paid page, because someone asking what voidbase costs does not want to read about revenue share.
 import { Link } from "@void/react";
 import CloudflareCost from "@/components/CloudflareCost";
 import "@/scss/pricing.scss";
@@ -143,9 +143,9 @@ export default function DocsPricing() {
           that looks like, including the part where it is not open yet.
         </li>
         <li>
-          <strong>Official plugins, free.</strong> As many as we can write, and the ones that exist ship with
-          voidbase: backups, domains, previews, mail, the API description and the MCP server, SEO, translations,
-          three payment providers and the AI chat. An ecosystem does not start behind a paywall, and a backend with
+          <strong>Official plugins, free.</strong> As many as we can write. Backups, mail, the API description and
+          the rest of the core ship with voidbase, and domains, previews, the MCP server, SEO, translations, three
+          payment providers, a shop and the AI chat install by name from the marketplace, at no charge. An ecosystem does not start behind a paywall, and a backend with
           nothing to install is a backend you have to finish yourself.
         </li>
         <li>
@@ -162,8 +162,8 @@ export default function DocsPricing() {
       </ol>
 
       <p>
-        The first two are how it works now; the last two are plans. They are written down properly on{" "}
-        <Link href="/docs/roadmap">the roadmap</Link>, with what each piece actually involves.
+        The first two are how it works now; the last two are plans, and what is still undecided about them is on{" "}
+        <Link href="/docs/marketplace/getting-paid">getting paid</Link>.
       </p>
 
       <h2>What we will not do</h2>
@@ -183,9 +183,9 @@ export default function DocsPricing() {
           <i className="ri-play-circle-line" />
           <span className="txt">Get one running</span>
         </Link>
-        <Link href="/docs/roadmap" className="btn btn-lg btn-secondary">
-          <i className="ri-road-map-line" />
-          <span className="txt">Read the roadmap</span>
+        <Link href="/docs/marketplace/getting-paid" className="btn btn-lg btn-secondary">
+          <i className="ri-hand-coin-line" />
+          <span className="txt">How getting paid will work</span>
         </Link>
         <Link href="/docs/contribute" className="btn btn-lg btn-secondary">
           <i className="ri-git-pull-request-line" />

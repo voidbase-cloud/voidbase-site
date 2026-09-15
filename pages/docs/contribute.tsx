@@ -22,8 +22,8 @@ export default function DocsContribute() {
     <>
       <h1>How to contribute</h1>
       <p className="docs-lead">
-        voidbase is in public beta and is built in the open. The API is PocketBase's and is not moving; everything
-        around it is 0.x and is. If you know backends, or Cloudflare, or just found a page here that is wrong, there
+        voidbase is at 1.0 and is built in the open. The API is PocketBase's and is not moving; everything around it
+        is where the work is. If you know backends, or Cloudflare, or just found a page here that is wrong, there
         is something useful you can do in the next ten minutes. If you would rather talk to someone first, we are
         on <a href={SITE.discordUrl} target="_blank" rel="noreferrer noopener">Discord</a>.
       </p>
@@ -65,11 +65,10 @@ export default function DocsContribute() {
         pull request.
       </p>
 
-      <h3>Something on the roadmap</h3>
+      <h3>Something larger than a fix</h3>
       <p>
-        <Link href="/docs/roadmap">Every item</Link> has a design and a rough size against it. Say which one you are
-        taking in an issue before you start, because some of them are larger than they look and a few depend on
-        each other.
+        Say what you intend in <a href={`${SITE.repoUrl}/issues`} target="_blank" rel="noreferrer noopener">an issue</a>{" "}
+        before you start, because some changes are larger than they look and a few depend on each other.
       </p>
 
       <h3>A logo, if you draw</h3>
@@ -147,8 +146,8 @@ export default function DocsContribute() {
       </ul>
 
       <p>
-        One last thing worth saying plainly: this is a beta and we would rather hear that something is wrong than
-        find out later that people worked around it quietly.
+        One last thing worth saying plainly: 1.0 is a promise about the API, not a claim that nothing is wrong, and we
+        would rather hear that something is than find out later that people worked around it quietly.
       </p>
     </>
   );

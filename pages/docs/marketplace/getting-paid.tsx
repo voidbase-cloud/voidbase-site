@@ -18,10 +18,10 @@ export default function DocsMarketplaceGettingPaid() {
 
       <h2>What your instance can do today</h2>
       <p>
-        Taking money is a plugin, not a marketplace feature. <code>stripe</code>, <code>polar</code> and{" "}
-        <code>lemonsqueezy</code> ship with voidbase, each providing <code>payments@1</code> and writing customers,
-        subscriptions and payments into collections your app queries like any other; setting the provider's key is
-        what turns one on, and <code>@voidbase-cloud/sdk/payments</code> is the client side. That is an instance
+        Taking money is a plugin, not a marketplace feature. <code>stripe</code> provides <code>payments@1</code>{" "}
+        and writes customers, subscriptions and payments into collections your app queries like any other, and{" "}
+        <code>polar</code> and <code>lemonsqueezy</code> take payments through it. Each is an official plugin you add
+        by name from the marketplace, and setting the provider's key is what turns one on, and <code>@voidbase-cloud/sdk/payments</code> is the client side. That is an instance
         charging its own users for its own product. <Link href="/docs/plugins">The plugins page</Link> has the three.
       </p>
 
@@ -66,7 +66,7 @@ export default function DocsMarketplaceGettingPaid() {
         Say so now rather than later. Someone who intends to earn from this has opinions about the list above that we
         do not, and the order those questions get answered in should be set by the people affected.{" "}
         <a href={SITE.discordUrl} target="_blank" rel="noreferrer noopener">Discord</a> is the fastest way, and{" "}
-        <Link href="/docs/roadmap">the roadmap</Link> is where the answers land once there are any.
+        this page is where the answers land once there are any.
       </p>
     </>
   );

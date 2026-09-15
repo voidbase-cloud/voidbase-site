@@ -8,7 +8,7 @@ import CodeBlock from "@/components/CodeBlock";
 import { hl } from "@/lib/hl";
 
 const CHECK = hl.bash`# in the checkout, on any CI runner
-VERSION=0.9.0-beta.35
+VERSION=1.0.0
 curl -sLO https://github.com/voidbase-cloud/voidbase/releases/download/v\${VERSION}/voidbase_\${VERSION}_linux_amd64.zip
 unzip -q voidbase_\${VERSION}_linux_amd64.zip && chmod +x voidbase
 

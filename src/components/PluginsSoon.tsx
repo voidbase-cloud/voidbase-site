@@ -31,8 +31,8 @@ const WHERE: Record<Shape, React.ReactNode> = {
   standalone: (
     <>
       The executable is the filesystem case: the command changes <code>pb_plugins/</code> and{" "}
-      <code>voidbase.lock</code> beside it, and the instance verifies every bundle against the lockfile and loads it
-      when it restarts. There is no build of yours to wait for and no node_modules: a bundle's imports resolve to
+      <code>voidbase.lock</code> beside it, and the instance verifies every plugin against the lockfile and loads it
+      when it restarts. There is no build of yours to wait for and no node_modules: a plugin's imports resolve to
       the modules the executable is already running.
     </>
   ),
@@ -40,7 +40,7 @@ const WHERE: Record<Shape, React.ReactNode> = {
     <>
       A local instance and a project are the same shape, a directory, so the command runs there as it does in a
       project: it changes <code>pb_plugins/</code> and <code>voidbase.lock</code> in place, and the instance verifies
-      every bundle against the lockfile and loads them when it restarts.
+      every plugin against the lockfile and loads them when it restarts.
     </>
   ),
   project: (
@@ -56,7 +56,7 @@ const WHERE: Record<Shape, React.ReactNode> = {
   stack: (
     <>
       <code>pb_plugins/</code> and <code>voidbase.lock</code> sit at the project root beside <code>vb_hooks</code>,
-      and the build carries both into the generated app, verifying every bundle against the lockfile as it does; a
+      and the build carries both into the generated app, verifying every plugin against the lockfile as it does; a
       mismatch fails the build rather than the instance.
     </>
   ),
@@ -76,10 +76,9 @@ export default function PluginsSoon({ shape }: { shape: Shape }) {
       <h2>Plugins</h2>
       <p>
         Plugins exist and <Link href="/docs/marketplace">the marketplace</Link> lists them.{" "}
-        <code>voidbase plugins add &lt;name&gt;</code> installs one: the bundle lands in{" "}
-        <code>pb_plugins/&lt;name&gt;</code>, verified against the hash the marketplace recorded, and{" "}
-        <code>voidbase.lock</code> pins the marketplace, the version, the hash and the commit it was built from. The
-        instance loads it beside the sixteen plugins voidbase ships, and a superuser reads where each came from at{" "}
+        <code>voidbase plugins add &lt;name&gt;</code> installs one: its files at the commit the marketplace approved
+        land in <code>pb_plugins/&lt;name&gt;</code>, and <code>voidbase.lock</code> pins the marketplace, the
+        version, that commit and a hash of the files. The instance loads it beside the eight plugins voidbase ships, and a superuser reads where each came from at{" "}
         <code>/api/plugins</code>. Removing a shipped plugin turns it off; installing one with its name takes its
         place. <Link href="/docs/plugins">The plugins page</Link> has what a plugin is, the shipped ones and their
         knobs, and the installer.
@@ -90,9 +89,9 @@ export default function PluginsSoon({ shape }: { shape: Shape }) {
         Any marketplace serving{" "}
         <a href="https://github.com/voidbase-cloud/voidbase/blob/master/docs/registry.md" target="_blank" rel="noreferrer noopener">the registry protocol</a>{" "}
         works, ours being the default: <code>--marketplace &lt;url&gt;</code> on an install, or{" "}
-        <code>VOIDBASE_PLUGIN_MARKETPLACES</code>. To publish one, a repository with a <code>plugin.json</code> is
-        enough: <Link href="/docs/marketplace/plugins">submit it</Link> and the marketplace builds, audits and serves
-        it.
+        <code>VOIDBASE_PLUGIN_MARKETPLACES</code>. To publish one, a repository with a <code>manifest.json</code> is
+        enough: <Link href="/docs/marketplace/plugins">submit it</Link> and the marketplace audits it and records the
+        commit.
       </p>
     </section>
   );

@@ -37,7 +37,7 @@ export default function DocsSponsor() {
       <p>
         Time, and nothing more interesting than that. voidbase has no servers to rent, because it runs in your
         Cloudflare account and not ours, and no staff. What it has is a list of things that need a person sitting
-        down for a week: the pieces on <Link href="/docs/roadmap">the roadmap</Link>, the plugins that make a
+        down for a week: the next pieces of the core, the plugins that make a
         backend worth installing, and the unglamorous half of a project that only gets done when someone can afford
         to do it.
       </p>
